@@ -20,7 +20,7 @@ type Msg
     = TreditorMsg (Treditor.Msg Item.Item)
     | EditNewItemId String
     | EditNewItemValue String
-    | AddNewItem Treditor.EmptyLeaf
+    | AddNewItem
     | NoOp
 
 
@@ -47,8 +47,8 @@ update msg model =
                 | newItem = Item.setValue newValue model.newItem
             }
 
-        AddNewItem new ->
-            { model | treditor = Treditor.setNew treditorConfig new model.newItem model.treditor }
+        AddNewItem ->
+            { model | treditor = Treditor.setNew treditorConfig model.newItem model.treditor }
 
         NoOp ->
             model
@@ -73,19 +73,17 @@ view model =
                                 |> Html.map TreditorMsg
                         )
                     |> Maybe.withDefault (p [] [ text "Click a node to edit.." ])
-                , Treditor.new model.treditor
-                    |> Maybe.map
-                        (\new ->
-                            div []
-                                [ h3 [] [ text "New node" ]
-                                , label []
-                                    [ text "Unique id", input [ value model.newItem.id, onInput EditNewItemId ] [] ]
-                                , label []
-                                    [ text "Value", input [ value model.newItem.value, onInput EditNewItemValue ] [] ]
-                                , button [ type_ "submit", onClick (AddNewItem new) ] [ text "Add node" ]
-                                ]
-                        )
-                    |> Maybe.withDefault (text "Click on an empty leaf to create a new node.")
+                , if Treditor.isNew model.treditor then
+                    div []
+                        [ h3 [] [ text "New node" ]
+                        , label []
+                            [ text "Unique id", input [ value model.newItem.id, onInput EditNewItemId ] [] ]
+                        , label []
+                            [ text "Value", input [ value model.newItem.value, onInput EditNewItemValue ] [] ]
+                        , button [ type_ "submit", onClick AddNewItem ] [ text "Add node" ]
+                        ]
+                  else
+                    (text "Click on an empty leaf to create a new node.")
                 ]
             ]
         ]

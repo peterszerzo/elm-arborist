@@ -2,13 +2,12 @@ module Treditor
     exposing
         ( Model
         , Config
-        , EmptyLeaf
         , Msg
         , init
         , update
         , view
         , tree
-        , new
+        , isNew
         , setNew
         , active
         , setActive
@@ -84,14 +83,30 @@ tree (Model { tree }) =
     tree
 
 
-new : Model item -> Maybe EmptyLeaf
-new (Model { new }) =
-    new
+isNew : Model item -> Bool
+isNew (Model { new }) =
+    new /= Nothing
 
 
-setNew : Config item -> EmptyLeaf -> item -> Model item -> Model item
-setNew config new item (Model model) =
-    Model { model | tree = Tree.insert (\item -> config.nodeId item == new.parentId) new.isLeft (Tree.singleton item) model.tree }
+setNew : Config item -> item -> Model item -> Model item
+setNew config item (Model model) =
+    case model.new of
+        Just new ->
+            let
+                newTree =
+                    Tree.insert (\item -> config.nodeId item == new.parentId) new.isLeft (Tree.singleton item) model.tree
+            in
+                Model
+                    { model
+                        | tree =
+                            if Tree.uniqueIds config.nodeId newTree then
+                                newTree
+                            else
+                                model.tree
+                    }
+
+        Nothing ->
+            Model model
 
 
 active : Config item -> Model item -> Maybe item

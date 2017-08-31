@@ -1,5 +1,6 @@
 module Tree exposing (..)
 
+import Set
 import Json.Decode as Decode
 
 
@@ -118,3 +119,30 @@ insert parentFindFn isLeft insertedTree tree =
                 )
             else
                 Node item (insert parentFindFn isLeft insertedTree left) (insert parentFindFn isLeft insertedTree right)
+
+
+uniqueIdsTail : Set.Set comparable -> (a -> comparable) -> Tree a -> Bool
+uniqueIdsTail set getId tree =
+    case tree of
+        Empty ->
+            True
+
+        Node item left right ->
+            let
+                id =
+                    getId item
+
+                isMember =
+                    Set.member id set
+
+                newSet =
+                    Set.insert id set
+            in
+                not isMember && uniqueIdsTail newSet getId left && uniqueIdsTail newSet getId right
+
+
+{-| Verifies that the members of the tree have unique ids each.
+-}
+uniqueIds : (a -> comparable) -> Tree a -> Bool
+uniqueIds =
+    uniqueIdsTail Set.empty
