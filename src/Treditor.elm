@@ -46,8 +46,9 @@ type alias Config item =
     }
 
 
-type alias TreeContext =
-    { active : Maybe String
+type alias TreeContext item =
+    { tree : Tree.Tree item
+    , active : Maybe String
     , dropTarget : Maybe String
     , dragState : Maybe ( String, ( Float, Float ) )
     }
@@ -84,7 +85,12 @@ active config (Model { tree, active }) =
             )
 
 
-getDropTarget : Config item -> String -> ( Float, Float ) -> Tree.Tree item -> Maybe String
+getDropTarget :
+    Config item
+    -> String
+    -> ( Float, Float )
+    -> Tree.Tree item
+    -> Maybe String
 getDropTarget config id ( dragX, dragY ) tree =
     let
         ( x0, y0 ) =
@@ -321,14 +327,18 @@ viewLines w h =
         ]
 
 
-viewTree_ : Config item -> TreeContext -> Tree.Tree item -> Tree.Tree item -> List (Html (Msg item))
-viewTree_ config context tree originalTree =
+viewTree_ :
+    Config item
+    -> TreeContext item
+    -> Tree.Tree item
+    -> List (Html (Msg item))
+viewTree_ config context tree =
     case tree of
         Tree.Empty ->
             []
 
         Tree.Node item left right ->
-            nodeGeometry config (config.nodeId item) originalTree
+            nodeGeometry config (config.nodeId item) context.tree
                 |> Maybe.map
                     (\{ position, childOffset } ->
                         let
@@ -408,15 +418,15 @@ viewTree_ config context tree originalTree =
                                     else
                                         []
                                    )
-                                ++ (viewTree_ config context left originalTree)
-                                ++ (viewTree_ config context right originalTree)
+                                ++ (viewTree_ config context left)
+                                ++ (viewTree_ config context right)
                     )
                 |> Maybe.withDefault []
 
 
-viewTree : Config item -> TreeContext -> Tree.Tree item -> List (Html (Msg item))
+viewTree : Config item -> TreeContext item -> Tree.Tree item -> List (Html (Msg item))
 viewTree config context tree =
-    viewTree_ config context tree tree
+    viewTree_ config context tree
 
 
 onClickStopPropagation : msg -> Attribute msg
@@ -437,7 +447,8 @@ view config attrs (Model model) =
             (active config) (Model model)
 
         treeContext =
-            { active =
+            { tree = model.tree
+            , active =
                 activeItem
                     |> Maybe.map config.nodeId
             , dropTarget =
