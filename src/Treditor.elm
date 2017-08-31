@@ -2,11 +2,14 @@ module Treditor
     exposing
         ( Model
         , Config
+        , EmptyLeaf
         , Msg
         , init
         , update
         , view
         , tree
+        , new
+        , setNew
         , active
         , setActive
         )
@@ -49,6 +52,7 @@ type alias Config item =
 type alias TreeContext item =
     { tree : Tree.Tree item
     , active : Maybe String
+    , new : Maybe EmptyLeaf
     , dropTarget : Maybe String
     , dragState : Maybe ( String, ( Float, Float ) )
     }
@@ -57,9 +61,16 @@ type alias TreeContext item =
 type Model item
     = Model
         { tree : Tree.Tree item
+        , new : Maybe EmptyLeaf
         , active : Maybe String
         , drag : MultiDrag.Drag String
         }
+
+
+type alias EmptyLeaf =
+    { parentId : String
+    , isLeft : Bool
+    }
 
 
 type alias NodeGeometry =
@@ -71,6 +82,16 @@ type alias NodeGeometry =
 tree : Model item -> Tree.Tree item
 tree (Model { tree }) =
     tree
+
+
+new : Model item -> Maybe EmptyLeaf
+new (Model { new }) =
+    new
+
+
+setNew : Config item -> EmptyLeaf -> item -> Model item -> Model item
+setNew config new item (Model model) =
+    Model { model | tree = Tree.insert (\item -> config.nodeId item == new.parentId) new.isLeft (Tree.singleton item) model.tree }
 
 
 active : Config item -> Model item -> Maybe item
@@ -123,6 +144,7 @@ init tree =
     Model
         { tree = tree
         , active = Nothing
+        , new = Nothing
         , drag = (MultiDrag.init)
         }
 
@@ -200,6 +222,7 @@ type Msg item
     = Activate String
     | Deactivate
     | SetActive item
+    | SetNew String Bool
     | MouseMove Float Float
     | MouseDown String Float Float
     | MouseUp Float Float
@@ -239,6 +262,16 @@ update config msg (Model model) =
                                         model.tree
                                 )
                             |> Maybe.withDefault model.tree
+                }
+
+        SetNew nodeId isLeft ->
+            Model
+                { model
+                    | new =
+                        Just
+                            { parentId = nodeId
+                            , isLeft = isLeft
+                            }
                 }
 
         Deactivate ->
@@ -352,7 +385,16 @@ viewTree_ config context parent tree =
                                 in
                                     [ p
                                         [ style <|
-                                            placeholderNodeStyle
+                                            (context.new
+                                                |> Maybe.map
+                                                    (\new ->
+                                                        if new.parentId == parentNodeId && new.isLeft == isLeft then
+                                                            highlightedPlaceholderNodeStyle
+                                                        else
+                                                            placeholderNodeStyle
+                                                    )
+                                                |> Maybe.withDefault placeholderNodeStyle
+                                            )
                                                 ++ (coordinateStyle
                                                         (x
                                                             + (if isLeft then
@@ -363,6 +405,7 @@ viewTree_ config context parent tree =
                                                         )
                                                         (y + 60)
                                                    )
+                                        , onClick (SetNew parentNodeId isLeft)
                                         ]
                                         []
                                     ]
@@ -487,6 +530,7 @@ view config attrs (Model model) =
             , active =
                 activeItem
                     |> Maybe.map config.nodeId
+            , new = model.new
             , dropTarget =
                 MultiDrag.state model.drag
                     |> Maybe.andThen
@@ -543,3 +587,8 @@ nodeStyle =
 placeholderNodeStyle : List ( String, String )
 placeholderNodeStyle =
     nodeBaseStyle ++ [ ( "border", "2px dashed #DDDDDD" ) ]
+
+
+highlightedPlaceholderNodeStyle : List ( String, String )
+highlightedPlaceholderNodeStyle =
+    nodeBaseStyle ++ [ ( "border", "2px dashed #333333" ) ]

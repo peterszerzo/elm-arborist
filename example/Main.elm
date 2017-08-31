@@ -1,9 +1,9 @@
 module Main exposing (..)
 
 import Json.Decode as Decode
-import Html exposing (Html, div, node, h1, p, text, beginnerProgram, label, input, map)
-import Html.Attributes exposing (class, style, value)
-import Html.Events exposing (onInput)
+import Html exposing (Html, div, node, h1, h2, h3, p, text, beginnerProgram, label, input, map, button)
+import Html.Attributes exposing (class, style, value, type_)
+import Html.Events exposing (onInput, onClick)
 import Tree
 import Item
 import Treditor
@@ -12,11 +12,16 @@ import Styles
 
 type alias Model =
     { treditor : Treditor.Model Item.Item
+    , newItem : Item.Item
     }
 
 
 type Msg
     = TreditorMsg (Treditor.Msg Item.Item)
+    | EditNewItemId String
+    | EditNewItemValue String
+    | AddNewItem Treditor.EmptyLeaf
+    | NoOp
 
 
 treditorConfig : Treditor.Config Item.Item
@@ -31,6 +36,22 @@ update msg model =
     case msg of
         TreditorMsg treditorMsg ->
             { model | treditor = Treditor.update treditorConfig treditorMsg model.treditor }
+
+        EditNewItemId newId ->
+            { model
+                | newItem = Item.setId newId model.newItem
+            }
+
+        EditNewItemValue newValue ->
+            { model
+                | newItem = Item.setValue newValue model.newItem
+            }
+
+        AddNewItem new ->
+            { model | treditor = Treditor.setNew treditorConfig new model.newItem model.treditor }
+
+        NoOp ->
+            model
 
 
 view : Model -> Html Msg
@@ -47,11 +68,24 @@ view model =
                 [ Treditor.active treditorConfig model.treditor
                     |> Maybe.map
                         (\item ->
-                            label [ style [ ( "margin-bottom", "40px" ) ] ]
+                            label []
                                 [ text "Edit node", input [ value item.value, onInput (\newVal -> Treditor.setActive { item | value = newVal }) ] [] ]
                                 |> Html.map TreditorMsg
                         )
                     |> Maybe.withDefault (p [] [ text "Click a node to edit.." ])
+                , Treditor.new model.treditor
+                    |> Maybe.map
+                        (\new ->
+                            div []
+                                [ h3 [] [ text "New node" ]
+                                , label []
+                                    [ text "Unique id", input [ value model.newItem.id, onInput EditNewItemId ] [] ]
+                                , label []
+                                    [ text "Value", input [ value model.newItem.value, onInput EditNewItemValue ] [] ]
+                                , button [ type_ "submit", onClick (AddNewItem new) ] [ text "Add node" ]
+                                ]
+                        )
+                    |> Maybe.withDefault (text "Click on an empty leaf to create a new node.")
                 ]
             ]
         ]
@@ -105,7 +139,7 @@ example =
 main : Program Never Model Msg
 main =
     beginnerProgram
-        { model = { treditor = Treditor.init example }
+        { model = { treditor = Treditor.init example, newItem = Item.init }
         , update = update
         , view = view
         }

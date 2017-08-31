@@ -23,6 +23,16 @@ decoder nodeDecoder =
 -- Update
 
 
+empty : Tree a
+empty =
+    Empty
+
+
+singleton : a -> Tree a
+singleton item =
+    Node item Empty Empty
+
+
 map : (a -> b) -> Tree a -> Tree b
 map fn tree =
     case tree of
@@ -91,3 +101,20 @@ swapOne fn1 fn2 tree =
 
             ( _, _ ) ->
                 tree
+
+
+insert : (a -> Bool) -> Bool -> Tree a -> Tree a -> Tree a
+insert parentFindFn isLeft insertedTree tree =
+    case tree of
+        Empty ->
+            tree
+
+        Node item left right ->
+            if parentFindFn item then
+                (if isLeft then
+                    Node item insertedTree right
+                 else
+                    Node item left insertedTree
+                )
+            else
+                Node item (insert parentFindFn isLeft insertedTree left) (insert parentFindFn isLeft insertedTree right)

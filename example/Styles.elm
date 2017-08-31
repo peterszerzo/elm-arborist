@@ -47,6 +47,8 @@ input:focus {
 
 label {
   color: """ ++ gray ++ """;
+  margin-top: 20px;
+  display: block;
 }
 
 input,
