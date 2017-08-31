@@ -132,14 +132,19 @@ addFloatTuples ( x1, y1 ) ( x2, y2 ) =
     ( x1 + x2, y1 + y2 )
 
 
+childNodeHorizontalOffset : Int -> Float
+childNodeHorizontalOffset depth =
+    if depth == 0 then
+        nodeWidth + 2 * 10
+    else
+        nodeWidth / 2 + 10
+
+
 nodeGeometry_ : Config item -> Int -> String -> Tree.Tree item -> Maybe NodeGeometry
 nodeGeometry_ config depth id tree =
     let
         childOffset =
-            if depth == 0 then
-                nodeWidth + 2 * 10
-            else
-                nodeWidth / 2 + 10
+            childNodeHorizontalOffset depth
     in
         case tree of
             Tree.Empty ->
@@ -333,10 +338,40 @@ viewTree_ :
     -> Maybe { parentNodeId : String, isLeft : Bool }
     -> Tree.Tree item
     -> List (Html (Msg item))
-viewTree_ config context parentId tree =
+viewTree_ config context parent tree =
     case tree of
         Tree.Empty ->
-            []
+            case parent of
+                Just { parentNodeId, isLeft } ->
+                    nodeGeometry config parentNodeId context.tree
+                        |> Maybe.map
+                            ((\{ position, childOffset } ->
+                                let
+                                    ( x, y ) =
+                                        position
+                                in
+                                    [ p
+                                        [ style <|
+                                            placeholderNodeStyle
+                                                ++ (coordinateStyle
+                                                        (x
+                                                            + (if isLeft then
+                                                                -childOffset
+                                                               else
+                                                                childOffset
+                                                              )
+                                                        )
+                                                        (y + 60)
+                                                   )
+                                        ]
+                                        []
+                                    ]
+                             )
+                            )
+                        |> Maybe.withDefault []
+
+                Nothing ->
+                    []
 
         Tree.Node item left right ->
             nodeGeometry config (config.nodeId item) context.tree
