@@ -330,9 +330,10 @@ viewLines w h =
 viewTree_ :
     Config item
     -> TreeContext item
+    -> Maybe String
     -> Tree.Tree item
     -> List (Html (Msg item))
-viewTree_ config context tree =
+viewTree_ config context parentId tree =
     case tree of
         Tree.Empty ->
             []
@@ -418,15 +419,15 @@ viewTree_ config context tree =
                                     else
                                         []
                                    )
-                                ++ (viewTree_ config context left)
-                                ++ (viewTree_ config context right)
+                                ++ (viewTree_ config context (Just <| config.nodeId <| item) left)
+                                ++ (viewTree_ config context (Just <| config.nodeId <| item) right)
                     )
                 |> Maybe.withDefault []
 
 
 viewTree : Config item -> TreeContext item -> Tree.Tree item -> List (Html (Msg item))
 viewTree config context tree =
-    viewTree_ config context tree
+    viewTree_ config context Nothing tree
 
 
 onClickStopPropagation : msg -> Attribute msg
