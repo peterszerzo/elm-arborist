@@ -330,7 +330,7 @@ viewLines w h =
 viewTree_ :
     Config item
     -> TreeContext item
-    -> Maybe String
+    -> Maybe { parentNodeId : String, isLeft : Bool }
     -> Tree.Tree item
     -> List (Html (Msg item))
 viewTree_ config context parentId tree =
@@ -419,8 +419,8 @@ viewTree_ config context parentId tree =
                                     else
                                         []
                                    )
-                                ++ (viewTree_ config context (Just <| config.nodeId <| item) left)
-                                ++ (viewTree_ config context (Just <| config.nodeId <| item) right)
+                                ++ (viewTree_ config context (Just { parentNodeId = config.nodeId item, isLeft = True }) left)
+                                ++ (viewTree_ config context (Just { parentNodeId = config.nodeId item, isLeft = False }) right)
                     )
                 |> Maybe.withDefault []
 
