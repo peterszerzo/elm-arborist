@@ -59,7 +59,7 @@ view model =
     div []
         [ node "style" [] [ text Styles.raw ]
         , div [ class "intro" ]
-            [ h1 [] [ text "treeditor" ]
+            [ h1 [] [ text "elm-treditor" ]
             , p [] [ text "Prototype for an interface that manipulates a tree structure. Swap nodes by dragging them on top of each other." ]
             ]
         , div [ style [ ( "text-align", "center" ) ] ]
