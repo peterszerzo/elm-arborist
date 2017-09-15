@@ -4,7 +4,7 @@ import Json.Decode as Decode
 import Html exposing (Html, div, node, h1, h2, h3, p, text, beginnerProgram, label, input, map, button)
 import Html.Attributes exposing (class, style, value, type_)
 import Html.Events exposing (onInput, onClick)
-import Tree
+import Data.BinaryTree as Tree
 import Item
 import Treditor
 import Styles
@@ -26,8 +26,13 @@ type Msg
 
 treditorConfig : Treditor.Config Item.Item
 treditorConfig =
-    { nodeId = (\item -> item.id)
-    , nodeView = (\item -> item.value)
+    { toId = (\item -> item.id)
+    , view = (\item -> item.value)
+    , layout =
+        { width = 120
+        , height = 24
+        , levelGap = 30
+        }
     }
 
 
@@ -137,7 +142,10 @@ example =
 main : Program Never Model Msg
 main =
     beginnerProgram
-        { model = { treditor = Treditor.init example, newItem = Item.init }
+        { model =
+            { treditor = Treditor.init example
+            , newItem = Item.init
+            }
         , update = update
         , view = view
         }

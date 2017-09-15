@@ -1,4 +1,4 @@
-module Tree exposing (..)
+module Data.BinaryTree exposing (..)
 
 import Set
 import Json.Decode as Decode
