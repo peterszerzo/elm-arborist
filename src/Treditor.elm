@@ -459,7 +459,7 @@ viewTree_ config context localContext tree =
                                             [ ( "position", "absolute" ) ]
                                                 ++ (coordStyle (x - childOffset + (config.layout.width / 2)) (y + config.layout.height))
                                         ]
-                                        (Views.NodeConnectors.view 2
+                                        (Views.NodeConnectors.view (List.length children + 1)
                                             (childOffset * 2)
                                             (config.layout.verticalGap)
                                         )

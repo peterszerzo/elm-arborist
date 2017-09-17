@@ -132,6 +132,20 @@ example =
               "value": "Peaches2"
             },
             "children": []
+          },
+          {
+            "value": {
+              "id": "pch3",
+              "value": "Peaches3"
+            },
+            "children": []
+          },
+          {
+            "value": {
+              "id": "pch4",
+              "value": "Peaches4"
+            },
+            "children": []
           }
         ]
       }
