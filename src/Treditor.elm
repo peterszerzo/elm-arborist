@@ -51,6 +51,14 @@ type alias TreeContext item =
     }
 
 
+type alias TreeDrawLocalContext =
+    { parent : NodeId
+    , parentDepth : Int
+    , index : Int
+    , parentDragOffset : ( Float, Float )
+    }
+
+
 
 -- Model
 
@@ -130,7 +138,7 @@ active config (Model { tree, active }) =
 
 getDropTarget :
     Config.Config item
-    -> String
+    -> NodeId
     -> ( Float, Float )
     -> Tree.Tree item
     -> Maybe String
@@ -214,7 +222,24 @@ update config msg (Model model) =
                 }
 
         SetFocus focus ->
-            Model { model | focus = focus }
+            let
+                rootId =
+                    case model.tree of
+                        Tree.Empty ->
+                            Nothing
+
+                        Tree.Node item _ _ ->
+                            Just <| config.toId item
+            in
+                Model
+                    { model
+                        | focus =
+                            -- Make explicit in the state that if the root is focused, nothing is focused (to avoid swapping bugs).
+                            if focus == rootId then
+                                Nothing
+                            else
+                                focus
+                    }
 
         SetNew toId index ->
             Model
@@ -275,24 +300,25 @@ update config msg (Model model) =
 viewTree_ :
     Config.Config item
     -> TreeContext item
-    -> Maybe { parent : NodeId, parentDepth : Int, index : Int }
+    -> Maybe TreeDrawLocalContext
     -> Tree.Tree item
     -> List (Html (Msg item))
-viewTree_ config context parent tree =
+viewTree_ config context localContext tree =
     let
         nodeBaseStyle =
             Styles.nodeBase config.layout.width config.layout.height
     in
         case tree of
             Tree.Empty ->
-                case parent of
-                    Just { parent, index } ->
-                        Geometry.nodeGeometry config parent context.tree
+                case localContext of
+                    Just localContext ->
+                        Geometry.nodeGeometry config localContext.parent context.tree
                             |> Maybe.map
                                 ((\{ position, childOffset } ->
                                     let
                                         ( x, y ) =
                                             position
+                                                |> Utils.addFloatTuples localContext.parentDragOffset
                                     in
                                         [ p
                                             [ style <|
@@ -300,7 +326,7 @@ viewTree_ config context parent tree =
                                                     ++ (context.new
                                                             |> Maybe.map
                                                                 (\new ->
-                                                                    if new.parent == parent && new.index == index then
+                                                                    if new.parent == localContext.parent && new.index == localContext.index then
                                                                         Styles.highlightedPlaceholderNode
                                                                     else
                                                                         Styles.placeholderNode
@@ -310,7 +336,7 @@ viewTree_ config context parent tree =
                                                     ++ (Styles.coordinate
                                                             config.layout.width
                                                             (x
-                                                                + (if index == 0 then
+                                                                + (if localContext.index == 0 then
                                                                     -childOffset
                                                                    else
                                                                     childOffset
@@ -318,7 +344,7 @@ viewTree_ config context parent tree =
                                                             )
                                                             (y + (config.layout.verticalGap + config.layout.height))
                                                        )
-                                            , Utils.onClickStopPropagation (SetNew parent index)
+                                            , Utils.onClickStopPropagation (SetNew localContext.parent localContext.index)
                                             ]
                                             []
                                         ]
@@ -338,9 +364,6 @@ viewTree_ config context parent tree =
                         |> Maybe.map
                             (\{ position, childOffset } ->
                                 let
-                                    ( x, y ) =
-                                        position
-
                                     ( isDragged, ( dragOffsetX, dragOffsetY ) ) =
                                         context.dragState
                                             |> Maybe.map
@@ -352,11 +375,21 @@ viewTree_ config context parent tree =
                                                 )
                                             |> Maybe.withDefault ( False, ( 0, 0 ) )
 
+                                    parentDragOffsetWithDefault =
+                                        localContext
+                                            |> Maybe.map .parentDragOffset
+                                            |> Maybe.withDefault ( 0, 0 )
+
+                                    ( x, y ) =
+                                        position
+                                            |> Utils.addFloatTuples ( dragOffsetX, dragOffsetY )
+                                            |> Utils.addFloatTuples parentDragOffsetWithDefault
+
                                     coordStyle =
                                         Styles.coordinate config.layout.width
 
                                     ( buttonIcon, buttonMsg ) =
-                                        case ( parent, context.focus ) of
+                                        case ( localContext, context.focus ) of
                                             ( Just { parent }, Nothing ) ->
                                                 ( "🔎", Just currentId |> SetFocus )
 
@@ -373,7 +406,7 @@ viewTree_ config context parent tree =
                                         [ style <|
                                             nodeBaseStyle
                                                 ++ Styles.regularNode
-                                                ++ (coordStyle (x + dragOffsetX) (y + dragOffsetY))
+                                                ++ (coordStyle x y)
                                                 ++ [ ( "background-color"
                                                      , if (context.dropTarget == Just (config.toId item)) then
                                                         red
@@ -408,7 +441,7 @@ viewTree_ config context parent tree =
                                             )
                                         ]
                                         [ text (config.view item) ]
-                                    , if parent == Nothing then
+                                    , if localContext == Nothing then
                                         div [] []
                                       else
                                         button
@@ -452,10 +485,15 @@ viewTree_ config context parent tree =
                                                 (Just
                                                     { parent = config.toId item
                                                     , parentDepth =
-                                                        parent
+                                                        localContext
                                                             |> Maybe.map (\p -> p.parentDepth + 1)
                                                             |> Maybe.withDefault 0
                                                     , index = 0
+                                                    , parentDragOffset =
+                                                        if isDragged then
+                                                            ( dragOffsetX, dragOffsetY )
+                                                        else
+                                                            parentDragOffsetWithDefault
                                                     }
                                                 )
                                                 left
@@ -465,10 +503,15 @@ viewTree_ config context parent tree =
                                                 (Just
                                                     { parent = config.toId item
                                                     , parentDepth =
-                                                        parent
+                                                        localContext
                                                             |> Maybe.map (\p -> p.parentDepth + 1)
                                                             |> Maybe.withDefault 0
                                                     , index = 1
+                                                    , parentDragOffset =
+                                                        if isDragged then
+                                                            ( dragOffsetX, dragOffsetY )
+                                                        else
+                                                            parentDragOffsetWithDefault
                                                     }
                                                 )
                                                 right
@@ -487,6 +530,7 @@ viewTree config context item =
                     { parent = config.toId i
                     , parentDepth = 0
                     , index = 0
+                    , parentDragOffset = ( 0, 0 )
                     }
                 )
         )
