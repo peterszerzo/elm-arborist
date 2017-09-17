@@ -63,6 +63,39 @@ findOne fn tree =
     find fn tree |> List.head
 
 
+insert : (a -> Bool) -> Int -> Tree a -> Tree a -> Tree a
+insert parentFindFn index insertedTree tree =
+    case tree of
+        Empty ->
+            tree
+
+        Node item children ->
+            if parentFindFn item then
+                Node item (children ++ [ insertedTree ])
+            else
+                Node item (List.map (insert parentFindFn index insertedTree) children)
+
+
+findOneSubtreeWithParentTail : Maybe a -> (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )
+findOneSubtreeWithParentTail parent fn tree =
+    case tree of
+        Empty ->
+            Nothing
+
+        Node val children ->
+            if fn val then
+                Just ( Node val children, parent )
+            else
+                List.map (findOneSubtreeWithParentTail (Just val) fn) children
+                    |> List.filterMap identity
+                    |> List.head
+
+
+findOneSubtreeWithParent : (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )
+findOneSubtreeWithParent =
+    findOneSubtreeWithParentTail Nothing
+
+
 swapOne : (a -> Bool) -> (a -> Bool) -> Tree a -> Tree a
 swapOne fn1 fn2 tree =
     let
@@ -87,19 +120,6 @@ swapOne fn1 fn2 tree =
 
             ( _, _ ) ->
                 tree
-
-
-insert : (a -> Bool) -> Tree a -> Tree a -> Tree a
-insert parentFindFn insertedTree tree =
-    case tree of
-        Empty ->
-            tree
-
-        Node item children ->
-            if parentFindFn item then
-                Node item (children ++ [ insertedTree ])
-            else
-                Node item (List.map (insert parentFindFn insertedTree) children)
 
 
 uniqueIdsTail : Set.Set comparable -> (a -> comparable) -> Tree a -> Bool

@@ -1,6 +1,6 @@
 module Geometry exposing (..)
 
-import Data.BinaryTree as Tree
+import Data.Tree as Tree
 import Treditor.Config exposing (Config)
 import Utils
 
@@ -33,36 +33,30 @@ nodeGeometryTail config depth id tree =
             Tree.Empty ->
                 Nothing
 
-            Tree.Node item left right ->
+            Tree.Node item children ->
                 if config.toId item == id then
                     Just
                         { position = ( 0, 0 )
                         , childOffset = childOffset
                         }
                 else
-                    (let
-                        ( leftGeometry, leftOffsetPt ) =
-                            ( nodeGeometryTail config (depth + 1) id left, ( -childOffset, (config.layout.height + config.layout.verticalGap) ) )
-
-                        ( rightGeometry, rightOffsetPt ) =
-                            ( nodeGeometryTail config (depth + 1) id right, ( childOffset, (config.layout.height + config.layout.verticalGap) ) )
-                     in
-                        case ( leftGeometry, rightGeometry ) of
-                            ( Just leftGeometry, _ ) ->
-                                Just
-                                    { position = Utils.addFloatTuples leftOffsetPt leftGeometry.position
-                                    , childOffset = leftGeometry.childOffset
-                                    }
-
-                            ( _, Just rightGeometry ) ->
-                                Just
-                                    { position = Utils.addFloatTuples rightOffsetPt rightGeometry.position
-                                    , childOffset = rightGeometry.childOffset
-                                    }
-
-                            ( _, _ ) ->
-                                Nothing
-                    )
+                    List.indexedMap
+                        (\index tree ->
+                            let
+                                offset =
+                                    ( childOffset * (toFloat index)
+                                    , (config.layout.height + config.layout.verticalGap)
+                                    )
+                            in
+                                nodeGeometryTail config (depth + 1) id tree
+                                    |> Maybe.map
+                                        (\{ position, childOffset } ->
+                                            { position = Utils.addFloatTuples offset position, childOffset = childOffset }
+                                        )
+                        )
+                        children
+                        |> List.filterMap identity
+                        |> List.head
 
 
 nodeGeometry : Config item -> NodeId -> Tree.Tree item -> Maybe NodeGeometry

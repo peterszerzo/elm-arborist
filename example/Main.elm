@@ -4,7 +4,7 @@ import Json.Decode as Decode
 import Html exposing (Html, div, node, h1, h2, h3, p, text, beginnerProgram, label, input, map, button)
 import Html.Attributes exposing (class, style, value, type_)
 import Html.Events exposing (onInput, onClick)
-import Data.BinaryTree as Tree
+import Data.Tree as Tree
 import Item
 import Treditor
 import Treditor.Config
@@ -104,36 +104,38 @@ example =
       "id": "app",
       "value": "Apples"
     },
-    "left": {
-      "value": {
-        "id": "p",
-        "value": "Pears"
-      },
-      "left": null,
-      "right": {
+    "children": [
+      {
         "value": {
-          "id": "oj",
-          "value": "Oranges"
+          "id": "p",
+          "value": "Pears"
         },
-        "left": null,
-        "right": null
-      }
-    },
-    "right": {
-      "value": {
-        "id": "pch",
-        "value": "Peaches"
+        "children": [
+          {
+            "value": {
+              "id": "oj",
+              "value": "Oranges"
+            },
+            "children": []
+          }
+        ]
       },
-      "left": null,
-      "right": {
+      {
         "value": {
-          "id": "pch2",
-          "value": "Peaches2"
+          "id": "pch",
+          "value": "Peaches"
         },
-        "left": null,
-        "right": null
+        "children": [
+          {
+            "value": {
+              "id": "pch2",
+              "value": "Peaches2"
+            },
+            "children": []
+          }
+        ]
       }
-    }
+    ]
   }
   """
         |> Decode.decodeString (Tree.decoder Item.decoder)

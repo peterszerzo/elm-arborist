@@ -18,7 +18,7 @@ import Html.Events exposing (onInput, on, onWithOptions)
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Html.Events exposing (onClick)
-import Data.BinaryTree as Tree
+import Data.Tree as Tree
 import MultiDrag as MultiDrag
 import Colors exposing (..)
 import Utils
@@ -103,11 +103,7 @@ setNew config item (Model model) =
             let
                 newTree =
                     Tree.insert (\item -> config.toId item == new.parent)
-                        (if new.index == 0 then
-                            True
-                         else
-                            False
-                        )
+                        new.index
                         (Tree.singleton item)
                         model.tree
             in
@@ -228,7 +224,7 @@ update config msg (Model model) =
                         Tree.Empty ->
                             Nothing
 
-                        Tree.Node item _ _ ->
+                        Tree.Node item _ ->
                             Just <| config.toId item
             in
                 Model
@@ -355,7 +351,7 @@ viewTree_ config context localContext tree =
                     Nothing ->
                         []
 
-            Tree.Node item left right ->
+            Tree.Node item children ->
                 let
                     currentId =
                         config.toId item
@@ -480,41 +476,29 @@ viewTree_ config context localContext tree =
                                             else
                                                 []
                                            )
-                                        ++ (viewTree_ config
-                                                context
-                                                (Just
-                                                    { parent = config.toId item
-                                                    , parentDepth =
-                                                        localContext
-                                                            |> Maybe.map (\p -> p.parentDepth + 1)
-                                                            |> Maybe.withDefault 0
-                                                    , index = 0
-                                                    , parentDragOffset =
-                                                        if isDragged then
-                                                            ( dragOffsetX, dragOffsetY )
-                                                        else
-                                                            parentDragOffsetWithDefault
-                                                    }
+                                        ++ (List.indexedMap
+                                                (\index child ->
+                                                    (viewTree_ config
+                                                        context
+                                                        (Just
+                                                            { parent = config.toId item
+                                                            , parentDepth =
+                                                                localContext
+                                                                    |> Maybe.map (\p -> p.parentDepth + 1)
+                                                                    |> Maybe.withDefault 0
+                                                            , index = index
+                                                            , parentDragOffset =
+                                                                if isDragged then
+                                                                    ( dragOffsetX, dragOffsetY )
+                                                                else
+                                                                    parentDragOffsetWithDefault
+                                                            }
+                                                        )
+                                                        child
+                                                    )
                                                 )
-                                                left
-                                           )
-                                        ++ (viewTree_ config
-                                                context
-                                                (Just
-                                                    { parent = config.toId item
-                                                    , parentDepth =
-                                                        localContext
-                                                            |> Maybe.map (\p -> p.parentDepth + 1)
-                                                            |> Maybe.withDefault 0
-                                                    , index = 1
-                                                    , parentDragOffset =
-                                                        if isDragged then
-                                                            ( dragOffsetX, dragOffsetY )
-                                                        else
-                                                            parentDragOffsetWithDefault
-                                                    }
-                                                )
-                                                right
+                                                children
+                                                |> List.foldl (++) []
                                            )
                             )
                         |> Maybe.withDefault []
