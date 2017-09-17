@@ -7,6 +7,7 @@ import Html.Events exposing (onInput, onClick)
 import Data.BinaryTree as Tree
 import Item
 import Treditor
+import Treditor.Config
 import Styles
 
 
@@ -24,7 +25,7 @@ type Msg
     | NoOp
 
 
-treditorConfig : Treditor.Config Item.Item
+treditorConfig : Treditor.Config.Config Item.Item
 treditorConfig =
     { toId = (\item -> item.id)
     , view = (\item -> item.value)
@@ -75,7 +76,7 @@ view model =
                     |> Maybe.map
                         (\item ->
                             label []
-                                [ text "Edit node", input [ value item.value, onInput (\newVal -> Treditor.setActive { item | value = newVal }) ] [] ]
+                                [ text "Edit node", input [ value item.value, onInput (\newVal -> Treditor.SetActive { item | value = newVal }) ] [] ]
                                 |> Html.map TreditorMsg
                         )
                     |> Maybe.withDefault (p [] [ text "Click a node to edit.." ])
