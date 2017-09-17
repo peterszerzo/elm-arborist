@@ -31,7 +31,8 @@ treditorConfig =
     , layout =
         { width = 120
         , height = 24
-        , levelGap = 30
+        , verticalGap = 60
+        , horizontalGap = 20
         }
     }
 
@@ -64,7 +65,7 @@ view model =
     div []
         [ node "style" [] [ text Styles.raw ]
         , div [ class "intro" ]
-            [ h1 [] [ text "elm-treditor" ]
+            [ h1 [] [ text "treditor" ]
             , p [] [ text "Prototype for an interface that manipulates a tree structure. Swap nodes by dragging them on top of each other." ]
             ]
         , div [ style [ ( "text-align", "center" ) ] ]

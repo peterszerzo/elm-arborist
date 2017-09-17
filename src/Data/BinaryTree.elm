@@ -78,6 +78,43 @@ findOne fn tree =
                         findOne fn right
 
 
+findOneSubtree : (a -> Bool) -> Tree a -> Maybe (Tree a)
+findOneSubtree fn tree =
+    case tree of
+        Empty ->
+            Nothing
+
+        Node val left right ->
+            if fn val then
+                Just (Node val left right)
+            else
+                [ findOneSubtree fn left, findOneSubtree fn right ]
+                    |> List.filterMap identity
+                    |> List.head
+
+
+findOneSubtreeWithParentTail : Maybe a -> (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )
+findOneSubtreeWithParentTail parent fn tree =
+    case tree of
+        Empty ->
+            Nothing
+
+        Node val left right ->
+            if fn val then
+                Just ( Node val left right, parent )
+            else
+                [ findOneSubtreeWithParentTail (Just val) fn left
+                , findOneSubtreeWithParentTail (Just val) fn right
+                ]
+                    |> List.filterMap identity
+                    |> List.head
+
+
+findOneSubtreeWithParent : (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )
+findOneSubtreeWithParent =
+    findOneSubtreeWithParentTail Nothing
+
+
 swapOne : (a -> Bool) -> (a -> Bool) -> Tree a -> Tree a
 swapOne fn1 fn2 tree =
     let

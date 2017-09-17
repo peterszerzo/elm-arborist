@@ -14,7 +14,7 @@ module Treditor
         )
 
 import Json.Decode as Decode
-import Html exposing (Html, Attribute, node, div, text, p, h1, h3, label, input)
+import Html exposing (Html, Attribute, node, div, text, p, h1, h3, label, input, button)
 import Html.Attributes exposing (style, value)
 import Html.Events exposing (onInput, on, onWithOptions)
 import Svg exposing (svg, line)
@@ -40,7 +40,8 @@ type alias Config item =
     , layout :
         { width : Float
         , height : Float
-        , levelGap : Float
+        , verticalGap : Float
+        , horizontalGap : Float
         }
     }
 
@@ -48,6 +49,7 @@ type alias Config item =
 type alias TreeContext item =
     { tree : Tree.Tree item
     , active : Maybe NodeId
+    , focus : Maybe NodeId
     , new : Maybe EmptyLeaf
     , dropTarget : Maybe NodeId
     , dragState : Maybe ( NodeId, ( Float, Float ) )
@@ -59,13 +61,14 @@ type Model item
         { tree : Tree.Tree item
         , new : Maybe EmptyLeaf
         , active : Maybe NodeId
+        , focus : Maybe NodeId
         , drag : MultiDrag.Drag NodeId
         , displayRoot : Maybe NodeId
         }
 
 
 type alias EmptyLeaf =
-    { parentId : NodeId
+    { parent : NodeId
     , isLeft : Bool
     }
 
@@ -92,7 +95,7 @@ setNew config item (Model model) =
         Just new ->
             let
                 newTree =
-                    Tree.insert (\item -> config.toId item == new.parentId) new.isLeft (Tree.singleton item) model.tree
+                    Tree.insert (\item -> config.toId item == new.parent) new.isLeft (Tree.singleton item) model.tree
             in
                 Model
                     { model
@@ -158,6 +161,7 @@ init tree =
         { tree = tree
         , active = Nothing
         , new = Nothing
+        , focus = Nothing
         , drag = (MultiDrag.init)
         , displayRoot = Nothing
         }
@@ -190,10 +194,10 @@ nodeGeometry_ config depth id tree =
                 else
                     (let
                         ( leftGeometry, leftOffsetPt ) =
-                            ( nodeGeometry_ config (depth + 1) id left, ( -childOffset, (config.layout.height + 36) ) )
+                            ( nodeGeometry_ config (depth + 1) id left, ( -childOffset, (config.layout.height + config.layout.verticalGap) ) )
 
                         ( rightGeometry, rightOffsetPt ) =
-                            ( nodeGeometry_ config (depth + 1) id right, ( childOffset, (config.layout.height + 36) ) )
+                            ( nodeGeometry_ config (depth + 1) id right, ( childOffset, (config.layout.height + config.layout.verticalGap) ) )
                      in
                         case ( leftGeometry, rightGeometry ) of
                             ( Just leftGeometry, _ ) ->
@@ -228,12 +232,13 @@ setActive =
 
 
 type Msg item
-    = Activate String
+    = Activate NodeId
     | Deactivate
     | SetActive item
-    | SetNew String Bool
+    | SetNew NodeId Bool
+    | SetFocus (Maybe NodeId)
     | MouseMove Float Float
-    | MouseDown String Float Float
+    | MouseDown NodeId Float Float
     | MouseUp Float Float
 
 
@@ -252,6 +257,7 @@ update config msg (Model model) =
                             Nothing
                         else
                             Just id
+                    , new = Nothing
                 }
 
         SetActive newItem ->
@@ -273,18 +279,21 @@ update config msg (Model model) =
                             |> Maybe.withDefault model.tree
                 }
 
+        SetFocus focus ->
+            Model { model | focus = focus }
+
         SetNew toId isLeft ->
             Model
                 { model
                     | new =
                         Just
-                            { parentId = toId
+                            { parent = toId
                             , isLeft = isLeft
                             }
                 }
 
         Deactivate ->
-            Model { model | active = Nothing }
+            Model { model | active = Nothing, new = Nothing }
 
         MouseDown id x y ->
             Model
@@ -332,160 +341,234 @@ update config msg (Model model) =
 viewTree_ :
     Config item
     -> TreeContext item
-    -> Maybe { parent : NodeId, isLeft : Bool }
+    -> Maybe { parent : NodeId, parentDepth : Int, isLeft : Bool }
     -> Tree.Tree item
     -> List (Html (Msg item))
 viewTree_ config context parent tree =
-    case tree of
-        Tree.Empty ->
-            case parent of
-                Just { parent, isLeft } ->
-                    nodeGeometry config parent context.tree
-                        |> Maybe.map
-                            ((\{ position, childOffset } ->
-                                let
-                                    ( x, y ) =
-                                        position
-                                in
-                                    [ p
-                                        [ style <|
-                                            (context.new
-                                                |> Maybe.map
-                                                    (\new ->
-                                                        if new.parentId == parent && new.isLeft == isLeft then
-                                                            highlightedPlaceholderNodeStyle
-                                                        else
-                                                            placeholderNodeStyle
-                                                    )
-                                                |> Maybe.withDefault placeholderNodeStyle
-                                                |> (\fn -> fn config.layout.width config.layout.height)
-                                            )
-                                                ++ (coordinateStyle
-                                                        config.layout.width
-                                                        (x
-                                                            + (if isLeft then
-                                                                -childOffset
-                                                               else
-                                                                childOffset
-                                                              )
-                                                        )
-                                                        (y + (config.layout.height + 36))
-                                                   )
-                                        , onClick (SetNew parent isLeft)
-                                        ]
-                                        []
-                                    ]
-                             )
-                            )
-                        |> Maybe.withDefault []
-
-                Nothing ->
-                    []
-
-        Tree.Node item left right ->
-            nodeGeometry config (config.toId item) context.tree
-                |> Maybe.map
-                    (\{ position, childOffset } ->
-                        let
-                            ( x, y ) =
-                                position
-
-                            ( isDragged, ( dragOffsetX, dragOffsetY ) ) =
-                                context.dragState
-                                    |> Maybe.map
-                                        (\( id, offset ) ->
-                                            if id == (config.toId item) then
-                                                ( True, offset )
-                                            else
-                                                ( False, ( 0, 0 ) )
-                                        )
-                                    |> Maybe.withDefault ( False, ( 0, 0 ) )
-                        in
-                            [ p
-                                [ style <|
-                                    nodeStyle config.layout.width config.layout.height
-                                        ++ (coordinateStyle config.layout.width (x + dragOffsetX) (y + dragOffsetY))
-                                        ++ [ ( "background-color"
-                                             , if (context.dropTarget == Just (config.toId item)) then
-                                                red
-                                               else if context.active == Just (config.toId item) then
-                                                blue
-                                               else
-                                                gray
-                                             )
-                                           ]
-                                        ++ [ ( "transition"
-                                             , if context.dropTarget == Just (config.toId item) then
-                                                "background 0.3s"
-                                               else
-                                                "none"
-                                             )
-                                           ]
-                                        ++ (if isDragged then
-                                                [ ( "z-index", "100" ) ]
-                                            else
-                                                []
-                                           )
-                                , Utils.onClickStopPropagation (Activate (config.toId item))
-                                , on "mousedown"
-                                    (Decode.map2 (MouseDown (config.toId item))
-                                        (Decode.field "screenX" Decode.float)
-                                        (Decode.field "screenY" Decode.float)
-                                    )
-                                , on "mouseup"
-                                    (Decode.map2 MouseUp
-                                        (Decode.field "screenX" Decode.float)
-                                        (Decode.field "screenY" Decode.float)
-                                    )
-                                ]
-                                [ text (config.view item) ]
-                            , svg
-                                [ width (toString (childOffset * 2))
-                                , height "32"
-                                , viewBox <| "0 0 " ++ (toString (childOffset * 2)) ++ " 32"
-                                , style <|
-                                    [ ( "position", "absolute" ) ]
-                                        ++ (coordinateStyle config.layout.width (x - childOffset + (config.layout.width / 2)) (y + (config.layout.height + 15)))
-                                ]
-                                (Views.NodeConnectors.view
-                                    (childOffset * 2)
-                                    (config.layout.height + 11)
-                                )
-                            ]
-                                ++ (if isDragged then
+    let
+        nodeBaseStyle_ =
+            nodeBaseStyle config.layout.width config.layout.height
+    in
+        case tree of
+            Tree.Empty ->
+                case parent of
+                    Just { parent, isLeft } ->
+                        nodeGeometry config parent context.tree
+                            |> Maybe.map
+                                ((\{ position, childOffset } ->
+                                    let
+                                        ( x, y ) =
+                                            position
+                                    in
                                         [ p
                                             [ style <|
-                                                (placeholderNodeStyle config.layout.width config.layout.height)
-                                                    ++ coordinateStyle config.layout.width x y
+                                                nodeBaseStyle_
+                                                    ++ (context.new
+                                                            |> Maybe.map
+                                                                (\new ->
+                                                                    if new.parent == parent && new.isLeft == isLeft then
+                                                                        highlightedPlaceholderNodeStyle
+                                                                    else
+                                                                        placeholderNodeStyle
+                                                                )
+                                                            |> Maybe.withDefault placeholderNodeStyle
+                                                       )
+                                                    ++ (coordinateStyle
+                                                            config.layout.width
+                                                            (x
+                                                                + (if isLeft then
+                                                                    -childOffset
+                                                                   else
+                                                                    childOffset
+                                                                  )
+                                                            )
+                                                            (y + (config.layout.verticalGap + config.layout.height))
+                                                       )
+                                            , Utils.onClickStopPropagation (SetNew parent isLeft)
                                             ]
                                             []
                                         ]
-                                    else
-                                        []
-                                   )
-                                ++ (viewTree_ config context (Just { parent = config.toId item, isLeft = True }) left)
-                                ++ (viewTree_ config context (Just { parent = config.toId item, isLeft = False }) right)
-                    )
-                |> Maybe.withDefault []
+                                 )
+                                )
+                            |> Maybe.withDefault []
+
+                    Nothing ->
+                        []
+
+            Tree.Node item left right ->
+                let
+                    currentId =
+                        config.toId item
+                in
+                    nodeGeometry config currentId context.tree
+                        |> Maybe.map
+                            (\{ position, childOffset } ->
+                                let
+                                    ( x, y ) =
+                                        position
+
+                                    ( isDragged, ( dragOffsetX, dragOffsetY ) ) =
+                                        context.dragState
+                                            |> Maybe.map
+                                                (\( id, offset ) ->
+                                                    if id == (config.toId item) then
+                                                        ( True, offset )
+                                                    else
+                                                        ( False, ( 0, 0 ) )
+                                                )
+                                            |> Maybe.withDefault ( False, ( 0, 0 ) )
+
+                                    coordStyle =
+                                        coordinateStyle config.layout.width
+
+                                    ( buttonIcon, buttonMsg ) =
+                                        case ( parent, context.focus ) of
+                                            ( Just { parent }, Nothing ) ->
+                                                ( "🔎", Just currentId |> SetFocus )
+
+                                            ( Just { parent }, Just focus ) ->
+                                                if (focus == currentId) then
+                                                    (( "☝️", Just parent |> SetFocus ))
+                                                else
+                                                    ( "🔎", Just currentId |> SetFocus )
+
+                                            ( Nothing, _ ) ->
+                                                ( "☝️", Nothing |> SetFocus )
+                                in
+                                    [ p
+                                        [ style <|
+                                            nodeBaseStyle_
+                                                ++ nodeStyle
+                                                ++ (coordStyle (x + dragOffsetX) (y + dragOffsetY))
+                                                ++ [ ( "background-color"
+                                                     , if (context.dropTarget == Just (config.toId item)) then
+                                                        red
+                                                       else if context.active == Just (config.toId item) then
+                                                        blue
+                                                       else
+                                                        gray
+                                                     )
+                                                   ]
+                                                ++ [ ( "transition"
+                                                     , if context.dropTarget == Just (config.toId item) then
+                                                        "background 0.3s"
+                                                       else
+                                                        "none"
+                                                     )
+                                                   ]
+                                                ++ (if isDragged then
+                                                        [ ( "z-index", "100" ) ]
+                                                    else
+                                                        []
+                                                   )
+                                        , Utils.onClickStopPropagation (Activate (config.toId item))
+                                        , on "mousedown"
+                                            (Decode.map2 (MouseDown (config.toId item))
+                                                (Decode.field "screenX" Decode.float)
+                                                (Decode.field "screenY" Decode.float)
+                                            )
+                                        , on "mouseup"
+                                            (Decode.map2 MouseUp
+                                                (Decode.field "screenX" Decode.float)
+                                                (Decode.field "screenY" Decode.float)
+                                            )
+                                        ]
+                                        [ text (config.view item) ]
+                                    , button
+                                        [ style <|
+                                            [ ( "position", "absolute" )
+                                            , ( "font-size", "8px" )
+                                            , ( "transform", "translate3d(-50%, -100%, 0)" )
+                                            ]
+                                                ++ coordStyle (x + config.layout.width / 2) (y - 5)
+                                        , Utils.onClickStopPropagation buttonMsg
+                                        ]
+                                        [ text buttonIcon
+                                        ]
+                                    , svg
+                                        [ width (toString (childOffset * 2))
+                                        , height (toString config.layout.verticalGap)
+                                        , viewBox <| "0 0 " ++ (toString (childOffset * 2)) ++ " " ++ (toString config.layout.verticalGap)
+                                        , style <|
+                                            [ ( "position", "absolute" ) ]
+                                                ++ (coordStyle (x - childOffset + (config.layout.width / 2)) (y + config.layout.height))
+                                        ]
+                                        (Views.NodeConnectors.view 2
+                                            (childOffset * 2)
+                                            (config.layout.verticalGap)
+                                        )
+                                    ]
+                                        ++ (if isDragged then
+                                                [ p
+                                                    [ style <|
+                                                        nodeBaseStyle_
+                                                            ++ placeholderNodeStyle
+                                                            ++ (coordStyle x y)
+                                                    ]
+                                                    []
+                                                ]
+                                            else
+                                                []
+                                           )
+                                        ++ (viewTree_ config
+                                                context
+                                                (Just
+                                                    { parent = config.toId item
+                                                    , parentDepth =
+                                                        parent
+                                                            |> Maybe.map (\p -> p.parentDepth + 1)
+                                                            |> Maybe.withDefault 0
+                                                    , isLeft = True
+                                                    }
+                                                )
+                                                left
+                                           )
+                                        ++ (viewTree_ config
+                                                context
+                                                (Just
+                                                    { parent = config.toId item
+                                                    , parentDepth =
+                                                        parent
+                                                            |> Maybe.map (\p -> p.parentDepth + 1)
+                                                            |> Maybe.withDefault 0
+                                                    , isLeft = False
+                                                    }
+                                                )
+                                                right
+                                           )
+                            )
+                        |> Maybe.withDefault []
 
 
-viewTree : Config item -> TreeContext item -> Tree.Tree item -> List (Html (Msg item))
-viewTree config context tree =
-    viewTree_ config context Nothing tree
+viewTree : Config item -> TreeContext item -> Maybe item -> List (Html (Msg item))
+viewTree config context item =
+    viewTree_ config
+        context
+        (item
+            |> Maybe.map
+                (\i ->
+                    { parent = config.toId i
+                    , parentDepth = 0
+                    , isLeft = True
+                    }
+                )
+        )
+        context.tree
 
 
 view : Config item -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
 view config attrs (Model model) =
     let
-        activeItem =
-            (active config) (Model model)
+        ( subtree, parent ) =
+            model.focus
+                |> Maybe.andThen (\id -> Tree.findOneSubtreeWithParent (\item -> config.toId item == id) model.tree)
+                |> Maybe.withDefault ( model.tree, Nothing )
 
         treeContext =
-            { tree = model.tree
-            , active =
-                activeItem
-                    |> Maybe.map config.toId
+            { tree = subtree
+            , active = model.active
             , new = model.new
+            , focus = model.focus
             , dropTarget =
                 MultiDrag.state model.drag
                     |> Maybe.andThen
@@ -507,7 +590,7 @@ view config attrs (Model model) =
                 ++ attrs
             )
         <|
-            viewTree config treeContext model.tree
+            viewTree config treeContext parent
 
 
 coordinateStyle : Float -> Float -> Float -> List ( String, String )
@@ -528,22 +611,22 @@ nodeBaseStyle width height =
     , ( "user-select", "none" )
     , ( "border-radius", "4px" )
     , ( "cursor", "pointer" )
+    , ( "margin", "0" )
     ]
 
 
-nodeStyle : Float -> Float -> List ( String, String )
-nodeStyle width height =
-    nodeBaseStyle width height
-        ++ [ ( "background", "rgba(0, 0, 0, 0.8)" )
-           , ( "color", "white" )
-           ]
+nodeStyle : List ( String, String )
+nodeStyle =
+    [ ( "background", "rgba(0, 0, 0, 0.8)" )
+    , ( "color", "white" )
+    ]
 
 
-placeholderNodeStyle : Float -> Float -> List ( String, String )
-placeholderNodeStyle width height =
-    nodeBaseStyle width height ++ [ ( "border", "2px dashed #DDDDDD" ) ]
+placeholderNodeStyle : List ( String, String )
+placeholderNodeStyle =
+    [ ( "border", "2px dashed #DDDDDD" ) ]
 
 
-highlightedPlaceholderNodeStyle : Float -> Float -> List ( String, String )
-highlightedPlaceholderNodeStyle width height =
-    nodeBaseStyle width height ++ [ ( "border", "2px dashed #333333" ) ]
+highlightedPlaceholderNodeStyle : List ( String, String )
+highlightedPlaceholderNodeStyle =
+    [ ( "border", "2px dashed #333333" ) ]
