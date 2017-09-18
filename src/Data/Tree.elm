@@ -63,8 +63,8 @@ findOne fn tree =
     find fn tree |> List.head
 
 
-insert : (a -> Bool) -> Int -> Tree a -> Tree a -> Tree a
-insert parentFindFn index insertedTree tree =
+insert : (a -> Bool) -> Tree a -> Tree a -> Tree a
+insert parentFindFn insertedTree tree =
     case tree of
         Empty ->
             tree
@@ -73,7 +73,20 @@ insert parentFindFn index insertedTree tree =
             if parentFindFn item then
                 Node item (children ++ [ insertedTree ])
             else
-                Node item (List.map (insert parentFindFn index insertedTree) children)
+                Node item (List.map (insert parentFindFn insertedTree) children)
+
+
+remove : (a -> Bool) -> Tree a -> Tree a
+remove findId tree =
+    case tree of
+        Empty ->
+            Empty
+
+        Node item children ->
+            if findId item then
+                Empty
+            else
+                Node item (List.map (remove findId) children |> List.filter (\tree -> tree /= Empty))
 
 
 findOneSubtreeWithParentTail : Maybe a -> (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )

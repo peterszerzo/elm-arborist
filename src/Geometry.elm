@@ -11,7 +11,8 @@ type alias NodeId =
 
 type alias NodeGeometry =
     { position : ( Float, Float )
-    , childOffset : Float
+    , newChildPlaceholderPosition : ( Float, Float )
+    , childSpan : Float
     }
 
 
@@ -58,7 +59,11 @@ nodeGeometryTail config localGeoContext id tree =
                     if config.toId item == id then
                         Just
                             { position = ( 0, 0 )
-                            , childOffset = childOffset * expandFactor
+                            , newChildPlaceholderPosition =
+                                ( childOffset * expandFactor / 2
+                                , config.layout.height + config.layout.verticalGap
+                                )
+                            , childSpan = childOffset * expandFactor
                             }
                     else
                         List.indexedMap
@@ -85,9 +90,10 @@ nodeGeometryTail config localGeoContext id tree =
                                         id
                                         tree
                                         |> Maybe.map
-                                            (\{ position, childOffset } ->
+                                            (\{ position, newChildPlaceholderPosition, childSpan } ->
                                                 { position = Utils.addFloatTuples offset position
-                                                , childOffset = childOffset * expandFactor
+                                                , newChildPlaceholderPosition = Utils.addFloatTuples offset newChildPlaceholderPosition
+                                                , childSpan = childSpan * expandFactor
                                                 }
                                             )
                             )

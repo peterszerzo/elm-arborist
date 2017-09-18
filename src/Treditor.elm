@@ -8,6 +8,7 @@ module Treditor
         , tree
         , isNew
         , setNew
+        , delete
         , active
         )
 
@@ -35,17 +36,11 @@ type alias NodeId =
     String
 
 
-type alias EmptyLeaf =
-    { parent : NodeId
-    , index : Int
-    }
-
-
 type alias TreeContext item =
     { tree : Tree.Tree item
     , active : Maybe NodeId
     , focus : Maybe NodeId
-    , new : Maybe EmptyLeaf
+    , new : Maybe NodeId
     , dropTarget : Maybe NodeId
     , dragState : Maybe ( NodeId, ( Float, Float ) )
     }
@@ -66,7 +61,7 @@ type alias TreeDrawLocalContext =
 type Model item
     = Model
         { tree : Tree.Tree item
-        , new : Maybe EmptyLeaf
+        , new : Maybe NodeId
         , active : Maybe NodeId
         , focus : Maybe NodeId
         , drag : MultiDrag.Drag NodeId
@@ -96,14 +91,18 @@ isNew (Model { new }) =
     new /= Nothing
 
 
+delete : Config.Config item -> NodeId -> Model item -> Model item
+delete config itemId (Model model) =
+    Model { model | tree = Tree.remove (\item -> config.toId item == itemId) model.tree }
+
+
 setNew : Config.Config item -> item -> Model item -> Model item
 setNew config item (Model model) =
     case model.new of
         Just new ->
             let
                 newTree =
-                    Tree.insert (\item -> config.toId item == new.parent)
-                        new.index
+                    Tree.insert (\item -> config.toId item == new)
                         (Tree.singleton item)
                         model.tree
             in
@@ -173,7 +172,7 @@ type Msg item
     = Activate NodeId
     | Deactivate
     | SetActive item
-    | SetNew NodeId Int
+    | SetNew NodeId
     | SetFocus (Maybe NodeId)
     | MouseMove Float Float
     | MouseDown NodeId Float Float
@@ -237,15 +236,9 @@ update config msg (Model model) =
                                 focus
                     }
 
-        SetNew toId index ->
+        SetNew nodeId ->
             Model
-                { model
-                    | new =
-                        Just
-                            { parent = toId
-                            , index = index
-                            }
-                }
+                { model | new = Just nodeId }
 
         Deactivate ->
             Model { model | active = Nothing, new = Nothing }
@@ -306,50 +299,7 @@ viewTree_ config context localContext tree =
     in
         case tree of
             Tree.Empty ->
-                case localContext of
-                    Just localContext ->
-                        Geometry.nodeGeometry config localContext.parent context.tree
-                            |> Maybe.map
-                                ((\{ position, childOffset } ->
-                                    let
-                                        ( x, y ) =
-                                            position
-                                                |> Utils.addFloatTuples localContext.parentDragOffset
-                                    in
-                                        [ p
-                                            [ style <|
-                                                nodeBaseStyle
-                                                    ++ (context.new
-                                                            |> Maybe.map
-                                                                (\new ->
-                                                                    if new.parent == localContext.parent && new.index == localContext.index then
-                                                                        Styles.highlightedPlaceholderNode
-                                                                    else
-                                                                        Styles.placeholderNode
-                                                                )
-                                                            |> Maybe.withDefault Styles.placeholderNode
-                                                       )
-                                                    ++ (Styles.coordinate
-                                                            config.layout.width
-                                                            (x
-                                                                + (if localContext.index == 0 then
-                                                                    -childOffset
-                                                                   else
-                                                                    childOffset
-                                                                  )
-                                                            )
-                                                            (y + (config.layout.verticalGap + config.layout.height))
-                                                       )
-                                            , Utils.onClickStopPropagation (SetNew localContext.parent localContext.index)
-                                            ]
-                                            []
-                                        ]
-                                 )
-                                )
-                            |> Maybe.withDefault []
-
-                    Nothing ->
-                        []
+                [ text "The tree is empty." ]
 
             Tree.Node item children ->
                 let
@@ -358,7 +308,7 @@ viewTree_ config context localContext tree =
                 in
                     Geometry.nodeGeometry config currentId context.tree
                         |> Maybe.map
-                            (\{ position, childOffset } ->
+                            (\{ position, childSpan, newChildPlaceholderPosition } ->
                                 let
                                     ( isDragged, ( dragOffsetX, dragOffsetY ) ) =
                                         context.dragState
@@ -375,6 +325,11 @@ viewTree_ config context localContext tree =
                                         localContext
                                             |> Maybe.map .parentDragOffset
                                             |> Maybe.withDefault ( 0, 0 )
+
+                                    ( newChildPlaceholderX, newChildPlaceholderY ) =
+                                        newChildPlaceholderPosition
+                                            |> Utils.addFloatTuples ( dragOffsetX, dragOffsetY )
+                                            |> Utils.addFloatTuples parentDragOffsetWithDefault
 
                                     ( x, y ) =
                                         position
@@ -437,6 +392,15 @@ viewTree_ config context localContext tree =
                                             )
                                         ]
                                         [ text (config.view item) ]
+                                    , p
+                                        [ style <|
+                                            nodeBaseStyle
+                                                ++ Styles.placeholderNode
+                                                ++ (coordStyle newChildPlaceholderX newChildPlaceholderY)
+                                        , Utils.onClickStopPropagation (SetNew currentId)
+                                        ]
+                                        [ text "Add new"
+                                        ]
                                     , if localContext == Nothing then
                                         div [] []
                                       else
@@ -452,15 +416,15 @@ viewTree_ config context localContext tree =
                                             [ text buttonIcon
                                             ]
                                     , svg
-                                        [ width (toString (childOffset * 2))
+                                        [ width (toString (childSpan * 2))
                                         , height (toString config.layout.verticalGap)
-                                        , viewBox <| "0 0 " ++ (toString (childOffset * 2)) ++ " " ++ (toString config.layout.verticalGap)
+                                        , viewBox <| "0 0 " ++ (toString (childSpan * 2)) ++ " " ++ (toString config.layout.verticalGap)
                                         , style <|
                                             [ ( "position", "absolute" ) ]
-                                                ++ (coordStyle (x - childOffset + (config.layout.width / 2)) (y + config.layout.height))
+                                                ++ (coordStyle (x - childSpan + (config.layout.width / 2)) (y + config.layout.height))
                                         ]
                                         (Views.NodeConnectors.view (List.length children + 1)
-                                            (childOffset * 2)
+                                            (childSpan * 2)
                                             (config.layout.verticalGap)
                                         )
                                     ]

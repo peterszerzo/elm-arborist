@@ -11,6 +11,10 @@ import Treditor.Config
 import Styles
 
 
+type alias NodeId =
+    String
+
+
 type alias Model =
     { treditor : Treditor.Model Item.Item
     , newItem : Item.Item
@@ -21,6 +25,7 @@ type Msg
     = TreditorMsg (Treditor.Msg Item.Item)
     | EditNewItemId String
     | EditNewItemValue String
+    | DeleteItem NodeId
     | AddNewItem
     | NoOp
 
@@ -49,6 +54,9 @@ update msg model =
                 | newItem = Item.setId newId model.newItem
             }
 
+        DeleteItem id ->
+            { model | treditor = Treditor.delete treditorConfig id model.treditor }
+
         EditNewItemValue newValue ->
             { model
                 | newItem = Item.setValue newValue model.newItem
@@ -75,12 +83,17 @@ view model =
                 [ Treditor.active treditorConfig model.treditor
                     |> Maybe.map
                         (\item ->
-                            label []
-                                [ text "Edit node", input [ value item.value, onInput (\newVal -> Treditor.SetActive { item | value = newVal }) ] [] ]
-                                |> Html.map TreditorMsg
+                            div []
+                                [ label []
+                                    [ text "Edit node"
+                                    , input [ value item.value, onInput (\newVal -> Treditor.SetActive { item | value = newVal }) ] []
+                                    ]
+                                    |> Html.map TreditorMsg
+                                , button [ onClick (DeleteItem item.id) ] [ text "Delete" ]
+                                ]
                         )
                     |> Maybe.withDefault (p [] [ text "Click a node to edit.." ])
-                , if Treditor.isNew model.treditor then
+                , if (Treditor.isNew model.treditor |> Debug.log "isnew") then
                     div []
                         [ h3 [] [ text "New node" ]
                         , label []
