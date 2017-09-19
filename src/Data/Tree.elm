@@ -28,11 +28,11 @@ decoder nodeDecoder =
 
 
 type alias TreeLayout comparable =
-    Dict.Dict comparable ( Float, Float )
+    Dict.Dict comparable { center : ( Float, Float ), span : Float }
 
 
 type alias TreeAnalysis comparable =
-    Dict.Dict comparable { path : List Int, siblings : Int }
+    Dict.Dict comparable { path : List Int, siblings : Int, children : List comparable }
 
 
 
@@ -197,12 +197,52 @@ analyzeTail { path, siblings } toId tree =
             Dict.empty
 
         Node item children ->
-            [ Dict.singleton (toId item) { path = path, siblings = siblings } ]
+            [ Dict.singleton (toId item)
+                { path = path
+                , siblings = siblings
+                , children =
+                    List.map
+                        (\child ->
+                            case child of
+                                Node item _ ->
+                                    Just (toId item)
+
+                                Empty ->
+                                    Nothing
+                        )
+                        children
+                        |> List.filterMap identity
+                }
+            ]
                 ++ (List.indexedMap
-                        (\index item -> analyzeTail { path = path ++ [ index ], siblings = List.length children - 1 } toId item)
+                        (\index item ->
+                            analyzeTail
+                                { path = path ++ [ index ]
+                                , siblings = List.length children - 1
+                                }
+                                toId
+                                item
+                        )
                         children
                    )
                 |> List.foldl Dict.union Dict.empty
+
+
+compareLists : List comparable -> List comparable -> Order
+compareLists l1 l2 =
+    case ( l1, l2 ) of
+        ( head1 :: tail1, head2 :: tail2 ) ->
+            let
+                comp =
+                    compare head1 head2
+            in
+                if comp == EQ then
+                    compareLists tail1 tail2
+                else
+                    comp
+
+        ( _, _ ) ->
+            EQ
 
 
 {-| Lays out elements.
@@ -210,14 +250,79 @@ analyzeTail { path, siblings } toId tree =
 layout : Int -> TreeAnalysis comparable -> TreeLayout comparable
 layout showLevels analysis =
     let
+        layout =
+            Dict.empty
+
         displayedItems =
             analysis
-                |> Dict.filter (\id { path } -> List.length path < showLevels)
-                |> Debug.log "di"
+                |> Dict.filter (\id { path } -> List.length path < showLevels + 1)
+
+        lowestLevelItems =
+            displayedItems
+                |> Dict.filter (\_ a -> List.length a.path == showLevels - 1)
+                |> Dict.toList
 
         lowestLevelPass =
-            displayedItems
-                |> Dict.filter (\id a -> List.length a.path == showLevels - 1)
-                |> Debug.log "lowest"
+            lowestLevelItems
+                |> List.sortWith
+                    (\( _, a1 ) ( _, a2 ) ->
+                        compareLists a1.path a2.path
+                    )
+                |> List.indexedMap
+                    (\index ( id, _ ) ->
+                        ( id
+                        , { center =
+                                ( toFloat index - (toFloat (List.length lowestLevelItems - 1)) / 2
+                                , 2
+                                )
+                          , span = 0
+                          }
+                        )
+                    )
+                |> Dict.fromList
+
+        secondLevelPass =
+            layoutLevelPass lowestLevelPass 1 displayedItems
+
+        thirdLevelPass =
+            layoutLevelPass secondLevelPass 0 displayedItems
     in
-        displayedItems |> Dict.map (\id _ -> ( 0, 0 ))
+        [ lowestLevelPass, secondLevelPass, thirdLevelPass ]
+            |> List.foldl Dict.union Dict.empty
+            |> Debug.log "layout"
+
+
+layoutLevelPass : TreeLayout comparable -> Int -> TreeAnalysis comparable -> TreeLayout comparable
+layoutLevelPass previousPass level nodeAnalysisRes =
+    nodeAnalysisRes
+        |> Dict.filter (\_ a -> List.length a.path == level)
+        |> Dict.toList
+        |> List.map
+            (\( id, { children } ) ->
+                ( id
+                , List.map
+                    (\child ->
+                        Dict.get child previousPass
+                            |> Maybe.withDefault { center = ( 0, 0 ), span = 0 }
+                    )
+                    children
+                    |> (\list ->
+                            let
+                                centers =
+                                    List.map (.center >> Tuple.first) list
+                            in
+                                { center =
+                                    ( (List.foldl (+) 0 centers)
+                                        / (List.length centers |> toFloat)
+                                    , toFloat level
+                                    )
+                                , span =
+                                    Maybe.map2 (\max min -> max - min)
+                                        (List.maximum centers)
+                                        (List.minimum centers)
+                                        |> Maybe.withDefault 0
+                                }
+                       )
+                )
+            )
+        |> Dict.fromList

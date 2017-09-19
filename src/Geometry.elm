@@ -1,5 +1,6 @@
 module Geometry exposing (..)
 
+import Dict
 import Data.Tree as Tree
 import Treditor.Config exposing (Config)
 import Utils
@@ -22,89 +23,24 @@ type alias LocalGeometryContext =
     }
 
 
-childNodeHorizontalOffset : Float -> Int -> Float
-childNodeHorizontalOffset width depth =
-    if depth == 0 then
-        width + 2 * 10
-    else
-        width / 2 + 10
-
-
-nodeGeometryTail :
+nodeGeometry :
     Config item
-    -> LocalGeometryContext
     -> NodeId
     -> Tree.Tree item
     -> Maybe NodeGeometry
-nodeGeometryTail config localGeoContext id tree =
-    let
-        childOffset =
-            childNodeHorizontalOffset config.layout.width localGeoContext.depth
-    in
-        case tree of
-            Tree.Empty ->
-                Nothing
-
-            Tree.Node item children ->
+nodeGeometry config id tree =
+    tree
+        |> Tree.analyze config.toId
+        |> Tree.layout 3
+        |> Dict.get id
+        |> Maybe.map
+            (\{ center, span } ->
                 let
-                    childrenLength =
-                        List.length children + 1
-
-                    expandFactor =
-                        if List.length children > 2 then
-                            (childrenLength - 1 |> toFloat)
-                        else
-                            1
+                    ( centerX, centerY ) =
+                        center
                 in
-                    if config.toId item == id then
-                        Just
-                            { position = ( 0, 0 )
-                            , newChildPlaceholderPosition =
-                                ( childOffset * expandFactor / 2
-                                , config.layout.height + config.layout.verticalGap
-                                )
-                            , childSpan = childOffset * expandFactor
-                            }
-                    else
-                        List.indexedMap
-                            (\index tree ->
-                                let
-                                    normalizedCoordinate =
-                                        if childrenLength > 1 then
-                                            (toFloat index - (toFloat (childrenLength - 1)) / 2)
-                                                / (toFloat (childrenLength - 1))
-                                                * 2
-                                        else
-                                            0
-
-                                    offset =
-                                        ( childOffset * normalizedCoordinate * expandFactor
-                                        , (config.layout.height + config.layout.verticalGap)
-                                        )
-                                in
-                                    nodeGeometryTail config
-                                        ({ depth = localGeoContext.depth + 1
-                                         , index = index
-                                         }
-                                        )
-                                        id
-                                        tree
-                                        |> Maybe.map
-                                            (\{ position, newChildPlaceholderPosition, childSpan } ->
-                                                { position = Utils.addFloatTuples offset position
-                                                , newChildPlaceholderPosition = Utils.addFloatTuples offset newChildPlaceholderPosition
-                                                , childSpan = childSpan * expandFactor
-                                                }
-                                            )
-                            )
-                            children
-                            |> List.filterMap identity
-                            |> List.head
-
-
-nodeGeometry : Config item -> NodeId -> Tree.Tree item -> Maybe NodeGeometry
-nodeGeometry config =
-    nodeGeometryTail config
-        { depth = 0
-        , index = 0
-        }
+                    { position = ( centerX * (config.layout.width + 20), centerY * (config.layout.height + config.layout.verticalGap) )
+                    , childSpan = span * (config.layout.width + 20)
+                    , newChildPlaceholderPosition = ( 0, 0 )
+                    }
+            )

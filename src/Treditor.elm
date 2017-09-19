@@ -386,15 +386,15 @@ viewTree_ config context localContext tree =
                                             )
                                         ]
                                         [ text (config.view item) ]
-                                    , p
-                                        [ style <|
-                                            nodeBaseStyle
-                                                ++ Styles.placeholderNode
-                                                ++ (coordStyle newChildPlaceholderX newChildPlaceholderY)
-                                        , Utils.onClickStopPropagation (SetNew currentId)
-                                        ]
-                                        [ text "Add new"
-                                        ]
+                                      -- , p
+                                      --     [ style <|
+                                      --         nodeBaseStyle
+                                      --             ++ Styles.placeholderNode
+                                      --             ++ (coordStyle newChildPlaceholderX newChildPlaceholderY)
+                                      --     , Utils.onClickStopPropagation (SetNew currentId)
+                                      --     ]
+                                      --     [ text "Add new"
+                                      --     ]
                                     , if localContext == Nothing then
                                         div [] []
                                       else
@@ -415,10 +415,10 @@ viewTree_ config context localContext tree =
                                         , viewBox <| "0 0 " ++ (toString (childSpan * 2)) ++ " " ++ (toString config.layout.verticalGap)
                                         , style <|
                                             [ ( "position", "absolute" ) ]
-                                                ++ (coordStyle (x - childSpan + (config.layout.width / 2)) (y + config.layout.height))
+                                                ++ (coordStyle (x - (config.layout.width / 2) - 20) (y + config.layout.height))
                                         ]
-                                        (Views.NodeConnectors.view (List.length children + 1)
-                                            (childSpan * 2)
+                                        (Views.NodeConnectors.view (List.length children)
+                                            childSpan
                                             (config.layout.verticalGap)
                                         )
                                     ]
@@ -490,7 +490,7 @@ view config attrs (Model model) =
         _ =
             subtree
                 |> Tree.analyze config.toId
-                |> Tree.layout 2
+                |> Tree.layout 3
 
         treeContext =
             { tree = subtree

@@ -17,7 +17,7 @@ view divs w h =
             1
 
         range =
-            if divs > 1 then
+            if (divs) > 1 then
                 List.range 0 (divs - 1)
                     |> List.map (\val -> (toFloat val) / (toFloat divs - 1))
             else

@@ -77,9 +77,9 @@ view model =
             [ h1 [] [ text "treditor" ]
             , p [] [ text "Prototype for an interface that manipulates a tree structure. Swap nodes by dragging them on top of each other." ]
             ]
-        , div [ style [ ( "text-align", "center" ) ] ]
-            [ Treditor.view treditorConfig [ style Styles.box ] model.treditor |> Html.map TreditorMsg
-            , div [ style <| Styles.box ++ [ ( "padding", "20px" ) ] ]
+        , div [ style <| Styles.box ]
+            [ Treditor.view treditorConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.treditor |> Html.map TreditorMsg
+            , div [ style <| Styles.popup ++ [ ( "padding", "20px" ) ] ]
                 [ Treditor.active treditorConfig model.treditor
                     |> Maybe.map
                         (\item ->
@@ -127,6 +127,13 @@ example =
           {
             "value": {
               "id": "oj",
+              "value": "Oranges"
+            },
+            "children": []
+          },
+          {
+            "value": {
+              "id": "oj2",
               "value": "Oranges"
             },
             "children": []
