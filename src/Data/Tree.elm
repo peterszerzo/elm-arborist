@@ -1,7 +1,11 @@
 module Data.Tree exposing (..)
 
 import Set
+import Dict
 import Json.Decode as Decode
+
+
+-- Data structure
 
 
 type Tree a
@@ -20,19 +24,37 @@ decoder nodeDecoder =
 
 
 
+-- Calculation types
+
+
+type alias TreeLayout comparable =
+    Dict.Dict comparable ( Float, Float )
+
+
+type alias TreeAnalysis comparable =
+    Dict.Dict comparable { path : List Int, siblings : Int }
+
+
+
 -- Update
 
 
+{-| Return an empty tree.
+-}
 empty : Tree a
 empty =
     Empty
 
 
+{-| Return a tree with a single element.
+-}
 singleton : a -> Tree a
 singleton item =
     Node item []
 
 
+{-| Map over the items of the tree.
+-}
 map : (a -> b) -> Tree a -> Tree b
 map fn tree =
     case tree of
@@ -43,6 +65,8 @@ map fn tree =
             Node (fn val) (List.map (map fn) children)
 
 
+{-| Find all items matching a value.
+-}
 find : (a -> Bool) -> Tree a -> List a
 find fn tree =
     case tree of
@@ -58,11 +82,15 @@ find fn tree =
                 ++ (List.map (find fn) children |> List.foldl (++) [])
 
 
+{-| Find a single value.
+-}
 findOne : (a -> Bool) -> Tree a -> Maybe a
 findOne fn tree =
     find fn tree |> List.head
 
 
+{-| Insert a tree into a tree (use singleton for single element insert). The new item is always inserted at the end of the list - reordering happens with drag and drop.
+-}
 insert : (a -> Bool) -> Tree a -> Tree a -> Tree a
 insert parentFindFn insertedTree tree =
     case tree of
@@ -76,6 +104,8 @@ insert parentFindFn insertedTree tree =
                 Node item (List.map (insert parentFindFn insertedTree) children)
 
 
+{-| Remove item from the tree.
+-}
 remove : (a -> Bool) -> Tree a -> Tree a
 remove findId tree =
     case tree of
@@ -87,6 +117,13 @@ remove findId tree =
                 Empty
             else
                 Node item (List.map (remove findId) children |> List.filter (\tree -> tree /= Empty))
+
+
+{-| Find a subtree, also returning its parent.
+-}
+findOneSubtreeWithParent : (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )
+findOneSubtreeWithParent =
+    findOneSubtreeWithParentTail Nothing
 
 
 findOneSubtreeWithParentTail : Maybe a -> (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )
@@ -104,11 +141,8 @@ findOneSubtreeWithParentTail parent fn tree =
                     |> List.head
 
 
-findOneSubtreeWithParent : (a -> Bool) -> Tree a -> Maybe ( Tree a, Maybe a )
-findOneSubtreeWithParent =
-    findOneSubtreeWithParentTail Nothing
-
-
+{-| Swap a single item. Leave subtrees in place.
+-}
 swapOne : (a -> Bool) -> (a -> Bool) -> Tree a -> Tree a
 swapOne fn1 fn2 tree =
     let
@@ -135,29 +169,55 @@ swapOne fn1 fn2 tree =
                 tree
 
 
-uniqueIdsTail : Set.Set comparable -> (a -> comparable) -> Tree a -> Bool
-uniqueIdsTail set getId tree =
-    case tree of
-        Empty ->
-            True
-
-        Node item children ->
-            let
-                id =
-                    getId item
-
-                isMember =
-                    Set.member id set
-
-                newSet =
-                    Set.insert id set
-            in
-                ([ not isMember ] ++ (List.map (uniqueIdsTail newSet getId) children))
-                    |> List.all identity
-
-
 {-| Verifies that the members of the tree have unique ids each.
 -}
-uniqueIds : (a -> comparable) -> Tree a -> Bool
-uniqueIds =
-    uniqueIdsTail Set.empty
+ids : (a -> comparable) -> Tree a -> Set.Set comparable
+ids toId tree =
+    case tree of
+        Empty ->
+            Set.empty
+
+        Node item children ->
+            [ Set.singleton (toId item) ]
+                ++ (List.map (ids toId) children)
+                |> List.foldl Set.union Set.empty
+
+
+{-| Returns a dictionary ordered by item identifiers.
+-}
+analyze : (a -> comparable) -> Tree a -> TreeAnalysis comparable
+analyze =
+    analyzeTail { path = [], siblings = 0 }
+
+
+analyzeTail : { path : List Int, siblings : Int } -> (a -> comparable) -> Tree a -> TreeAnalysis comparable
+analyzeTail { path, siblings } toId tree =
+    case tree of
+        Empty ->
+            Dict.empty
+
+        Node item children ->
+            [ Dict.singleton (toId item) { path = path, siblings = siblings } ]
+                ++ (List.indexedMap
+                        (\index item -> analyzeTail { path = path ++ [ index ], siblings = List.length children - 1 } toId item)
+                        children
+                   )
+                |> List.foldl Dict.union Dict.empty
+
+
+{-| Lays out elements.
+-}
+layout : Int -> TreeAnalysis comparable -> TreeLayout comparable
+layout showLevels analysis =
+    let
+        displayedItems =
+            analysis
+                |> Dict.filter (\id { path } -> List.length path < showLevels)
+                |> Debug.log "di"
+
+        lowestLevelPass =
+            displayedItems
+                |> Dict.filter (\id a -> List.length a.path == showLevels - 1)
+                |> Debug.log "lowest"
+    in
+        displayedItems |> Dict.map (\id _ -> ( 0, 0 ))

@@ -93,7 +93,7 @@ view model =
                                 ]
                         )
                     |> Maybe.withDefault (p [] [ text "Click a node to edit.." ])
-                , if (Treditor.isNew model.treditor |> Debug.log "isnew") then
+                , if Treditor.isNew model.treditor then
                     div []
                         [ h3 [] [ text "New node" ]
                         , label []

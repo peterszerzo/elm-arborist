@@ -107,13 +107,7 @@ setNew config item (Model model) =
                         model.tree
             in
                 Model
-                    { model
-                        | tree =
-                            if Tree.uniqueIds config.toId newTree then
-                                newTree
-                            else
-                                model.tree
-                    }
+                    { model | tree = newTree }
 
         Nothing ->
             Model model
@@ -492,6 +486,11 @@ view config attrs (Model model) =
             model.focus
                 |> Maybe.andThen (\id -> Tree.findOneSubtreeWithParent (\item -> config.toId item == id) model.tree)
                 |> Maybe.withDefault ( model.tree, Nothing )
+
+        _ =
+            subtree
+                |> Tree.analyze config.toId
+                |> Tree.layout 2
 
         treeContext =
             { tree = subtree
