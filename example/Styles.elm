@@ -66,6 +66,7 @@ box =
     , ( "margin", "auto" )
     , ( "text-align", "left" )
     , ( "vertical-align", "top" )
+    , ( "overflow", "hidden" )
     , ( "position", "relative" )
     , ( "border-radius", "4px" )
     , ( "border", "1px solid " ++ faintGray )

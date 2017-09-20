@@ -302,7 +302,7 @@ viewTree_ config context localContext tree =
                 in
                     Geometry.nodeGeometry config currentId context.tree
                         |> Maybe.map
-                            (\{ position, childSpan, newChildPlaceholderPosition } ->
+                            (\{ position, childSpan } ->
                                 let
                                     ( isDragged, ( dragOffsetX, dragOffsetY ) ) =
                                         context.dragState
@@ -319,11 +319,6 @@ viewTree_ config context localContext tree =
                                         localContext
                                             |> Maybe.map .parentDragOffset
                                             |> Maybe.withDefault ( 0, 0 )
-
-                                    ( newChildPlaceholderX, newChildPlaceholderY ) =
-                                        newChildPlaceholderPosition
-                                            |> Utils.addFloatTuples ( dragOffsetX, dragOffsetY )
-                                            |> Utils.addFloatTuples parentDragOffsetWithDefault
 
                                     ( x, y ) =
                                         position
@@ -386,15 +381,6 @@ viewTree_ config context localContext tree =
                                             )
                                         ]
                                         [ text (config.view item) ]
-                                      -- , p
-                                      --     [ style <|
-                                      --         nodeBaseStyle
-                                      --             ++ Styles.placeholderNode
-                                      --             ++ (coordStyle newChildPlaceholderX newChildPlaceholderY)
-                                      --     , Utils.onClickStopPropagation (SetNew currentId)
-                                      --     ]
-                                      --     [ text "Add new"
-                                      --     ]
                                     , if localContext == Nothing then
                                         div [] []
                                       else
@@ -415,7 +401,7 @@ viewTree_ config context localContext tree =
                                         , viewBox <| "0 0 " ++ (toString (childSpan * 2)) ++ " " ++ (toString config.layout.verticalGap)
                                         , style <|
                                             [ ( "position", "absolute" ) ]
-                                                ++ (coordStyle (x - (config.layout.width / 2) - 20) (y + config.layout.height))
+                                                ++ (coordStyle (x - childSpan / 2 + config.layout.width / 2) (y + config.layout.height))
                                         ]
                                         (Views.NodeConnectors.view (List.length children)
                                             childSpan

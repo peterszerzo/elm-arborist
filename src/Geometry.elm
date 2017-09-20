@@ -3,7 +3,6 @@ module Geometry exposing (..)
 import Dict
 import Data.Tree as Tree
 import Treditor.Config exposing (Config)
-import Utils
 
 
 type alias NodeId =
@@ -12,7 +11,6 @@ type alias NodeId =
 
 type alias NodeGeometry =
     { position : ( Float, Float )
-    , newChildPlaceholderPosition : ( Float, Float )
     , childSpan : Float
     }
 
@@ -23,11 +21,7 @@ type alias LocalGeometryContext =
     }
 
 
-nodeGeometry :
-    Config item
-    -> NodeId
-    -> Tree.Tree item
-    -> Maybe NodeGeometry
+nodeGeometry : Config item -> NodeId -> Tree.Tree item -> Maybe NodeGeometry
 nodeGeometry config id tree =
     tree
         |> Tree.analyze config.toId
@@ -39,8 +33,7 @@ nodeGeometry config id tree =
                     ( centerX, centerY ) =
                         center
                 in
-                    { position = ( centerX * (config.layout.width + 20), centerY * (config.layout.height + config.layout.verticalGap) )
-                    , childSpan = span * (config.layout.width + 20)
-                    , newChildPlaceholderPosition = ( 0, 0 )
+                    { position = ( centerX * (config.layout.width + config.layout.horizontalGap) + config.layout.width / 2 - config.layout.horizontalGap / 2, centerY * (config.layout.height + config.layout.verticalGap) )
+                    , childSpan = span * (config.layout.width + config.layout.horizontalGap)
                     }
             )
