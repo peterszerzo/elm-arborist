@@ -48,6 +48,7 @@ type alias TreeContext item =
 
 type alias TreeDrawLocalContext =
     { parent : NodeId
+    , path : List Int
     , parentDepth : Int
     , index : Int
     , parentDragOffset : ( Float, Float )
@@ -426,6 +427,10 @@ viewTree_ config context localContext tree =
                                                         context
                                                         (Just
                                                             { parent = config.toId item
+                                                            , path =
+                                                                localContext
+                                                                    |> Maybe.map (\ctx -> ctx.path ++ [ index ])
+                                                                    |> Maybe.withDefault []
                                                             , parentDepth =
                                                                 localContext
                                                                     |> Maybe.map (\p -> p.parentDepth + 1)
@@ -456,6 +461,7 @@ viewTree config context item =
             |> Maybe.map
                 (\i ->
                     { parent = config.toId i
+                    , path = []
                     , parentDepth = 0
                     , index = 0
                     , parentDragOffset = ( 0, 0 )
@@ -472,11 +478,6 @@ view config attrs (Model model) =
             model.focus
                 |> Maybe.andThen (\id -> Tree.findOneSubtreeWithParent (\item -> config.toId item == id) model.tree)
                 |> Maybe.withDefault ( model.tree, Nothing )
-
-        _ =
-            subtree
-                |> Tree.analyze config.toId
-                |> Tree.layout 3
 
         treeContext =
             { tree = subtree

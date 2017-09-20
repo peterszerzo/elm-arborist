@@ -3,6 +3,7 @@ module Data.Tree exposing (..)
 import Set
 import Dict
 import Json.Decode as Decode
+import Utils
 
 
 -- Data structure
@@ -27,12 +28,16 @@ decoder nodeDecoder =
 -- Calculation types
 
 
+type alias Analysis comparable =
+    { path : List Int, siblings : Int, children : List comparable }
+
+
 type alias TreeLayout comparable =
     Dict.Dict comparable { center : ( Float, Float ), span : Float }
 
 
 type alias TreeAnalysis comparable =
-    Dict.Dict comparable { path : List Int, siblings : Int, children : List comparable }
+    Dict.Dict comparable (Analysis comparable)
 
 
 
@@ -63,6 +68,92 @@ map fn tree =
 
         Node val children ->
             Node (fn val) (List.map (map fn) children)
+
+
+{-| Add an empty element every
+-}
+addTrailingEmpties : Tree a -> Tree a
+addTrailingEmpties tree =
+    case tree of
+        Empty ->
+            Empty
+
+        Node item children ->
+            Node item <| (List.map addTrailingEmpties children) ++ [ Empty ]
+
+
+{-| Find item by path
+-}
+findByPath : List Int -> Tree a -> Maybe (Tree a)
+findByPath path tree =
+    case ( path, tree ) of
+        ( head :: tail, Node item children ) ->
+            children
+                |> List.drop head
+                |> List.head
+                |> Maybe.andThen (\childTree -> findByPath tail childTree)
+
+        ( [], tree ) ->
+            Just tree
+
+        ( head :: tail, Empty ) ->
+            Nothing
+
+
+updateItemByPath : List Int -> a -> Tree a -> Tree a
+updateItemByPath path item tree =
+    case ( path, tree ) of
+        ( head :: tail, Node item children ) ->
+            Node item <|
+                List.indexedMap
+                    (\index child ->
+                        if index == head then
+                            updateItemByPath tail item child
+                        else
+                            child
+                    )
+                    children
+
+        ( [], Node item_ children ) ->
+            Node item children
+
+        ( _, tree ) ->
+            tree
+
+
+
+-- (head :: tail, Empty) ->
+
+
+{-| Flatten
+-}
+flatten : Tree a -> List ( List Int, Maybe a )
+flatten =
+    flattenTail []
+
+
+flattenTail : List Int -> Tree a -> List ( List Int, Maybe a )
+flattenTail path tree =
+    case tree of
+        Empty ->
+            [ ( path, Nothing ) ]
+
+        Node val children ->
+            [ ( path, Just val ) ]
+                ++ (List.indexedMap
+                        (\index child ->
+                            (flattenTail (path ++ [ index ]) child)
+                        )
+                        children
+                        |> List.foldl (++) []
+                   )
+
+
+idsByPath : (a -> comparable) -> Tree a -> Dict.Dict (List Int) comparable
+idsByPath toId tree =
+    flatten tree
+        |> List.filterMap (\( path, item ) -> item |> Maybe.map (\i -> ( path, toId i )))
+        |> Dict.fromList
 
 
 {-| Find all items matching a value.
@@ -228,23 +319,6 @@ analyzeTail { path, siblings } toId tree =
                 |> List.foldl Dict.union Dict.empty
 
 
-compareLists : List comparable -> List comparable -> Order
-compareLists l1 l2 =
-    case ( l1, l2 ) of
-        ( head1 :: tail1, head2 :: tail2 ) ->
-            let
-                comp =
-                    compare head1 head2
-            in
-                if comp == EQ then
-                    compareLists tail1 tail2
-                else
-                    comp
-
-        ( _, _ ) ->
-            EQ
-
-
 {-| Lays out elements.
 -}
 layout : Int -> TreeAnalysis comparable -> TreeLayout comparable
@@ -266,7 +340,7 @@ layout showLevels analysis =
             lowestLevelItems
                 |> List.sortWith
                     (\( _, a1 ) ( _, a2 ) ->
-                        compareLists a1.path a2.path
+                        Utils.compareLists a1.path a2.path
                     )
                 |> List.indexedMap
                     (\index ( id, _ ) ->
@@ -289,7 +363,6 @@ layout showLevels analysis =
     in
         [ lowestLevelPass, secondLevelPass, thirdLevelPass ]
             |> List.foldl Dict.union Dict.empty
-            |> Debug.log "layout"
 
 
 layoutLevelPass : TreeLayout comparable -> Int -> TreeAnalysis comparable -> TreeLayout comparable
@@ -303,7 +376,10 @@ layoutLevelPass previousPass level nodeAnalysisRes =
                 , List.map
                     (\child ->
                         Dict.get child previousPass
-                            |> Maybe.withDefault { center = ( 0, 0 ), span = 0 }
+                            |> Maybe.withDefault
+                                { center = ( 0, 0 )
+                                , span = 0
+                                }
                     )
                     children
                     |> (\list ->

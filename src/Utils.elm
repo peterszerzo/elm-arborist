@@ -19,3 +19,20 @@ onClickStopPropagation message =
             }
     in
         onWithOptions "click" config (Decode.succeed message)
+
+
+compareLists : List comparable -> List comparable -> Order
+compareLists l1 l2 =
+    case ( l1, l2 ) of
+        ( head1 :: tail1, head2 :: tail2 ) ->
+            let
+                comp =
+                    compare head1 head2
+            in
+                if comp == EQ then
+                    compareLists tail1 tail2
+                else
+                    comp
+
+        ( _, _ ) ->
+            EQ
