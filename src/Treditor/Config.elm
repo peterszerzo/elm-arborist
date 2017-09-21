@@ -6,8 +6,7 @@ type alias NodeId =
 
 
 type alias Config item =
-    { toId : item -> NodeId
-    , view : item -> String
+    { view : item -> String
     , layout :
         { width : Float
         , height : Float

@@ -32,8 +32,7 @@ type Msg
 
 treditorConfig : Treditor.Config.Config Item.Item
 treditorConfig =
-    { toId = (\item -> item.id)
-    , view = (\item -> item.value)
+    { view = (\item -> item.value)
     , layout =
         { width = 120
         , height = 24
@@ -55,7 +54,8 @@ update msg model =
             }
 
         DeleteItem id ->
-            { model | treditor = Treditor.delete treditorConfig id model.treditor }
+            -- { model | treditor = Treditor.delete treditorConfig id model.treditor }
+            model
 
         EditNewItemValue newValue ->
             { model
@@ -63,7 +63,8 @@ update msg model =
             }
 
         AddNewItem ->
-            { model | treditor = Treditor.setNew treditorConfig model.newItem model.treditor }
+            -- { model | treditor = Treditor.setNew treditorConfig model.newItem model.treditor }
+            model
 
         NoOp ->
             model
@@ -80,7 +81,7 @@ view model =
         , div [ style <| Styles.box ]
             [ Treditor.view treditorConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.treditor |> Html.map TreditorMsg
             , div [ style <| Styles.popup ++ [ ( "padding", "20px" ) ] ]
-                [ Treditor.active treditorConfig model.treditor
+                [ Treditor.active model.treditor
                     |> Maybe.map
                         (\item ->
                             div []
@@ -88,9 +89,9 @@ view model =
                                     [ text "Edit node"
                                     , input [ value item.value, onInput (\newVal -> Treditor.SetActive { item | value = newVal }) ] []
                                     ]
-                                    |> Html.map TreditorMsg
-                                , button [ onClick (DeleteItem item.id) ] [ text "Delete" ]
+                                , button [ onClick Treditor.DeleteActive ] [ text "Delete" ]
                                 ]
+                                |> Html.map TreditorMsg
                         )
                     |> Maybe.withDefault (p [] [ text "Click a node to edit.." ])
                 , if Treditor.isNew model.treditor then
