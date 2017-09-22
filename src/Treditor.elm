@@ -7,6 +7,7 @@ module Treditor
         , view
         , tree
         , isNew
+        , setNew
         , active
         )
 
@@ -93,6 +94,20 @@ active (Model { active, tree }) =
             )
 
 
+setNew : item -> Model item -> Model item
+setNew item (Model model) =
+    Model
+        { model
+            | tree =
+                model.new
+                    |> Maybe.map
+                        (\new ->
+                            Tree.insert new item model.tree
+                        )
+                    |> Maybe.withDefault model.tree
+        }
+
+
 tree : Model item -> Tree.Tree item
 tree (Model { tree }) =
     tree
@@ -155,14 +170,14 @@ type Msg item
 update : Config.Config item -> Msg item -> Model item -> Model item
 update config msg (Model model) =
     case msg of
-        Activate id ->
+        Activate path ->
             Model
                 { model
                     | active =
-                        if model.active == Just id then
+                        if model.active == Just path then
                             Nothing
                         else
-                            Just id
+                            Just path
                     , new = Nothing
                 }
 
@@ -223,7 +238,8 @@ update config msg (Model model) =
                     { model
                         | drag =
                             MultiDrag.init
-                            -- , active = Nothing
+
+                        -- , active = Nothing
                         , tree = newTree
                     }
 
@@ -239,7 +255,7 @@ nodeGeometry : Config.Config item -> List Int -> Tree.Tree item -> Maybe NodeGeo
 nodeGeometry config path tree =
     tree
         |> Tree.analyze
-        |> Tree.layout 3
+        |> Tree.layout
         |> Dict.get path
         |> Maybe.map
             (\{ center, span, children } ->
@@ -360,7 +376,12 @@ view config attrs (Model model) =
                                                     else
                                                         []
                                                    )
-                                        , Utils.onClickStopPropagation (Activate path)
+                                        , Utils.onClickStopPropagation
+                                            (if item == Nothing then
+                                                SetNew (List.take (List.length path - 1) path)
+                                             else
+                                                Activate path
+                                            )
                                         , on "mousedown"
                                             (Decode.map2 (MouseDown path)
                                                 (Decode.field "screenX" Decode.float)

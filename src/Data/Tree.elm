@@ -161,13 +161,34 @@ update path replaceItem tree =
             tree
 
 
+insert : List Int -> a -> Tree a -> Tree a
+insert path replaceItem tree =
+    case ( path, tree ) of
+        ( head :: tail, Node item children ) ->
+            Node item <|
+                List.indexedMap
+                    (\index child ->
+                        if index == head then
+                            insert tail replaceItem child
+                        else
+                            child
+                    )
+                    children
+
+        ( [], Node item children ) ->
+            Node item (children ++ [ Node replaceItem [] ])
+
+        ( _, tree ) ->
+            tree
+
+
 delete : List Int -> Tree a -> Tree a
 delete path tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             children
                 |> List.map (delete tail)
-                |> List.filter (\child -> child /= Empty)
+                |> List.filter ((/=) Empty)
                 |> Node item
 
         ( [], Node _ _ ) ->
@@ -239,9 +260,12 @@ analyzeTail { path, siblings } tree =
 
 {-| Lays out elements.
 -}
-layout : Int -> TreeAnalysis -> TreeLayout
-layout showLevels analysis =
+layout : TreeAnalysis -> TreeLayout
+layout analysis =
     let
+        showLevels =
+            3
+
         layout =
             Dict.empty
 

@@ -77,6 +77,7 @@ popup : List ( String, String )
 popup =
     [ ( "width", "360px" )
     , ( "height", "200px" )
+    , ( "overflow", "auto" )
     , ( "position", "absolute" )
     , ( "bottom", "20px" )
     , ( "box-shadow", "0 0 6px rgba(0, 0, 0, 0.2)" )

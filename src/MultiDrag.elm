@@ -9,17 +9,26 @@ module MultiDrag
 
 {-| This module holds on to the drag state.
 
+
 # Types
+
 @docs Drag
 
+
 # Constructors
+
 @docs init, start
 
+
 # Update utilities
+
 @docs start, move
 
+
 # Accessors
+
 @docs state
+
 -}
 
 

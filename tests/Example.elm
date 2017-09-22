@@ -37,4 +37,15 @@ suite =
                             ]
                         ]
                     )
+        , test "Inserts" <|
+            \_ ->
+                Expect.equal (Tree.insert [] "Banana" tree)
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Pear" []
+                        , Tree.Node "Peach"
+                            [ Tree.Node "Apricot" []
+                            ]
+                        , Tree.Node "Banana" []
+                        ]
+                    )
         ]

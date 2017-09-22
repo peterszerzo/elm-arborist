@@ -1,0 +1,2 @@
+cd example
+elm-reactor

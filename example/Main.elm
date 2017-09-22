@@ -63,8 +63,7 @@ update msg model =
             }
 
         AddNewItem ->
-            -- { model | treditor = Treditor.setNew treditorConfig model.newItem model.treditor }
-            model
+            { model | treditor = Treditor.setNew model.newItem model.treditor }
 
         NoOp ->
             model
