@@ -25,17 +25,65 @@ type Msg
     = TreditorMsg (Treditor.Msg Item.Item)
     | EditNewItemId String
     | EditNewItemValue String
-    | DeleteItem NodeId
     | AddNewItem
     | NoOp
 
 
-treditorConfig : Treditor.Config.Config Item.Item
+nodeContainerStyle : List ( String, String )
+nodeContainerStyle =
+    [ ( "width", "100%" )
+    , ( "height", "40px" )
+    , ( "overflow", "hidden" )
+    , ( "box-sizing", "border-box" )
+    , ( "padding", "5px" )
+    , ( "display", "flex" )
+    , ( "align-items", "center" )
+    , ( "justify-content", "center" )
+    ]
+
+
+textStyle : List ( String, String )
+textStyle =
+    [ ( "margin", "0" )
+    , ( "line-height", "0.9" )
+    , ( "text-align", "center" )
+    ]
+
+
+treditorConfig : Treditor.Config.Config Item.Item msg
 treditorConfig =
-    { view = (\item -> item.value)
+    { view =
+        (\context item ->
+            div
+                [ style <|
+                    nodeContainerStyle
+                        ++ [ ( "background-color"
+                             , if context.isActive then
+                                "#4DC433"
+                               else if context.isDropTarget then
+                                "#F18F01"
+                               else
+                                "#3E849B"
+                             )
+                           , ( "color", "white" )
+                           ]
+                ]
+                [ p [ style <| textStyle ] [ text item.value ] ]
+        )
+    , placeholderView =
+        (\context ->
+            div
+                [ style <|
+                    nodeContainerStyle
+                        ++ [ ( "background-color", "transparent" )
+                           , ( "border", "1px dashed #CECECE" )
+                           ]
+                ]
+                [ p [ style <| textStyle ] [ text "New child" ] ]
+        )
     , layout =
-        { width = 120
-        , height = 24
+        { width = 160
+        , height = 40
         , verticalGap = 60
         , horizontalGap = 20
         }
@@ -52,10 +100,6 @@ update msg model =
             { model
                 | newItem = Item.setId newId model.newItem
             }
-
-        DeleteItem id ->
-            -- { model | treditor = Treditor.delete treditorConfig id model.treditor }
-            model
 
         EditNewItemValue newValue ->
             { model
@@ -74,38 +118,38 @@ view model =
     div []
         [ node "style" [] [ text Styles.raw ]
         , div [ class "intro" ]
-            [ h1 [] [ text "treditor" ]
-            , p [] [ text "Prototype for an interface that manipulates a tree structure. Swap nodes by dragging them on top of each other." ]
+            [ h1 [] [ text "elm-arborist" ]
+            , p [] [ text "a 🌲 editing interface" ]
             ]
-        , div [ style <| Styles.box ]
-            [ Treditor.view treditorConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.treditor |> Html.map TreditorMsg
-            , div [ style <| Styles.popup ++ [ ( "padding", "20px" ) ] ]
-                [ Treditor.active model.treditor
-                    |> Maybe.map
-                        (\item ->
-                            div []
-                                [ label []
-                                    [ text "Edit node"
-                                    , input [ value item.value, onInput (\newVal -> Treditor.SetActive { item | value = newVal }) ] []
+        , div [ style Styles.box ] <|
+            [ Treditor.view treditorConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.treditor |> Html.map TreditorMsg ]
+                ++ (Treditor.active model.treditor
+                        |> Maybe.map
+                            (\item ->
+                                [ div [ style <| Styles.popup ]
+                                    [ label []
+                                        [ text "Edit node"
+                                        , input [ value item.value, onInput (\newVal -> Treditor.SetActive { item | value = newVal }) ] []
+                                        ]
+                                    , button [ onClick Treditor.DeleteActive ] [ text "Delete" ]
                                     ]
-                                , button [ onClick Treditor.DeleteActive ] [ text "Delete" ]
+                                    |> Html.map TreditorMsg
                                 ]
-                                |> Html.map TreditorMsg
-                        )
-                    |> Maybe.withDefault (p [] [ text "Click a node to edit.." ])
-                , if Treditor.isNew model.treditor then
-                    div []
-                        [ h3 [] [ text "New node" ]
-                        , label []
-                            [ text "Unique id", input [ value model.newItem.id, onInput EditNewItemId ] [] ]
-                        , label []
-                            [ text "Value", input [ value model.newItem.value, onInput EditNewItemValue ] [] ]
-                        , button [ type_ "submit", onClick AddNewItem ] [ text "Add node" ]
+                            )
+                        |> Maybe.withDefault []
+                   )
+                ++ (if Treditor.isNew model.treditor then
+                        [ div [ style Styles.popup ]
+                            [ label []
+                                [ text "Unique id", input [ value model.newItem.id, onInput EditNewItemId ] [] ]
+                            , label []
+                                [ text "Value", input [ value model.newItem.value, onInput EditNewItemValue ] [] ]
+                            , button [ type_ "submit", onClick AddNewItem ] [ text "Add node" ]
+                            ]
                         ]
-                  else
-                    (text "Click on an empty leaf to create a new node.")
-                ]
-            ]
+                    else
+                        []
+                   )
         ]
 
 

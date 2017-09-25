@@ -1,4 +1,4 @@
-module Example exposing (..)
+module TreeTests exposing (..)
 
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
@@ -48,4 +48,7 @@ suite =
                         , Tree.Node "Banana" []
                         ]
                     )
+        , test "Calculates depth" <|
+            \_ ->
+                Expect.equal (Tree.depth tree) 3
         ]

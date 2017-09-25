@@ -21,7 +21,6 @@ import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, 
 import Html.Events exposing (onClick)
 import Data.Tree as Tree
 import MultiDrag as MultiDrag
-import Colors exposing (..)
 import Utils
 import Views.Styles as Styles
 import Views.NodeConnectors
@@ -42,11 +41,39 @@ type alias NodePath =
 type alias TreeContext item =
     { tree : Tree.Tree item
     , active : Maybe NodePath
+    , isDragging : Bool
     , focus : Maybe NodePath
     , new : Maybe NodePath
     , dropTarget : Maybe NodePath
     , dragState : Maybe ( NodePath, ( Float, Float ) )
     }
+
+
+type alias TreeCache item =
+    { withPlaceholders : Tree.Tree item
+    , flat : List ( NodePath, Maybe item )
+    , layout : Tree.Layout
+    }
+
+
+cacheTree : Tree.Tree item -> TreeCache item
+cacheTree tree =
+    let
+        withPlaceholders =
+            Tree.addTrailingEmpties tree
+
+        flat =
+            Tree.flatten withPlaceholders
+
+        layout =
+            withPlaceholders
+                |> Tree.analyze
+                |> Tree.layout
+    in
+        { withPlaceholders = withPlaceholders
+        , flat = flat
+        , layout = layout
+        }
 
 
 
@@ -56,8 +83,10 @@ type alias TreeContext item =
 type Model item
     = Model
         { tree : Tree.Tree item
+        , treeCache : TreeCache item
         , new : Maybe NodePath
         , active : Maybe NodePath
+        , isDragging : Bool
         , focus : Maybe NodePath
         , drag : MultiDrag.Drag NodePath
         , displayRoot : Maybe NodePath
@@ -68,12 +97,19 @@ init : Tree.Tree item -> Model item
 init tree =
     Model
         { tree = tree
+        , treeCache = cacheTree tree
         , active = Nothing
         , new = Nothing
+        , isDragging = False
         , focus = Nothing
         , drag = (MultiDrag.init)
         , displayRoot = Nothing
         }
+
+
+setTreeCache : Model item -> Model item
+setTreeCache (Model model) =
+    Model { model | treeCache = cacheTree model.tree }
 
 
 active : Model item -> Maybe item
@@ -106,6 +142,7 @@ setNew item (Model model) =
                         )
                     |> Maybe.withDefault model.tree
         }
+        |> setTreeCache
 
 
 tree : Model item -> Tree.Tree item
@@ -118,12 +155,15 @@ isNew (Model { new }) =
     new /= Nothing
 
 
-getDropTarget : Config.Config item -> NodePath -> ( Float, Float ) -> Tree.Tree item -> Maybe NodePath
-getDropTarget config path ( dragX, dragY ) tree =
+getDropTarget : Config.Config item (Msg item) -> NodePath -> ( Float, Float ) -> TreeCache item -> Maybe NodePath
+getDropTarget config path ( dragX, dragY ) treeCache =
     let
+        { flat, layout } =
+            treeCache
+
         ( x0, y0 ) =
-            nodeGeometry config path tree
-                |> Maybe.map .position
+            nodeGeometry config path layout
+                |> Maybe.map .center
                 |> Maybe.withDefault ( 0, 0 )
 
         ( x, y ) =
@@ -131,18 +171,18 @@ getDropTarget config path ( dragX, dragY ) tree =
             , y0 + dragY
             )
     in
-        tree
-            |> Tree.flatten
+        flat
             |> List.filter
                 (\( path_, _ ) ->
                     let
                         ( xo, yo ) =
-                            nodeGeometry config path_ tree
-                                |> Maybe.map .position
+                            nodeGeometry config path_ layout
+                                |> Maybe.map .center
                                 |> Maybe.withDefault ( 0, 0 )
                     in
                         path /= path_ && (abs (x - xo) < config.layout.width) && (abs (y - yo) < config.layout.height)
                 )
+            |> List.filter (\( dropTargetPath, _ ) -> not (startsWith path dropTargetPath || startsWith dropTargetPath path))
             |> List.head
             |> Maybe.map Tuple.first
 
@@ -152,35 +192,24 @@ getDropTarget config path ( dragX, dragY ) tree =
 
 
 type Msg item
-    = Activate NodePath
-    | Deactivate
+    = Deactivate
     | SetActive item
     | DeleteActive
     | SetNew NodePath
     | SetFocus (Maybe NodePath)
     | MouseMove Float Float
-    | MouseDown NodePath Float Float
+    | MouseDown Bool NodePath Float Float
     | MouseUp Float Float
+    | NoOp
 
 
 
 -- Update
 
 
-update : Config.Config item -> Msg item -> Model item -> Model item
+update : Config.Config item (Msg item) -> Msg item -> Model item -> Model item
 update config msg (Model model) =
     case msg of
-        Activate path ->
-            Model
-                { model
-                    | active =
-                        if model.active == Just path then
-                            Nothing
-                        else
-                            Just path
-                    , new = Nothing
-                }
-
         SetActive newItem ->
             Model
                 { model
@@ -189,6 +218,7 @@ update config msg (Model model) =
                             |> Maybe.map (\active -> Tree.update active newItem model.tree)
                             |> Maybe.withDefault model.tree
                 }
+                |> setTreeCache
 
         DeleteActive ->
             Model
@@ -198,22 +228,36 @@ update config msg (Model model) =
                             |> Maybe.map (\active -> Tree.delete active model.tree)
                             |> Maybe.withDefault model.tree
                 }
+                |> setTreeCache
 
         SetFocus focus ->
             Model model
 
         SetNew nodePath ->
             Model
-                { model | new = Just nodePath }
+                { model
+                    | new = Just nodePath
+                    , active = Nothing
+                }
 
         Deactivate ->
             Model { model | active = Nothing, new = Nothing }
 
-        MouseDown path x y ->
+        MouseDown isPlaceholder path x y ->
             Model
                 { model
                     | drag =
                         MultiDrag.start path x y
+                    , new =
+                        if isPlaceholder then
+                            Just (List.take (List.length path - 1) path)
+                        else
+                            Nothing
+                    , active =
+                        if isPlaceholder then
+                            Nothing
+                        else
+                            Just path
                 }
 
         MouseMove xm ym ->
@@ -221,6 +265,11 @@ update config msg (Model model) =
                 { model
                     | drag =
                         MultiDrag.move xm ym model.drag
+                    , isDragging =
+                        if MultiDrag.state model.drag /= Nothing then
+                            True
+                        else
+                            False
                 }
 
         MouseUp x y ->
@@ -229,7 +278,7 @@ update config msg (Model model) =
                     MultiDrag.state model.drag
                         |> Maybe.andThen
                             (\( path, dragOffset ) ->
-                                getDropTarget config path dragOffset model.tree
+                                getDropTarget config path dragOffset model.treeCache
                                     |> Maybe.map (\dropTargetPath -> Tree.swap path dropTargetPath model.tree)
                             )
                         |> Maybe.withDefault model.tree
@@ -238,34 +287,43 @@ update config msg (Model model) =
                     { model
                         | drag =
                             MultiDrag.init
-
-                        -- , active = Nothing
                         , tree = newTree
+                        , isDragging = False
                     }
+                    |> setTreeCache
+
+        NoOp ->
+            Model model
 
 
 type alias NodeGeometry =
-    { position : ( Float, Float )
-    , childSpan : Float
-    , children : Int
+    { center : ( Float, Float )
+    , childCenters : List ( Float, Float )
     }
 
 
-nodeGeometry : Config.Config item -> List Int -> Tree.Tree item -> Maybe NodeGeometry
-nodeGeometry config path tree =
-    tree
-        |> Tree.analyze
-        |> Tree.layout
+nodeGeometry : Config.Config item (Msg item) -> List Int -> Tree.Layout -> Maybe NodeGeometry
+nodeGeometry config path layout =
+    layout
         |> Dict.get path
         |> Maybe.map
-            (\{ center, span, children } ->
+            (\{ center, childCenters } ->
                 let
                     ( centerX, centerY ) =
                         center
                 in
-                    { position = ( centerX * (config.layout.width + config.layout.horizontalGap) + config.layout.width / 2 - config.layout.horizontalGap / 2, centerY * (config.layout.height + config.layout.verticalGap) )
-                    , childSpan = span * (config.layout.width + config.layout.horizontalGap)
-                    , children = children
+                    { center =
+                        ( centerX * (config.layout.width + config.layout.horizontalGap)
+                        , centerY * (config.layout.height + config.layout.verticalGap)
+                        )
+                    , childCenters =
+                        List.map
+                            (\center ->
+                                ( center * (config.layout.width + config.layout.horizontalGap)
+                                , (centerY + 1) * (config.layout.height + config.layout.verticalGap)
+                                )
+                            )
+                            childCenters
                     }
             )
 
@@ -275,14 +333,17 @@ startsWith start list =
     List.take (List.length start) list == start
 
 
-view : Config.Config item -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
+view : Config.Config item (Msg item) -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
 view config attrs (Model model) =
     let
         tree =
-            Tree.addTrailingEmpties model.tree
+            model.treeCache.withPlaceholders
 
         flatTree =
-            Tree.flatten tree
+            model.treeCache.flat
+
+        layout =
+            model.treeCache.layout
 
         nodeBaseStyle =
             Styles.nodeBase config.layout.width config.layout.height
@@ -304,32 +365,35 @@ view config attrs (Model model) =
         <|
             (List.map
                 (\( path, item ) ->
-                    nodeGeometry config path tree
+                    nodeGeometry config path layout
                         |> Maybe.map
-                            (\{ position, childSpan, children } ->
+                            (\{ center, childCenters } ->
                                 let
                                     ( x, y ) =
-                                        position
+                                        center
 
                                     dragState =
                                         MultiDrag.state model.drag
 
                                     ( isDragged, ( xDrag, yDrag ), draggedPath ) =
-                                        dragState
-                                            |> Maybe.map
-                                                (\( draggedPath, offset ) ->
-                                                    if startsWith draggedPath path then
-                                                        ( True, offset, Just draggedPath )
-                                                    else
-                                                        ( False, ( 0, 0 ), Just draggedPath )
-                                                )
-                                            |> Maybe.withDefault ( False, ( 0, 0 ), Nothing )
+                                        if model.isDragging then
+                                            dragState
+                                                |> Maybe.map
+                                                    (\( draggedPath, offset ) ->
+                                                        if startsWith draggedPath path then
+                                                            ( True, offset, Just draggedPath )
+                                                        else
+                                                            ( False, ( 0, 0 ), Just draggedPath )
+                                                    )
+                                                |> Maybe.withDefault ( False, ( 0, 0 ), Nothing )
+                                        else
+                                            ( False, ( 0, 0 ), Nothing )
 
                                     isDropTarget =
                                         dragState
                                             |> Maybe.map
                                                 (\( draggedPath, offset ) ->
-                                                    getDropTarget config draggedPath offset tree
+                                                    getDropTarget config draggedPath offset model.treeCache
                                                         |> Maybe.map (\dropTargetPath -> startsWith dropTargetPath path)
                                                         |> Maybe.withDefault False
                                                 )
@@ -343,68 +407,52 @@ view config attrs (Model model) =
 
                                     yWithDrag =
                                         y + yDrag
+
+                                    itemViewContext =
+                                        { parent = Nothing
+                                        , siblings = []
+                                        , position = ( x, y )
+                                        , isActive = isActive
+                                        , isDropTarget = isDropTarget
+                                        }
                                 in
-                                    [ p
+                                    [ div
                                         [ style <|
                                             nodeBaseStyle
-                                                ++ (if item == Nothing then
-                                                        Styles.placeholderNode
-                                                    else
-                                                        Styles.regularNode
-                                                   )
                                                 ++ (coordStyle xWithDrag yWithDrag)
-                                                ++ [ ( "background-color"
-                                                     , if isDropTarget then
-                                                        red
-                                                       else if (isActive && item /= Nothing) then
-                                                        blue
-                                                       else if item == Nothing then
-                                                        "transparent"
-                                                       else
-                                                        gray
-                                                     )
-                                                   ]
-                                                ++ [ ( "transition"
-                                                     , if isDropTarget then
-                                                        "background 0.3s"
-                                                       else
-                                                        "none"
-                                                     )
-                                                   ]
                                                 ++ (if isDragged then
                                                         [ ( "z-index", "100" ) ]
                                                     else
                                                         []
                                                    )
-                                        , Utils.onClickStopPropagation
-                                            (if item == Nothing then
-                                                SetNew (List.take (List.length path - 1) path)
-                                             else
-                                                Activate path
-                                            )
-                                        , on "mousedown"
-                                            (Decode.map2 (MouseDown path)
+                                        , Utils.onClickStopPropagation NoOp
+                                        , onWithOptions "mousedown"
+                                            { stopPropagation = True
+                                            , preventDefault = False
+                                            }
+                                            (Decode.map2 (MouseDown (item == Nothing) path)
                                                 (Decode.field "screenX" Decode.float)
                                                 (Decode.field "screenY" Decode.float)
                                             )
-                                        , on "mouseup"
+                                        , onWithOptions "mouseup"
+                                            { stopPropagation = True
+                                            , preventDefault = False
+                                            }
                                             (Decode.map2 MouseUp
                                                 (Decode.field "screenX" Decode.float)
                                                 (Decode.field "screenY" Decode.float)
                                             )
                                         ]
-                                        [ text
-                                            (item
-                                                |> Maybe.map config.view
-                                                |> Maybe.withDefault "empty"
-                                            )
+                                        [ item
+                                            |> Maybe.map (config.view itemViewContext)
+                                            |> Maybe.withDefault (config.placeholderView itemViewContext)
                                         ]
                                     ]
                                         ++ (if isDragged then
                                                 [ p
                                                     [ style <|
                                                         nodeBaseStyle
-                                                            ++ Styles.placeholderNode
+                                                            ++ Styles.dragShadowNode
                                                             ++ (coordStyle x y)
                                                     ]
                                                     []
@@ -412,29 +460,7 @@ view config attrs (Model model) =
                                             else
                                                 []
                                            )
-                                        ++ [ button
-                                                [ style <|
-                                                    [ ( "position", "absolute" )
-                                                    , ( "font-size", "8px" )
-                                                    , ( "transform", "translate3d(-50%, -100%, 0)" )
-                                                    , ( "z-index", "100" )
-                                                    ]
-                                                        ++ coordStyle (xWithDrag + config.layout.width / 2) (yWithDrag - 5)
-                                                ]
-                                                [ text "🔎"
-                                                ]
-                                           , svg
-                                                [ width (toString (childSpan * 2))
-                                                , height (toString config.layout.verticalGap)
-                                                , viewBox <| "0 0 " ++ (toString (childSpan * 2)) ++ " " ++ (toString config.layout.verticalGap)
-                                                , style <|
-                                                    [ ( "position", "absolute" ) ]
-                                                        ++ (coordStyle (xWithDrag - childSpan / 2 + config.layout.width / 2) (yWithDrag + config.layout.height))
-                                                ]
-                                                (Views.NodeConnectors.view children
-                                                    childSpan
-                                                    (config.layout.verticalGap)
-                                                )
+                                        ++ [ Views.NodeConnectors.view config.layout ( xDrag, yDrag ) center childCenters
                                            ]
                             )
                         |> Maybe.withDefault []

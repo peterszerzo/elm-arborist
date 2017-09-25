@@ -27,16 +27,23 @@ decoder nodeDecoder =
 -- Calculation types
 
 
-type alias Analysis =
-    { siblings : Int, children : List (List Int) }
+type alias Layout =
+    Dict.Dict (List Int)
+        { center : ( Float, Float )
+        , childCenters : List Float
+        , children : Int
+        }
 
 
-type alias TreeLayout =
-    Dict.Dict (List Int) { center : ( Float, Float ), span : Float, children : Int }
+type alias NodeInfo =
+    Dict.Dict (List Int) { siblings : Int, children : List (List Int) }
 
 
 type alias TreeAnalysis =
-    Dict.Dict (List Int) Analysis
+    { depth : Int
+    , shortNodes : List (List Int)
+    , nodeInfo : NodeInfo
+    }
 
 
 
@@ -55,6 +62,23 @@ empty =
 singleton : a -> Tree a
 singleton item =
     Node item []
+
+
+{-| Find tree depth.
+-}
+depth : Tree a -> Int
+depth tree =
+    depthTail 1 tree
+
+
+depthTail : Int -> Tree a -> Int
+depthTail currentDepth tree =
+    case tree of
+        Empty ->
+            currentDepth
+
+        Node item children ->
+            [ currentDepth ] ++ (List.map (depthTail (currentDepth + 1)) children) |> List.foldl max -1
 
 
 {-| Map over the items of the tree.
@@ -198,10 +222,6 @@ delete path tree =
             tree
 
 
-
--- (head :: tail, Empty) ->
-
-
 {-| Flatten
 -}
 flatten : Tree a -> List ( List Int, Maybe a )
@@ -226,59 +246,114 @@ flattenTail path tree =
                    )
 
 
-{-| Returns a dictionary ordered by item identifiers.
+{-| Analyze tree.
 -}
 analyze : Tree a -> TreeAnalysis
-analyze =
-    analyzeTail { path = [], siblings = 0 }
+analyze tree =
+    analyzeTail { depth = depth tree, current = { path = [], siblings = 0 } } tree
 
 
-analyzeTail : { path : List Int, siblings : Int } -> Tree a -> TreeAnalysis
-analyzeTail { path, siblings } tree =
+analyzeTail : { depth : Int, current : { path : List Int, siblings : Int } } -> Tree a -> TreeAnalysis
+analyzeTail { depth, current } tree =
     case tree of
         Empty ->
-            Dict.singleton path { siblings = siblings, children = [] }
+            { depth = depth
+            , nodeInfo = Dict.singleton current.path { siblings = current.siblings, children = [] }
+            , shortNodes =
+                if List.length current.path < depth - 1 then
+                    [ current.path ]
+                else
+                    []
+            }
 
         Node item children ->
-            [ Dict.singleton path
-                { siblings = siblings
-                , children = List.indexedMap (\index _ -> path ++ [ index ]) children
-                }
-            ]
-                ++ (List.indexedMap
+            let
+                childrenAnalysis =
+                    List.indexedMap
                         (\index child ->
                             analyzeTail
-                                { path = path ++ [ index ]
-                                , siblings = List.length children - 1
+                                { depth = depth
+                                , current =
+                                    { path = current.path ++ [ index ]
+                                    , siblings = List.length children - 1
+                                    }
                                 }
                                 child
                         )
                         children
-                   )
-                |> List.foldl Dict.union Dict.empty
+            in
+                { depth = depth
+                , nodeInfo =
+                    [ Dict.singleton current.path
+                        { siblings = current.siblings
+                        , children = List.indexedMap (\index _ -> current.path ++ [ index ]) children
+                        }
+                    ]
+                        ++ (List.map .nodeInfo childrenAnalysis)
+                        |> List.foldl Dict.union Dict.empty
+                , shortNodes = childrenAnalysis |> List.map .shortNodes |> List.foldl (++) []
+                }
 
 
 {-| Lays out elements.
 -}
-layout : TreeAnalysis -> TreeLayout
+layout : TreeAnalysis -> Layout
 layout analysis =
     let
         showLevels =
-            3
+            analysis.depth
 
-        layout =
-            Dict.empty
+        shortNodeFillerNodeInfo =
+            List.map
+                (\path ->
+                    let
+                        depthDiff =
+                            (analysis.depth - (List.length path) - 1)
 
-        displayedItems =
-            analysis
-                |> Dict.filter (\path _ -> List.length path < showLevels + 1)
+                        extraNodes =
+                            List.range 0 (depthDiff - 1)
+                                |> List.map
+                                    (\n ->
+                                        let
+                                            childPath =
+                                                path ++ (List.range 0 n |> List.map (always 0))
+                                        in
+                                            { path = childPath
+                                            , siblings = 0
+                                            , children =
+                                                if (n == depthDiff - 1) then
+                                                    []
+                                                else
+                                                    [ childPath ++ [ 0 ] ]
+                                            }
+                                    )
+                    in
+                        extraNodes
+                )
+                analysis.shortNodes
+                |> List.foldl (++) []
+                |> List.map (\{ path, siblings, children } -> ( path, { siblings = siblings, children = children } ))
+                |> Dict.fromList
+
+        placeholderAdjustedAnalysisNodeInfo =
+            analysis.nodeInfo
+                |> Dict.map
+                    (\path info ->
+                        if (List.member path analysis.shortNodes) then
+                            { info | children = [ path ++ [ 0 ] ] }
+                        else
+                            info
+                    )
+
+        nodeInfo =
+            Dict.union placeholderAdjustedAnalysisNodeInfo shortNodeFillerNodeInfo
 
         lowestLevelItems =
-            displayedItems
+            nodeInfo
                 |> Dict.filter (\path _ -> List.length path == showLevels - 1)
                 |> Dict.toList
 
-        lowestLevelPass =
+        layout =
             lowestLevelItems
                 |> List.sortWith
                     (\( path1, _ ) ( path2, _ ) ->
@@ -289,67 +364,63 @@ layout analysis =
                         ( id
                         , { center =
                                 ( toFloat index - (toFloat (List.length lowestLevelItems - 1)) / 2
-                                , 2
+                                , (toFloat showLevels) - 1
                                 )
-                          , span = 0
+                          , childCenters = []
                           , children = 0
                           }
                         )
                     )
                 |> Dict.fromList
-
-        secondLevelPass =
-            layoutLevelPass lowestLevelPass 1 displayedItems
-
-        thirdLevelPass =
-            layoutLevelPass secondLevelPass 0 displayedItems
+                |> layoutLevelPass (showLevels - 2) nodeInfo
     in
-        [ lowestLevelPass, secondLevelPass, thirdLevelPass ]
-            |> List.foldl Dict.union Dict.empty
+        layout
 
 
-layoutLevelPass : TreeLayout -> Int -> TreeAnalysis -> TreeLayout
-layoutLevelPass previousPass level nodeAnalysisRes =
-    nodeAnalysisRes
-        |> Dict.filter (\path _ -> List.length path == level)
-        |> Dict.toList
-        |> List.map
-            (\( path, { children } ) ->
-                ( path
-                , List.map
-                    (\child ->
-                        Dict.get child previousPass
-                            |> Maybe.withDefault
-                                { center = ( 0, 0 )
-                                , span = 0
-                                , children = List.length children
-                                }
+layoutLevelPass : Int -> NodeInfo -> Layout -> Layout
+layoutLevelPass level nodeInfo layout =
+    case level of
+        (-1) ->
+            layout
+
+        level ->
+            nodeInfo
+                |> Dict.filter (\path _ -> List.length path == level)
+                |> Dict.toList
+                |> List.map
+                    (\( path, { children } ) ->
+                        ( path
+                        , List.map
+                            (\child ->
+                                Dict.get child layout
+                                    |> Maybe.withDefault
+                                        { center = ( 0, 0 )
+                                        , childCenters = []
+                                        , children = List.length children
+                                        }
+                            )
+                            children
+                            |> (\list ->
+                                    let
+                                        centers =
+                                            List.map (.center >> Tuple.first) list
+
+                                        centerX =
+                                            if (List.length centers == 0) then
+                                                0
+                                            else
+                                                (List.foldl (+) 0 centers)
+                                                    / (List.length centers |> toFloat)
+                                    in
+                                        { center =
+                                            ( centerX
+                                            , toFloat level
+                                            )
+                                        , childCenters = centers
+                                        , children = List.length children
+                                        }
+                               )
+                        )
                     )
-                    children
-                    |> (\list ->
-                            let
-                                centers =
-                                    List.map (.center >> Tuple.first) list
-
-                                centerX =
-                                    if (List.length centers == 0) then
-                                        0
-                                    else
-                                        (List.foldl (+) 0 centers)
-                                            / (List.length centers |> toFloat)
-                            in
-                                { center =
-                                    ( centerX
-                                    , toFloat level
-                                    )
-                                , span =
-                                    Maybe.map2 (\max min -> max - min)
-                                        (List.maximum centers)
-                                        (List.minimum centers)
-                                        |> Maybe.withDefault 0
-                                , children = List.length children
-                                }
-                       )
-                )
-            )
-        |> Dict.fromList
+                |> Dict.fromList
+                |> (\pass -> layoutLevelPass (level - 1) nodeInfo (Dict.union layout pass))

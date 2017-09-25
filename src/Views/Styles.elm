@@ -13,29 +13,15 @@ nodeBase width height =
     [ ( "width", (toString width) ++ "px" )
     , ( "height", "auto" )
     , ( "min-height", (toString height) ++ "px" )
-    , ( "text-align", "center" )
     , ( "position", "absolute" )
-    , ( "padding", "3px 0" )
     , ( "user-select", "none" )
-    , ( "border-radius", "4px" )
+    , ( "overflow", "hidden" )
     , ( "cursor", "pointer" )
     , ( "margin", "0" )
     ]
 
 
-regularNode : List ( String, String )
-regularNode =
-    [ ( "background", "rgba(0, 0, 0, 0.8)" )
-    , ( "color", "white" )
+dragShadowNode : List ( String, String )
+dragShadowNode =
+    [ ( "background-color", "rgba(0, 0, 0, 0.05)" )
     ]
-
-
-placeholderNode : List ( String, String )
-placeholderNode =
-    [ ( "border", "2px dashed #DDDDDD" )
-    ]
-
-
-highlightedPlaceholderNode : List ( String, String )
-highlightedPlaceholderNode =
-    [ ( "border", "2px dashed #333333" ) ]
