@@ -23,8 +23,8 @@ type alias Model =
 
 type Msg
     = TreditorMsg (Treditor.Msg Item.Item)
-    | EditNewItemId String
-    | EditNewItemValue String
+    | EditNewItemQuestion String
+    | EditNewItemAnswer String
     | AddNewItem
     | NoOp
 
@@ -32,8 +32,9 @@ type Msg
 nodeContainerStyle : List ( String, String )
 nodeContainerStyle =
     [ ( "width", "100%" )
-    , ( "height", "40px" )
-    , ( "overflow", "hidden" )
+    , ( "height", "60px" )
+    , ( "border-radius", "4px" )
+    , ( "padding", "4px 20px" )
     , ( "box-sizing", "border-box" )
     , ( "padding", "5px" )
     , ( "display", "flex" )
@@ -47,6 +48,24 @@ textStyle =
     [ ( "margin", "0" )
     , ( "line-height", "0.9" )
     , ( "text-align", "center" )
+    ]
+
+
+bubbleStyle : List ( String, String )
+bubbleStyle =
+    [ ( "position", "absolute" )
+    , ( "box-sizing", "border-box" )
+    , ( "border-radius", "50%" )
+    , ( "border", "1px solid #3E849B" )
+    , ( "width", "40px" )
+    , ( "height", "40px" )
+    , ( "padding-top", "10px" )
+    , ( "color", "black" )
+    , ( "text-align", "center" )
+    , ( "background", "#FFFFFF" )
+    , ( "top", "-63px" )
+    , ( "left", "calc(50% - 20px + 2px)" )
+    , ( "z-index", "200" )
     ]
 
 
@@ -68,7 +87,21 @@ treditorConfig =
                            , ( "color", "white" )
                            ]
                 ]
-                [ p [ style <| textStyle ] [ text item.value ] ]
+                [ div [] <|
+                    (if item.answer /= "" then
+                        [ p
+                            [ style <|
+                                bubbleStyle
+                                    ++ []
+                            ]
+                            [ text item.answer ]
+                        ]
+                     else
+                        []
+                    )
+                        ++ [ p [ style <| textStyle ] [ text item.question ]
+                           ]
+                ]
         )
     , placeholderView =
         (\context ->
@@ -82,9 +115,9 @@ treditorConfig =
                 [ p [ style <| textStyle ] [ text "New child" ] ]
         )
     , layout =
-        { width = 160
-        , height = 40
-        , verticalGap = 60
+        { width = 200
+        , height = 72
+        , verticalGap = 120
         , horizontalGap = 20
         }
     }
@@ -96,14 +129,14 @@ update msg model =
         TreditorMsg treditorMsg ->
             { model | treditor = Treditor.update treditorConfig treditorMsg model.treditor }
 
-        EditNewItemId newId ->
+        EditNewItemQuestion val ->
             { model
-                | newItem = Item.setId newId model.newItem
+                | newItem = Item.setQuestion val model.newItem
             }
 
-        EditNewItemValue newValue ->
+        EditNewItemAnswer val ->
             { model
-                | newItem = Item.setValue newValue model.newItem
+                | newItem = Item.setAnswer val model.newItem
             }
 
         AddNewItem ->
@@ -128,8 +161,12 @@ view model =
                             (\item ->
                                 [ div [ style <| Styles.popup ]
                                     [ label []
-                                        [ text "Edit node"
-                                        , input [ value item.value, onInput (\newVal -> Treditor.SetActive { item | value = newVal }) ] []
+                                        [ text "Question"
+                                        , input [ value item.question, onInput (\val -> Treditor.SetActive { item | question = val }) ] []
+                                        ]
+                                    , label []
+                                        [ text "Answer"
+                                        , input [ value item.answer, onInput (\val -> Treditor.SetActive { item | answer = val }) ] []
                                         ]
                                     , button [ onClick Treditor.DeleteActive ] [ text "Delete" ]
                                     ]
@@ -141,9 +178,9 @@ view model =
                 ++ (if Treditor.isNew model.treditor then
                         [ div [ style Styles.popup ]
                             [ label []
-                                [ text "Unique id", input [ value model.newItem.id, onInput EditNewItemId ] [] ]
+                                [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
                             , label []
-                                [ text "Value", input [ value model.newItem.value, onInput EditNewItemValue ] [] ]
+                                [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
                             , button [ type_ "submit", onClick AddNewItem ] [ text "Add node" ]
                             ]
                         ]
@@ -158,27 +195,20 @@ example =
     """
   {
     "value": {
-      "id": "app",
-      "value": "Apples"
+      "question": "Do you like trees?",
+      "answer": ""
     },
     "children": [
       {
         "value": {
-          "id": "p",
-          "value": "Pears"
+          "question": "How much?",
+          "answer": "Yes"
         },
         "children": [
           {
             "value": {
-              "id": "oj",
-              "value": "Oranges"
-            },
-            "children": []
-          },
-          {
-            "value": {
-              "id": "oj2",
-              "value": "Oranges"
+              "question": "Where were you all my life?",
+              "answer": "A lot!!"
             },
             "children": []
           }
@@ -186,28 +216,14 @@ example =
       },
       {
         "value": {
-          "id": "pch",
-          "value": "Peaches"
+          "question": "Seriously?",
+          "answer": "No."
         },
         "children": [
           {
             "value": {
-              "id": "pch2",
-              "value": "Peaches2"
-            },
-            "children": []
-          },
-          {
-            "value": {
-              "id": "pch3",
-              "value": "Peaches3"
-            },
-            "children": []
-          },
-          {
-            "value": {
-              "id": "pch4",
-              "value": "Peaches4"
+              "question": "How about rollercoasters?",
+              "answer": "Yes."
             },
             "children": []
           }

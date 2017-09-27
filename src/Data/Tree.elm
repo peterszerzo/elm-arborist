@@ -105,6 +105,16 @@ addTrailingEmpties tree =
             Node item <| (List.map addTrailingEmpties children) ++ [ Empty ]
 
 
+removeEmpties : Tree a -> Tree a
+removeEmpties tree =
+    case tree of
+        Empty ->
+            Empty
+
+        Node item children ->
+            Node item <| (List.filter (\tree -> tree /= Empty) children |> List.map removeEmpties)
+
+
 {-| Find item by path
 -}
 find : List Int -> Tree a -> Maybe (Tree a)
@@ -157,7 +167,7 @@ updateSubtree path subtree tree =
                     )
                     children
 
-        ( [], Node item children ) ->
+        ( [], _ ) ->
             subtree
 
         ( _, tree ) ->
@@ -169,7 +179,7 @@ update path replaceItem tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             Node item <|
-                List.indexedMap
+                (List.indexedMap
                     (\index child ->
                         if index == head then
                             update tail replaceItem child
@@ -177,6 +187,7 @@ update path replaceItem tree =
                             child
                     )
                     children
+                )
 
         ( [], Node item children ) ->
             Node replaceItem children
@@ -185,22 +196,28 @@ update path replaceItem tree =
             tree
 
 
-insert : List Int -> a -> Tree a -> Tree a
-insert path replaceItem tree =
+insert : List Int -> Maybe a -> Tree a -> Tree a
+insert path insertItem tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             Node item <|
                 List.indexedMap
                     (\index child ->
                         if index == head then
-                            insert tail replaceItem child
+                            insert tail insertItem child
                         else
                             child
                     )
                     children
 
         ( [], Node item children ) ->
-            Node item (children ++ [ Node replaceItem [] ])
+            Node item
+                (children
+                    ++ [ insertItem
+                            |> Maybe.map (\i -> Node i [])
+                            |> Maybe.withDefault Empty
+                       ]
+                )
 
         ( _, tree ) ->
             tree
@@ -211,7 +228,13 @@ delete path tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             children
-                |> List.map (delete tail)
+                |> List.indexedMap
+                    (\index child ->
+                        if index == head then
+                            (delete tail child)
+                        else
+                            child
+                    )
                 |> List.filter ((/=) Empty)
                 |> Node item
 

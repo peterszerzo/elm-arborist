@@ -4,30 +4,28 @@ import Json.Decode as Decode
 
 
 type alias Item =
-    { id : String
-    , value : String
+    { question : String
+    , answer : String
     }
 
 
 init : Item
 init =
-    { id = "1234"
-    , value = ""
-    }
+    { question = "", answer = "" }
 
 
-setId : String -> Item -> Item
-setId newId item =
-    { item | id = newId }
+setQuestion : String -> Item -> Item
+setQuestion val item =
+    { item | question = val }
 
 
-setValue : String -> Item -> Item
-setValue newValue item =
-    { item | value = newValue }
+setAnswer : String -> Item -> Item
+setAnswer val item =
+    { item | answer = val }
 
 
 decoder : Decode.Decoder Item
 decoder =
     Decode.map2 Item
-        (Decode.field "id" Decode.string)
-        (Decode.field "value" Decode.string)
+        (Decode.field "question" Decode.string)
+        (Decode.field "answer" Decode.string)

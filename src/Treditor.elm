@@ -38,17 +38,6 @@ type alias NodePath =
     List Int
 
 
-type alias TreeContext item =
-    { tree : Tree.Tree item
-    , active : Maybe NodePath
-    , isDragging : Bool
-    , focus : Maybe NodePath
-    , new : Maybe NodePath
-    , dropTarget : Maybe NodePath
-    , dragState : Maybe ( NodePath, ( Float, Float ) )
-    }
-
-
 type alias TreeCache item =
     { withPlaceholders : Tree.Tree item
     , flat : List ( NodePath, Maybe item )
@@ -138,7 +127,7 @@ setNew item (Model model) =
                 model.new
                     |> Maybe.map
                         (\new ->
-                            Tree.insert new item model.tree
+                            Tree.insert new (Just item) model.tree
                         )
                     |> Maybe.withDefault model.tree
         }
@@ -247,17 +236,15 @@ update config msg (Model model) =
             Model
                 { model
                     | drag =
-                        MultiDrag.start path x y
+                        if isPlaceholder then
+                            model.drag
+                        else
+                            MultiDrag.start path x y
                     , new =
                         if isPlaceholder then
                             Just (List.take (List.length path - 1) path)
                         else
                             Nothing
-                    , active =
-                        if isPlaceholder then
-                            Nothing
-                        else
-                            Just path
                 }
 
         MouseMove xm ym ->
@@ -274,12 +261,44 @@ update config msg (Model model) =
 
         MouseUp x y ->
             let
+                active =
+                    MultiDrag.state model.drag
+                        |> Maybe.andThen
+                            (\( path, ( offsetX, offsetY ) ) ->
+                                if (abs offsetX + abs offsetY > 20) then
+                                    Nothing
+                                else
+                                    Just path
+                            )
+
                 newTree =
                     MultiDrag.state model.drag
                         |> Maybe.andThen
                             (\( path, dragOffset ) ->
                                 getDropTarget config path dragOffset model.treeCache
-                                    |> Maybe.map (\dropTargetPath -> Tree.swap path dropTargetPath model.tree)
+                                    |> Maybe.map
+                                        (\dropTargetPath ->
+                                            model.treeCache.flat
+                                                |> List.filter (\( path, item ) -> path == dropTargetPath)
+                                                |> List.head
+                                                |> Maybe.andThen
+                                                    (\( path, item ) ->
+                                                        case item of
+                                                            Just item ->
+                                                                Just ( path, item )
+
+                                                            Nothing ->
+                                                                Nothing
+                                                    )
+                                                |> Maybe.map (\_ -> Tree.swap path dropTargetPath model.tree)
+                                                |> Maybe.withDefault
+                                                    -- If the drop target is a placeholder, first add an Empty node in the original tree
+                                                    -- so the swap method actually finds a node.
+                                                    (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing model.tree
+                                                        |> Tree.swap path dropTargetPath
+                                                        |> Tree.removeEmpties
+                                                    )
+                                        )
                             )
                         |> Maybe.withDefault model.tree
             in
@@ -288,6 +307,7 @@ update config msg (Model model) =
                         | drag =
                             MultiDrag.init
                         , tree = newTree
+                        , active = active
                         , isDragging = False
                     }
                     |> setTreeCache
@@ -350,6 +370,16 @@ view config attrs (Model model) =
 
         coordStyle =
             Styles.coordinate config.layout.width
+
+        dragState =
+            MultiDrag.state model.drag
+
+        _ =
+            dragState
+                |> Maybe.andThen
+                    (\( path, offset ) ->
+                        getDropTarget config path offset model.treeCache
+                    )
     in
         div
             ([ on "mousemove"
@@ -357,7 +387,6 @@ view config attrs (Model model) =
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
-             , style [ ( "text-align", "center" ) ]
              , onClick Deactivate
              ]
                 ++ attrs
@@ -371,9 +400,6 @@ view config attrs (Model model) =
                                 let
                                     ( x, y ) =
                                         center
-
-                                    dragState =
-                                        MultiDrag.state model.drag
 
                                     ( isDragged, ( xDrag, yDrag ), draggedPath ) =
                                         if model.isDragging then
@@ -449,7 +475,7 @@ view config attrs (Model model) =
                                         ]
                                     ]
                                         ++ (if isDragged then
-                                                [ p
+                                                [ div
                                                     [ style <|
                                                         nodeBaseStyle
                                                             ++ Styles.dragShadowNode

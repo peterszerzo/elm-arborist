@@ -77,7 +77,7 @@ view layout ( dragX, dragY ) center childCenters =
             List.map (\( x, y ) -> ( x - minX, y - minY )) childCenters
     in
         svg
-            [ width (toString w)
+            [ width (toString (w + 4))
             , height (toString h)
             , viewBox <|
                 (if List.length childCenters == 0 then

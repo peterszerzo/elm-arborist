@@ -21,9 +21,20 @@ suite =
     describe "Tree"
         [ test "Deletes" <|
             \_ ->
-                Expect.equal (Tree.delete [ 1, 0 ] tree)
+                Expect.equal
+                    (Tree.delete [ 1, 0 ]
+                        (Tree.Node "Apple"
+                            [ Tree.Node "Pear"
+                                [ Tree.Node "Pear2" []
+                                ]
+                            , Tree.Node "Peach"
+                                [ Tree.Node "Apricot" []
+                                ]
+                            ]
+                        )
+                    )
                     (Tree.Node "Apple"
-                        [ Tree.Node "Pear" []
+                        [ Tree.Node "Pear" [ Tree.Node "Pear2" [] ]
                         , Tree.Node "Peach" []
                         ]
                     )

@@ -15,7 +15,6 @@ nodeBase width height =
     , ( "min-height", (toString height) ++ "px" )
     , ( "position", "absolute" )
     , ( "user-select", "none" )
-    , ( "overflow", "hidden" )
     , ( "cursor", "pointer" )
     , ( "margin", "0" )
     ]
