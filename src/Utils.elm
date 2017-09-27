@@ -10,6 +10,11 @@ addFloatTuples ( x1, y1 ) ( x2, y2 ) =
     ( x1 + x2, y1 + y2 )
 
 
+startsWith : List a -> List a -> Bool
+startsWith start list =
+    List.take (List.length start) list == start
+
+
 onClickStopPropagation : msg -> Attribute msg
 onClickStopPropagation message =
     let
