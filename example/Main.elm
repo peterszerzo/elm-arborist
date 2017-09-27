@@ -6,8 +6,8 @@ import Html.Attributes exposing (class, style, value, type_)
 import Html.Events exposing (onInput, onClick)
 import Data.Tree as Tree
 import Item
-import Treditor
-import Treditor.Config
+import Arborist
+import Arborist.Config
 import Styles
 
 
@@ -16,13 +16,13 @@ type alias NodeId =
 
 
 type alias Model =
-    { treditor : Treditor.Model Item.Item
+    { arborist : Arborist.Model Item.Item
     , newItem : Item.Item
     }
 
 
 type Msg
-    = TreditorMsg (Treditor.Msg Item.Item)
+    = ArboristMsg (Arborist.Msg Item.Item)
     | EditNewItemQuestion String
     | EditNewItemAnswer String
     | AddNewItem
@@ -69,8 +69,8 @@ bubbleStyle =
     ]
 
 
-treditorConfig : Treditor.Config.Config Item.Item msg
-treditorConfig =
+arboristConfig : Arborist.Config.Config Item.Item msg
+arboristConfig =
     { view =
         (\context item ->
             div
@@ -116,7 +116,7 @@ treditorConfig =
         )
     , layout =
         { width = 200
-        , height = 72
+        , height = 60
         , verticalGap = 120
         , horizontalGap = 20
         }
@@ -126,8 +126,8 @@ treditorConfig =
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        TreditorMsg treditorMsg ->
-            { model | treditor = Treditor.update treditorConfig treditorMsg model.treditor }
+        ArboristMsg arboristMsg ->
+            { model | arborist = Arborist.update arboristConfig arboristMsg model.arborist }
 
         EditNewItemQuestion val ->
             { model
@@ -140,7 +140,7 @@ update msg model =
             }
 
         AddNewItem ->
-            { model | treditor = Treditor.setNew model.newItem model.treditor }
+            { model | arborist = Arborist.setNew model.newItem model.arborist }
 
         NoOp ->
             model
@@ -155,27 +155,27 @@ view model =
             , p [] [ text "a 🌲 editing interface" ]
             ]
         , div [ style Styles.box ] <|
-            [ Treditor.view treditorConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.treditor |> Html.map TreditorMsg ]
-                ++ (Treditor.active model.treditor
+            [ Arborist.view arboristConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.arborist |> Html.map ArboristMsg ]
+                ++ (Arborist.active model.arborist
                         |> Maybe.map
                             (\item ->
                                 [ div [ style <| Styles.popup ]
                                     [ label []
                                         [ text "Question"
-                                        , input [ value item.question, onInput (\val -> Treditor.SetActive { item | question = val }) ] []
+                                        , input [ value item.question, onInput (\val -> Arborist.SetActive { item | question = val }) ] []
                                         ]
                                     , label []
                                         [ text "Answer"
-                                        , input [ value item.answer, onInput (\val -> Treditor.SetActive { item | answer = val }) ] []
+                                        , input [ value item.answer, onInput (\val -> Arborist.SetActive { item | answer = val }) ] []
                                         ]
-                                    , button [ onClick Treditor.DeleteActive ] [ text "Delete" ]
+                                    , button [ onClick Arborist.DeleteActive ] [ text "Delete" ]
                                     ]
-                                    |> Html.map TreditorMsg
+                                    |> Html.map ArboristMsg
                                 ]
                             )
                         |> Maybe.withDefault []
                    )
-                ++ (if Treditor.isNew model.treditor then
+                ++ (if Arborist.isNew model.arborist then
                         [ div [ style Styles.popup ]
                             [ label []
                                 [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
@@ -241,7 +241,7 @@ main : Program Never Model Msg
 main =
     beginnerProgram
         { model =
-            { treditor = Treditor.init example
+            { arborist = Arborist.init example
             , newItem = Item.init
             }
         , update = update

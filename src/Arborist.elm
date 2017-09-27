@@ -1,4 +1,4 @@
-module Treditor
+module Arborist
     exposing
         ( Model
         , Msg(SetActive, DeleteActive)
@@ -24,7 +24,7 @@ import MultiDrag as MultiDrag
 import Utils
 import Views.Styles as Styles
 import Views.NodeConnectors
-import Treditor.Config as Config
+import Arborist.Config as Config
 
 
 -- Types
@@ -187,8 +187,8 @@ type Msg item
     | SetNew NodePath
     | SetFocus (Maybe NodePath)
     | MouseMove Float Float
-    | MouseDown Bool NodePath Float Float
-    | MouseUp Float Float
+    | NodeMouseDown Bool NodePath Float Float
+    | NodeMouseUp Float Float
     | NoOp
 
 
@@ -232,7 +232,19 @@ update config msg (Model model) =
         Deactivate ->
             Model { model | active = Nothing, new = Nothing }
 
-        MouseDown isPlaceholder path x y ->
+        MouseMove xm ym ->
+            Model
+                { model
+                    | drag =
+                        MultiDrag.move xm ym model.drag
+                    , isDragging =
+                        if MultiDrag.state model.drag /= Nothing then
+                            True
+                        else
+                            False
+                }
+
+        NodeMouseDown isPlaceholder path x y ->
             Model
                 { model
                     | drag =
@@ -247,19 +259,7 @@ update config msg (Model model) =
                             Nothing
                 }
 
-        MouseMove xm ym ->
-            Model
-                { model
-                    | drag =
-                        MultiDrag.move xm ym model.drag
-                    , isDragging =
-                        if MultiDrag.state model.drag /= Nothing then
-                            True
-                        else
-                            False
-                }
-
-        MouseUp x y ->
+        NodeMouseUp x y ->
             let
                 active =
                     MultiDrag.state model.drag
@@ -373,13 +373,6 @@ view config attrs (Model model) =
 
         dragState =
             MultiDrag.state model.drag
-
-        _ =
-            dragState
-                |> Maybe.andThen
-                    (\( path, offset ) ->
-                        getDropTarget config path offset model.treeCache
-                    )
     in
         div
             ([ on "mousemove"
@@ -401,29 +394,25 @@ view config attrs (Model model) =
                                     ( x, y ) =
                                         center
 
-                                    ( isDragged, ( xDrag, yDrag ), draggedPath ) =
+                                    ( isDragged, ( xDrag, yDrag ), draggedPath, isDropTarget ) =
                                         if model.isDragging then
                                             dragState
                                                 |> Maybe.map
                                                     (\( draggedPath, offset ) ->
-                                                        if startsWith draggedPath path then
-                                                            ( True, offset, Just draggedPath )
-                                                        else
-                                                            ( False, ( 0, 0 ), Just draggedPath )
+                                                        let
+                                                            isDropTarget =
+                                                                getDropTarget config draggedPath offset model.treeCache
+                                                                    |> Maybe.map (\dropTargetPath -> startsWith dropTargetPath path)
+                                                                    |> Maybe.withDefault False
+                                                        in
+                                                            if startsWith draggedPath path then
+                                                                ( True, offset, Just draggedPath, isDropTarget )
+                                                            else
+                                                                ( False, ( 0, 0 ), Just draggedPath, isDropTarget )
                                                     )
-                                                |> Maybe.withDefault ( False, ( 0, 0 ), Nothing )
+                                                |> Maybe.withDefault ( False, ( 0, 0 ), Nothing, False )
                                         else
-                                            ( False, ( 0, 0 ), Nothing )
-
-                                    isDropTarget =
-                                        dragState
-                                            |> Maybe.map
-                                                (\( draggedPath, offset ) ->
-                                                    getDropTarget config draggedPath offset model.treeCache
-                                                        |> Maybe.map (\dropTargetPath -> startsWith dropTargetPath path)
-                                                        |> Maybe.withDefault False
-                                                )
-                                            |> Maybe.withDefault False
+                                            ( False, ( 0, 0 ), Nothing, False )
 
                                     isActive =
                                         model.active == Just path || isDragged
@@ -456,7 +445,7 @@ view config attrs (Model model) =
                                             { stopPropagation = True
                                             , preventDefault = False
                                             }
-                                            (Decode.map2 (MouseDown (item == Nothing) path)
+                                            (Decode.map2 (NodeMouseDown (item == Nothing) path)
                                                 (Decode.field "screenX" Decode.float)
                                                 (Decode.field "screenY" Decode.float)
                                             )
@@ -464,7 +453,7 @@ view config attrs (Model model) =
                                             { stopPropagation = True
                                             , preventDefault = False
                                             }
-                                            (Decode.map2 MouseUp
+                                            (Decode.map2 NodeMouseUp
                                                 (Decode.field "screenX" Decode.float)
                                                 (Decode.field "screenY" Decode.float)
                                             )

@@ -1,4 +1,4 @@
-module Treditor.Config exposing (..)
+module Arborist.Config exposing (..)
 
 import Html exposing (Html)
 

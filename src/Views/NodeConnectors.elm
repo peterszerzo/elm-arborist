@@ -9,17 +9,17 @@ import Views.Styles as Styles
 
 strokeColor : String
 strokeColor =
-    "#AAAAAA"
+    "#E2E2E2"
 
 
 pad : Float
 pad =
-    6
+    4
 
 
 strokeWeight : Int
 strokeWeight =
-    2
+    4
 
 
 toCoord : Float -> String
@@ -32,7 +32,7 @@ view layout ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
             [ stroke strokeColor
-            , strokeWidth "1"
+            , strokeWidth (toString strokeWeight)
             , strokeLinecap "round"
             , strokeLinejoin "round"
             ]
@@ -95,7 +95,7 @@ view layout ( dragX, dragY ) center childCenters =
              else
                 [ line
                     ([ x1 <| toCoord (Tuple.first relCenter)
-                     , y1 <| toCoord 0
+                     , y1 <| toCoord pad
                      , x2 <| toCoord (Tuple.first relCenter)
                      , y2 <| toCoord (h / 2)
                      ]
@@ -109,7 +109,7 @@ view layout ( dragX, dragY ) center childCenters =
                                     ([ x1 <| toCoord (x)
                                      , y1 <| toCoord (h / 2)
                                      , x2 <| toCoord (x)
-                                     , y2 <| toCoord (h - pad + 4)
+                                     , y2 <| toCoord (h - pad)
                                      ]
                                         ++ strokeAttrs
                                     )

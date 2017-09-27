@@ -10,9 +10,9 @@ coordinate width x y =
 
 nodeBase : Float -> Float -> List ( String, String )
 nodeBase width height =
-    [ ( "width", (toString width) ++ "px" )
+    [ ( "width", (toString (floor width)) ++ "px" )
     , ( "height", "auto" )
-    , ( "min-height", (toString height) ++ "px" )
+    , ( "min-height", (toString (floor height)) ++ "px" )
     , ( "position", "absolute" )
     , ( "user-select", "none" )
     , ( "cursor", "pointer" )
