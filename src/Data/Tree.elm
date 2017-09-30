@@ -35,12 +35,14 @@ type alias Layout =
     Dict.Dict TreeNodePath
         { center : ( Float, Float )
         , childCenters : List Float
-        , children : Int
         }
 
 
 type alias NodeInfo =
-    Dict.Dict TreeNodePath { siblings : Int, children : List TreeNodePath }
+    Dict.Dict TreeNodePath
+        { siblings : Int
+        , children : List TreeNodePath
+        }
 
 
 type alias TreeAnalysis =
@@ -394,7 +396,6 @@ layout analysis =
                                 , (toFloat showLevels) - 1
                                 )
                           , childCenters = []
-                          , children = 0
                           }
                         )
                     )
@@ -423,7 +424,6 @@ layoutLevelPass level nodeInfo layout =
                                     |> Maybe.withDefault
                                         { center = ( 0, 0 )
                                         , childCenters = []
-                                        , children = List.length children
                                         }
                             )
                             children
@@ -444,7 +444,6 @@ layoutLevelPass level nodeInfo layout =
                                             , toFloat level
                                             )
                                         , childCenters = centers
-                                        , children = List.length children
                                         }
                                )
                         )
