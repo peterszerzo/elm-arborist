@@ -19,7 +19,8 @@ import Html.Events exposing (onInput, on, onWithOptions)
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Html.Events exposing (onClick)
-import Data.Tree as Tree
+import Data.Tree as Tree exposing (TreeNodePath)
+import Data.ComputedTree as ComputedTree
 import MultiDrag as MultiDrag
 import Utils
 import Views.Styles as Styles
@@ -27,58 +28,19 @@ import Views.NodeConnectors
 import Arborist.Config as Config
 
 
--- Types
-
-
-type alias NodeId =
-    String
-
-
-type alias NodePath =
-    List Int
-
-
-type alias TreeCache item =
-    { withPlaceholders : Tree.Tree item
-    , flat : List ( NodePath, Maybe item )
-    , layout : Tree.Layout
-    }
-
-
-cacheTree : Tree.Tree item -> TreeCache item
-cacheTree tree =
-    let
-        withPlaceholders =
-            Tree.addTrailingEmpties tree
-
-        flat =
-            Tree.flatten withPlaceholders
-
-        layout =
-            withPlaceholders
-                |> Tree.analyze
-                |> Tree.layout
-    in
-        { withPlaceholders = withPlaceholders
-        , flat = flat
-        , layout = layout
-        }
-
-
-
 -- Model
 
 
 type Model item
     = Model
-        { tree : Tree.Tree item
-        , treeCache : TreeCache item
-        , new : Maybe NodePath
-        , active : Maybe NodePath
+        { computedTree : ComputedTree.ComputedTree item
+        , prevComputedTree : ComputedTree.ComputedTree item
+        , new : Maybe TreeNodePath
+        , active : Maybe TreeNodePath
         , isDragging : Bool
-        , focus : Maybe NodePath
-        , drag : MultiDrag.Drag (Maybe NodePath)
-        , displayRoot : Maybe NodePath
+        , focus : Maybe TreeNodePath
+        , drag : MultiDrag.Drag (Maybe TreeNodePath)
+        , displayRoot : Maybe TreeNodePath
         , panOffset : ( Float, Float )
         }
 
@@ -86,8 +48,8 @@ type Model item
 init : Tree.Tree item -> Model item
 init tree =
     Model
-        { tree = tree
-        , treeCache = cacheTree tree
+        { computedTree = ComputedTree.init tree
+        , prevComputedTree = ComputedTree.init tree
         , active = Nothing
         , new = Nothing
         , isDragging = False
@@ -98,47 +60,46 @@ init tree =
         }
 
 
-setTreeCache : Model item -> Model item
-setTreeCache (Model model) =
-    Model { model | treeCache = cacheTree model.tree }
-
-
 active : Model item -> Maybe item
-active (Model { active, tree }) =
-    active
-        |> Maybe.andThen
-            (\active ->
-                Tree.find active tree
-                    |> Maybe.andThen
-                        (\subtree ->
-                            case subtree of
-                                Tree.Empty ->
-                                    Nothing
+active (Model { active, computedTree }) =
+    let
+        tree =
+            ComputedTree.tree computedTree
+    in
+        active
+            |> Maybe.andThen
+                (\active ->
+                    Tree.find active tree
+                        |> Maybe.andThen
+                            (\subtree ->
+                                case subtree of
+                                    Tree.Empty ->
+                                        Nothing
 
-                                Tree.Node item children ->
-                                    Just item
-                        )
-            )
+                                    Tree.Node item children ->
+                                        Just item
+                            )
+                )
 
 
 setNew : item -> Model item -> Model item
 setNew item (Model model) =
     Model
         { model
-            | tree =
+            | computedTree =
                 model.new
                     |> Maybe.map
                         (\new ->
-                            Tree.insert new (Just item) model.tree
+                            Tree.insert new (Just item) (ComputedTree.tree model.computedTree) |> ComputedTree.init
                         )
-                    |> Maybe.withDefault model.tree
+                    |> Maybe.withDefault model.computedTree
+            , prevComputedTree = model.computedTree
         }
-        |> setTreeCache
 
 
 tree : Model item -> Tree.Tree item
-tree (Model { tree }) =
-    tree
+tree (Model { computedTree }) =
+    ComputedTree.tree computedTree
 
 
 isNew : Model item -> Bool
@@ -154,10 +115,10 @@ type Msg item
     = Deactivate
     | SetActive item
     | DeleteActive
-    | SetNew NodePath
-    | SetFocus (Maybe NodePath)
+    | SetNew TreeNodePath
+    | SetFocus (Maybe TreeNodePath)
     | MouseMove Float Float
-    | NodeMouseDown Bool NodePath Float Float
+    | NodeMouseDown Bool TreeNodePath Float Float
     | NodeMouseUp Float Float
     | CanvasMouseDown Float Float
     | CanvasMouseUp Float Float
@@ -174,22 +135,22 @@ update config msg (Model model) =
         SetActive newItem ->
             Model
                 { model
-                    | tree =
+                    | computedTree =
                         model.active
-                            |> Maybe.map (\active -> Tree.update active newItem model.tree)
-                            |> Maybe.withDefault model.tree
+                            |> Maybe.map (\active -> Tree.update active newItem (ComputedTree.tree model.computedTree) |> ComputedTree.init)
+                            |> Maybe.withDefault model.computedTree
+                    , prevComputedTree = model.computedTree
                 }
-                |> setTreeCache
 
         DeleteActive ->
             Model
                 { model
-                    | tree =
+                    | computedTree =
                         model.active
-                            |> Maybe.map (\active -> Tree.delete active model.tree)
-                            |> Maybe.withDefault model.tree
+                            |> Maybe.map (\active -> Tree.delete active (ComputedTree.tree model.computedTree) |> ComputedTree.init)
+                            |> Maybe.withDefault model.computedTree
+                    , prevComputedTree = model.computedTree
                 }
-                |> setTreeCache
 
         SetFocus focus ->
             Model model
@@ -248,6 +209,12 @@ update config msg (Model model) =
                                         Nothing
                             )
 
+                flat =
+                    ComputedTree.flat model.computedTree
+
+                tree =
+                    ComputedTree.tree model.computedTree
+
                 newTree =
                     MultiDrag.state model.drag
                         |> Maybe.map
@@ -255,10 +222,10 @@ update config msg (Model model) =
                                 path
                                     |> Maybe.map
                                         (\path ->
-                                            getDropTarget config path dragOffset model.treeCache
+                                            getDropTarget config path dragOffset model.computedTree
                                                 |> Maybe.map
                                                     (\dropTargetPath ->
-                                                        model.treeCache.flat
+                                                        flat
                                                             |> List.filter (\( path, item ) -> path == dropTargetPath)
                                                             |> List.head
                                                             |> Maybe.andThen
@@ -270,33 +237,36 @@ update config msg (Model model) =
                                                                         Nothing ->
                                                                             Nothing
                                                                 )
-                                                            |> Maybe.map (\_ -> Tree.swap path dropTargetPath model.tree)
+                                                            |> Maybe.map (\_ -> Tree.swap path dropTargetPath tree)
                                                             |> Maybe.withDefault
                                                                 -- If the drop target is a placeholder, first add an Empty node in the original tree
                                                                 -- so the swap method actually finds a node.
-                                                                (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing model.tree
+                                                                (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
                                                                     |> Tree.swap path dropTargetPath
                                                                     |> Tree.removeEmpties
                                                                 )
                                                     )
-                                                |> Maybe.withDefault model.tree
+                                                |> Maybe.withDefault tree
                                         )
-                                    |> Maybe.withDefault model.tree
+                                    |> Maybe.withDefault tree
                             )
-                        |> Maybe.withDefault model.tree
+                        |> Maybe.withDefault tree
             in
                 Model
                     { model
                         | drag =
                             MultiDrag.init
-                        , tree = newTree
+                        , computedTree = ComputedTree.init newTree
+                        , prevComputedTree = model.computedTree
                         , active = active
                         , isDragging = False
                     }
-                    |> setTreeCache
 
         CanvasMouseDown x y ->
-            Model { model | drag = MultiDrag.start Nothing x y }
+            Model
+                { model
+                    | drag = MultiDrag.start Nothing x y
+                }
 
         CanvasMouseUp x y ->
             Model
@@ -305,13 +275,16 @@ update config msg (Model model) =
                     , panOffset =
                         MultiDrag.state model.drag
                             |> Maybe.map
-                                (\( _, offset ) ->
+                                (\( draggedNode, offset ) ->
                                     let
                                         ( panOffsetX, panOffsetY ) =
                                             model.panOffset
 
                                         ( offsetX, offsetY ) =
-                                            offset
+                                            if draggedNode == Nothing then
+                                                offset
+                                            else
+                                                ( 0, 0 )
                                     in
                                         ( panOffsetX + offsetX, panOffsetY + offsetY )
                                 )
@@ -328,11 +301,14 @@ type alias NodeGeometry =
     }
 
 
-getDropTarget : Config.Config item (Msg item) -> NodePath -> ( Float, Float ) -> TreeCache item -> Maybe NodePath
-getDropTarget config path ( dragX, dragY ) treeCache =
+getDropTarget : Config.Config item (Msg item) -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
+getDropTarget config path ( dragX, dragY ) computedTree =
     let
-        { flat, layout } =
-            treeCache
+        flat =
+            ComputedTree.flat computedTree
+
+        layout =
+            ComputedTree.layout computedTree
 
         ( x0, y0 ) =
             nodeGeometry config path layout
@@ -393,14 +369,11 @@ nodeGeometry config path layout =
 view : Config.Config item (Msg item) -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
 view config attrs (Model model) =
     let
-        tree =
-            model.treeCache.withPlaceholders
-
         flatTree =
-            model.treeCache.flat
+            ComputedTree.flat model.computedTree
 
         layout =
-            model.treeCache.layout
+            ComputedTree.layout model.computedTree
 
         nodeBaseStyle =
             Styles.nodeBase config.layout.width config.layout.height
@@ -410,6 +383,12 @@ view config attrs (Model model) =
 
         dragState =
             MultiDrag.state model.drag
+
+        isNodeDragging =
+            dragState
+                |> Maybe.map Tuple.first
+                |> Maybe.map ((/=) Nothing)
+                |> Maybe.withDefault False
 
         ( canvasDragOffset, isCanvasDragging ) =
             dragState
@@ -486,7 +465,7 @@ view config attrs (Model model) =
                                                                 Just draggedPath ->
                                                                     let
                                                                         isDropTarget =
-                                                                            getDropTarget config draggedPath offset model.treeCache
+                                                                            getDropTarget config draggedPath offset model.computedTree
                                                                                 |> Maybe.map (\dropTargetPath -> Utils.startsWith dropTargetPath path)
                                                                                 |> Maybe.withDefault False
                                                                     in

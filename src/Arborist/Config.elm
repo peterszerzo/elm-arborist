@@ -3,10 +3,6 @@ module Arborist.Config exposing (..)
 import Html exposing (Html)
 
 
-type alias NodeId =
-    String
-
-
 type alias Context item =
     { parent : Maybe item
     , siblings : List item

@@ -13,6 +13,10 @@ type Tree a
     | Node a (List (Tree a))
 
 
+type alias TreeNodePath =
+    List Int
+
+
 decoder : Decode.Decoder a -> Decode.Decoder (Tree a)
 decoder nodeDecoder =
     Decode.oneOf
@@ -28,7 +32,7 @@ decoder nodeDecoder =
 
 
 type alias Layout =
-    Dict.Dict (List Int)
+    Dict.Dict TreeNodePath
         { center : ( Float, Float )
         , childCenters : List Float
         , children : Int
@@ -36,12 +40,12 @@ type alias Layout =
 
 
 type alias NodeInfo =
-    Dict.Dict (List Int) { siblings : Int, children : List (List Int) }
+    Dict.Dict TreeNodePath { siblings : Int, children : List TreeNodePath }
 
 
 type alias TreeAnalysis =
     { depth : Int
-    , shortNodes : List (List Int)
+    , shortNodes : List TreeNodePath
     , nodeInfo : NodeInfo
     }
 
@@ -117,7 +121,7 @@ removeEmpties tree =
 
 {-| Find item by path
 -}
-find : List Int -> Tree a -> Maybe (Tree a)
+find : TreeNodePath -> Tree a -> Maybe (Tree a)
 find path tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -133,7 +137,7 @@ find path tree =
             Nothing
 
 
-swap : List Int -> List Int -> Tree a -> Tree a
+swap : TreeNodePath -> TreeNodePath -> Tree a -> Tree a
 swap path1 path2 tree =
     let
         subtree1 =
@@ -153,7 +157,7 @@ swap path1 path2 tree =
             |> Maybe.withDefault tree
 
 
-updateSubtree : List Int -> Tree a -> Tree a -> Tree a
+updateSubtree : TreeNodePath -> Tree a -> Tree a -> Tree a
 updateSubtree path subtree tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -174,7 +178,7 @@ updateSubtree path subtree tree =
             tree
 
 
-update : List Int -> a -> Tree a -> Tree a
+update : TreeNodePath -> a -> Tree a -> Tree a
 update path replaceItem tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -196,7 +200,7 @@ update path replaceItem tree =
             tree
 
 
-insert : List Int -> Maybe a -> Tree a -> Tree a
+insert : TreeNodePath -> Maybe a -> Tree a -> Tree a
 insert path insertItem tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -223,7 +227,7 @@ insert path insertItem tree =
             tree
 
 
-delete : List Int -> Tree a -> Tree a
+delete : TreeNodePath -> Tree a -> Tree a
 delete path tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -247,12 +251,12 @@ delete path tree =
 
 {-| Flatten
 -}
-flatten : Tree a -> List ( List Int, Maybe a )
+flatten : Tree a -> List ( TreeNodePath, Maybe a )
 flatten =
     flattenTail []
 
 
-flattenTail : List Int -> Tree a -> List ( List Int, Maybe a )
+flattenTail : TreeNodePath -> Tree a -> List ( TreeNodePath, Maybe a )
 flattenTail path tree =
     case tree of
         Empty ->
@@ -276,7 +280,7 @@ analyze tree =
     analyzeTail { depth = depth tree, current = { path = [], siblings = 0 } } tree
 
 
-analyzeTail : { depth : Int, current : { path : List Int, siblings : Int } } -> Tree a -> TreeAnalysis
+analyzeTail : { depth : Int, current : { path : TreeNodePath, siblings : Int } } -> Tree a -> TreeAnalysis
 analyzeTail { depth, current } tree =
     case tree of
         Empty ->
