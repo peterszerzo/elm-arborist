@@ -25,7 +25,8 @@ type Msg
     = ArboristMsg (Arborist.Msg Item.Item)
     | EditNewItemQuestion String
     | EditNewItemAnswer String
-    | AddNewItem
+    | SetActive Item.Item
+    | DeleteActive
     | NoOp
 
 
@@ -151,6 +152,12 @@ update msg model =
         ArboristMsg arboristMsg ->
             { model | arborist = Arborist.update arboristConfig arboristMsg model.arborist }
 
+        SetActive newItem ->
+            { model | arborist = Arborist.setActive newItem model.arborist }
+
+        DeleteActive ->
+            { model | arborist = Arborist.deleteActive model.arborist }
+
         EditNewItemQuestion val ->
             { model
                 | newItem = Item.setQuestion val model.newItem
@@ -160,9 +167,6 @@ update msg model =
             { model
                 | newItem = Item.setAnswer val model.newItem
             }
-
-        AddNewItem ->
-            { model | arborist = Arborist.setNew model.newItem model.arborist }
 
         NoOp ->
             model
@@ -178,36 +182,41 @@ view model =
             ]
         , div [ style Styles.box ] <|
             [ Arborist.view arboristConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.arborist |> Html.map ArboristMsg ]
-                ++ (Arborist.active model.arborist
+                ++ (Arborist.active arboristConfig model.arborist
                         |> Maybe.map
-                            (\item ->
-                                [ div [ style <| Styles.popup ]
-                                    [ label []
-                                        [ text "Question"
-                                        , input [ value item.question, onInput (\val -> Arborist.SetActive { item | question = val }) ] []
-                                        ]
-                                    , label []
-                                        [ text "Answer"
-                                        , input [ value item.answer, onInput (\val -> Arborist.SetActive { item | answer = val }) ] []
-                                        ]
-                                    , button [ onClick Arborist.DeleteActive ] [ text "Delete" ]
+                            (\( item, ( x, y ) ) ->
+                                [ div
+                                    [ style <|
+                                        Styles.popup
+                                            ++ [ ( "left", (toString (x + 600 - 220)) ++ "px" )
+                                               , ( "top", (toString (y + 130)) ++ "px" )
+                                               ]
                                     ]
-                                    |> Html.map ArboristMsg
+                                  <|
+                                    (case item of
+                                        Just item ->
+                                            [ label []
+                                                [ text "Question"
+                                                , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                                ]
+                                            , label []
+                                                [ text "Answer"
+                                                , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
+                                                ]
+                                            , button [ onClick DeleteActive ] [ text "Delete" ]
+                                            ]
+
+                                        Nothing ->
+                                            [ label []
+                                                [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
+                                            , label []
+                                                [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
+                                            , button [ type_ "submit", onClick (SetActive model.newItem) ] [ text "Add node" ]
+                                            ]
+                                    )
                                 ]
                             )
                         |> Maybe.withDefault []
-                   )
-                ++ (if Arborist.isNew model.arborist then
-                        [ div [ style Styles.popup ]
-                            [ label []
-                                [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
-                            , label []
-                                [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
-                            , button [ type_ "submit", onClick AddNewItem ] [ text "Add node" ]
-                            ]
-                        ]
-                    else
-                        []
                    )
         ]
 

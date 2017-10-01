@@ -1,14 +1,14 @@
 module Arborist
     exposing
         ( Model
-        , Msg(SetActive, DeleteActive)
+        , Msg
         , init
         , update
         , view
         , tree
-        , isNew
-        , setNew
         , active
+        , setActive
+        , deleteActive
         )
 
 import Dict
@@ -41,7 +41,6 @@ type Model item
     = Model
         { computedTree : ComputedTree.ComputedTree item
         , prevComputedTree : ComputedTree.ComputedTree item
-        , new : Maybe TreeNodePath
         , active : Maybe TreeNodePath
         , isDragging : Bool
         , focus : Maybe TreeNodePath
@@ -57,7 +56,6 @@ init tree =
         { computedTree = ComputedTree.init tree
         , prevComputedTree = ComputedTree.init tree
         , active = Nothing
-        , new = Nothing
         , isDragging = False
         , focus = Nothing
         , drag = (MultiDrag.init)
@@ -66,38 +64,72 @@ init tree =
         }
 
 
-active : Model item -> Maybe item
-active (Model { active, computedTree }) =
+active : Config.Config item (Msg item) -> Model item -> Maybe ( Maybe item, ( Float, Float ) )
+active config (Model { active, computedTree, panOffset }) =
+    active
+        |> Maybe.map
+            (\active ->
+                let
+                    layout =
+                        ComputedTree.layout computedTree
+
+                    geo =
+                        nodeGeometry config active layout
+                            |> Maybe.map .center
+                            |> Maybe.withDefault ( 0, 0 )
+                in
+                    ( ComputedTree.item active computedTree, Utils.addFloatTuples geo panOffset )
+            )
+
+
+setActive : item -> Model item -> Model item
+setActive newItem (Model model) =
     let
         tree =
-            ComputedTree.tree computedTree
+            ComputedTree.tree model.computedTree
+
+        flat =
+            ComputedTree.flat model.computedTree
+
+        newTree =
+            model.active
+                |> Maybe.map
+                    (\active ->
+                        let
+                            item =
+                                flat
+                                    |> List.filter (\( path, _ ) -> active == path)
+                                    |> List.head
+                                    |> Maybe.map Tuple.second
+                                    |> Debug.log "item"
+                        in
+                            case item of
+                                Just (Just item) ->
+                                    Tree.update active newItem tree
+
+                                Just Nothing ->
+                                    Tree.insert (List.take (List.length active - 1) active |> Debug.log "a") (Just newItem) tree
+
+                                _ ->
+                                    -- Impossible state
+                                    tree
+                    )
+                |> Maybe.withDefault tree
     in
-        active
-            |> Maybe.andThen
-                (\active ->
-                    Tree.find active tree
-                        |> Maybe.andThen
-                            (\subtree ->
-                                case subtree of
-                                    Tree.Empty ->
-                                        Nothing
-
-                                    Tree.Node item children ->
-                                        Just item
-                            )
-                )
+        Model
+            { model
+                | computedTree = ComputedTree.init newTree
+                , prevComputedTree = model.computedTree
+            }
 
 
-setNew : item -> Model item -> Model item
-setNew item (Model model) =
+deleteActive : Model item -> Model item
+deleteActive (Model model) =
     Model
         { model
             | computedTree =
-                model.new
-                    |> Maybe.map
-                        (\new ->
-                            Tree.insert new (Just item) (ComputedTree.tree model.computedTree) |> ComputedTree.init
-                        )
+                model.active
+                    |> Maybe.map (\active -> Tree.delete active (ComputedTree.tree model.computedTree) |> ComputedTree.init)
                     |> Maybe.withDefault model.computedTree
             , prevComputedTree = model.computedTree
         }
@@ -108,21 +140,12 @@ tree (Model { computedTree }) =
     ComputedTree.tree computedTree
 
 
-isNew : Model item -> Bool
-isNew (Model { new }) =
-    new /= Nothing
-
-
 
 -- Msg
 
 
 type Msg item
-    = SetActive item
-    | DeleteActive
-    | SetNew TreeNodePath
-    | SetFocus (Maybe TreeNodePath)
-    | NodeMouseDown Bool TreeNodePath Float Float
+    = NodeMouseDown Bool TreeNodePath Float Float
     | NodeMouseUp Float Float
     | CanvasMouseMove Float Float
     | CanvasMouseDown Float Float
@@ -138,67 +161,44 @@ type Msg item
 update : Config.Config item (Msg item) -> Msg item -> Model item -> Model item
 update config msg (Model model) =
     case msg of
-        SetActive newItem ->
-            Model
-                { model
-                    | computedTree =
-                        model.active
-                            |> Maybe.map (\active -> Tree.update active newItem (ComputedTree.tree model.computedTree) |> ComputedTree.init)
-                            |> Maybe.withDefault model.computedTree
-                    , prevComputedTree = model.computedTree
-                }
-
-        DeleteActive ->
-            Model
-                { model
-                    | computedTree =
-                        model.active
-                            |> Maybe.map (\active -> Tree.delete active (ComputedTree.tree model.computedTree) |> ComputedTree.init)
-                            |> Maybe.withDefault model.computedTree
-                    , prevComputedTree = model.computedTree
-                }
-
-        SetFocus focus ->
-            Model model
-
-        SetNew nodePath ->
-            Model
-                { model
-                    | new = Just nodePath
-                    , active = Nothing
-                }
-
         NodeMouseDown isPlaceholder path x y ->
             Model
                 { model
                     | drag =
                         if isPlaceholder then
-                            model.drag
+                            MultiDrag.init
                         else
                             MultiDrag.start (Just path) x y
-                    , new =
+                    , active =
                         if isPlaceholder then
-                            Just (List.take (List.length path - 1) path)
+                            Just path
                         else
                             Nothing
                 }
 
         NodeMouseUp x y ->
             let
-                active =
-                    MultiDrag.state model.drag
-                        |> Maybe.andThen
-                            (\( path, ( offsetX, offsetY ) ) ->
-                                case path of
-                                    Just path ->
-                                        if (abs offsetX + abs offsetY > 20) then
-                                            Nothing
-                                        else
-                                            Just path
+                isPlaceholder =
+                    (active config (Model model) |> Maybe.map Tuple.first)
+                        == (Just Nothing)
 
-                                    Nothing ->
-                                        Nothing
-                            )
+                active_ =
+                    if isPlaceholder then
+                        model.active
+                    else
+                        MultiDrag.state model.drag
+                            |> Maybe.andThen
+                                (\( path, ( offsetX, offsetY ) ) ->
+                                    case path of
+                                        Just path ->
+                                            if (abs offsetX + abs offsetY > 20) then
+                                                Nothing
+                                            else
+                                                Just path
+
+                                        Nothing ->
+                                            Nothing
+                                )
 
                 flat =
                     ComputedTree.flat model.computedTree
@@ -249,7 +249,7 @@ update config msg (Model model) =
                             MultiDrag.init
                         , computedTree = ComputedTree.init newTree
                         , prevComputedTree = model.computedTree
-                        , active = active
+                        , active = active_
                         , isDragging = False
                     }
 

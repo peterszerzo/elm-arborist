@@ -100,10 +100,9 @@ popup =
     [ ( "width", "240px" )
     , ( "background-color", "white" )
     , ( "height", "180px" )
+    , ( "border-top", "4px solid #4DC433" )
     , ( "padding", "20px" )
     , ( "overflow", "auto" )
     , ( "position", "absolute" )
-    , ( "bottom", "20px" )
-    , ( "box-shadow", "0 0 6px rgba(0, 0, 0, 0.2)" )
-    , ( "right", "20px" )
+    , ( "box-shadow", "0 0 12px rgba(0, 0, 0, 0.25)" )
     ]
