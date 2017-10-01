@@ -65,7 +65,7 @@ init tree =
 
 
 active : Config.Config item (Msg item) -> Model item -> Maybe ( Maybe item, ( Float, Float ) )
-active config (Model { active, computedTree, panOffset }) =
+active config (Model { active, computedTree, panOffset, drag }) =
     active
         |> Maybe.map
             (\active ->
@@ -77,8 +77,13 @@ active config (Model { active, computedTree, panOffset }) =
                         nodeGeometry config active layout
                             |> Maybe.map .center
                             |> Maybe.withDefault ( 0, 0 )
+
+                    dragOffset =
+                        MultiDrag.state drag
+                            |> Maybe.map Tuple.second
+                            |> Maybe.withDefault ( 0, 0 )
                 in
-                    ( ComputedTree.item active computedTree, Utils.addFloatTuples geo panOffset )
+                    ( ComputedTree.item active computedTree, Utils.addFloatTuples geo panOffset |> Utils.addFloatTuples dragOffset )
             )
 
 
