@@ -31,6 +31,12 @@ import Arborist.Config as Config
 -- Model
 
 
+type ActiveNode
+    = None
+    | ExistingNode TreeNodePath
+    | NewNode TreeNodePath
+
+
 type Model item
     = Model
         { computedTree : ComputedTree.ComputedTree item
@@ -112,16 +118,16 @@ isNew (Model { new }) =
 
 
 type Msg item
-    = Deactivate
-    | SetActive item
+    = SetActive item
     | DeleteActive
     | SetNew TreeNodePath
     | SetFocus (Maybe TreeNodePath)
-    | MouseMove Float Float
     | NodeMouseDown Bool TreeNodePath Float Float
     | NodeMouseUp Float Float
+    | CanvasMouseMove Float Float
     | CanvasMouseDown Float Float
     | CanvasMouseUp Float Float
+    | CanvasMouseLeave
     | NoOp
 
 
@@ -160,21 +166,6 @@ update config msg (Model model) =
                 { model
                     | new = Just nodePath
                     , active = Nothing
-                }
-
-        Deactivate ->
-            Model { model | active = Nothing, new = Nothing }
-
-        MouseMove xm ym ->
-            Model
-                { model
-                    | drag =
-                        MultiDrag.move xm ym model.drag
-                    , isDragging =
-                        if MultiDrag.state model.drag /= Nothing then
-                            True
-                        else
-                            False
                 }
 
         NodeMouseDown isPlaceholder path x y ->
@@ -262,6 +253,18 @@ update config msg (Model model) =
                         , isDragging = False
                     }
 
+        CanvasMouseMove xm ym ->
+            Model
+                { model
+                    | drag =
+                        MultiDrag.move xm ym model.drag
+                    , isDragging =
+                        if MultiDrag.state model.drag /= Nothing then
+                            True
+                        else
+                            False
+                }
+
         CanvasMouseDown x y ->
             Model
                 { model
@@ -289,7 +292,20 @@ update config msg (Model model) =
                                         ( panOffsetX + offsetX, panOffsetY + offsetY )
                                 )
                             |> Maybe.withDefault model.panOffset
+                    , active =
+                        MultiDrag.state model.drag
+                            |> Maybe.map
+                                (\( path, ( x, y ) ) ->
+                                    if (abs x + abs y) < 20 then
+                                        Nothing
+                                    else
+                                        model.active
+                                )
+                            |> Maybe.withDefault Nothing
                 }
+
+        CanvasMouseLeave ->
+            Model { model | drag = MultiDrag.init }
 
         NoOp ->
             Model model
@@ -321,20 +337,41 @@ getDropTarget config path ( dragX, dragY ) computedTree =
             )
     in
         flat
-            |> List.filter
+            |> List.filterMap
                 (\( path_, _ ) ->
                     let
                         ( xo, yo ) =
                             nodeGeometry config path_ layout
                                 |> Maybe.map .center
                                 |> Maybe.withDefault ( 0, 0 )
+
+                        dx =
+                            abs (x - xo)
+
+                        dy =
+                            abs (y - yo)
                     in
-                        path /= path_ && (abs (x - xo) < config.layout.width) && (abs (y - yo) < config.layout.height)
+                        if
+                            (List.all identity
+                                [ not (Utils.startsWith path path_)
+                                , not (Utils.startsWith path_ path)
+                                , dx < config.layout.width
+                                , dy < config.layout.height
+                                ]
+                            )
+                        then
+                            Just ( path_, dx + dy )
+                        else
+                            Nothing
                 )
-            |> List.filter
-                (\( dropTargetPath, _ ) ->
-                    -- Node that are in a descendant or ancestor relationship with the dragged node cannot be drop targets
-                    not (Utils.startsWith path dropTargetPath || Utils.startsWith dropTargetPath path)
+            |> List.sortWith
+                (\( _, d1 ) ( _, d2 ) ->
+                    if d1 > d2 then
+                        LT
+                    else if d1 == d2 then
+                        EQ
+                    else
+                        GT
                 )
             |> List.head
             |> Maybe.map Tuple.first
@@ -351,14 +388,14 @@ nodeGeometry config path layout =
                         center
                 in
                     { center =
-                        ( centerX * (config.layout.width + config.layout.horizontalGap)
-                        , centerY * (config.layout.height + config.layout.verticalGap)
+                        ( centerX * (config.layout.width + config.layout.gutter)
+                        , centerY * (config.layout.height + config.layout.level)
                         )
                     , childCenters =
                         List.map
                             (\center ->
-                                ( center * (config.layout.width + config.layout.horizontalGap)
-                                , (centerY + 1) * (config.layout.height + config.layout.verticalGap)
+                                ( center * (config.layout.width + config.layout.gutter)
+                                , (centerY + 1) * (config.layout.height + config.layout.level)
                                 )
                             )
                             childCenters
@@ -406,7 +443,7 @@ view config attrs (Model model) =
     in
         div
             ([ on "mousemove"
-                (Decode.map2 MouseMove
+                (Decode.map2 CanvasMouseMove
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
@@ -420,13 +457,10 @@ view config attrs (Model model) =
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
-             , on "mouseleave"
-                (Decode.map2 CanvasMouseUp
-                    (Decode.field "screenX" Decode.float)
-                    (Decode.field "screenY" Decode.float)
-                )
+             , on "mouseleave" (Decode.succeed CanvasMouseLeave)
              , style
                 [ ( "overflow", "hidden" )
+                , ( "box-sizing", "border-box" )
                 , ( "cursor"
                   , if isCanvasDragging then
                         "move"
@@ -434,7 +468,6 @@ view config attrs (Model model) =
                         "auto"
                   )
                 ]
-             , onClick Deactivate
              ]
                 ++ attrs
             )
@@ -456,8 +489,11 @@ view config attrs (Model model) =
                                         ( x, y ) =
                                             center
 
+                                        modelIsDragging =
+                                            model.isDragging
+
                                         ( isDragged, ( xDrag, yDrag ), draggedPath, isDropTarget ) =
-                                            if model.isDragging then
+                                            if modelIsDragging then
                                                 dragState
                                                     |> Maybe.map
                                                         (\( draggedPath, offset ) ->
@@ -466,7 +502,7 @@ view config attrs (Model model) =
                                                                     let
                                                                         isDropTarget =
                                                                             getDropTarget config draggedPath offset model.computedTree
-                                                                                |> Maybe.map (\dropTargetPath -> Utils.startsWith dropTargetPath path)
+                                                                                |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
                                                                                 |> Maybe.withDefault False
                                                                     in
                                                                         if Utils.startsWith draggedPath path then
@@ -481,9 +517,6 @@ view config attrs (Model model) =
                                             else
                                                 ( False, ( 0, 0 ), Nothing, False )
 
-                                        isActive =
-                                            model.active == Just path || isDragged
-
                                         xWithDrag =
                                             x + xDrag
 
@@ -494,8 +527,13 @@ view config attrs (Model model) =
                                             { parent = Nothing
                                             , siblings = []
                                             , position = ( x, y )
-                                            , isActive = isActive
-                                            , isDropTarget = isDropTarget
+                                            , state =
+                                                if (model.active == Just path) then
+                                                    Config.Active
+                                                else if isDropTarget then
+                                                    Config.DropTarget
+                                                else
+                                                    Config.Normal
                                             }
                                     in
                                         [ div
@@ -527,9 +565,7 @@ view config attrs (Model model) =
                                                     (Decode.field "screenY" Decode.float)
                                                 )
                                             ]
-                                            [ item
-                                                |> Maybe.map (config.view itemViewContext)
-                                                |> Maybe.withDefault (config.placeholderView itemViewContext)
+                                            [ config.view itemViewContext item
                                             ]
                                         ]
                                             ++ (if isDragged then
@@ -544,8 +580,12 @@ view config attrs (Model model) =
                                                 else
                                                     []
                                                )
-                                            ++ [ Views.NodeConnectors.view config.layout ( xDrag, yDrag ) center childCenters
-                                               ]
+                                            ++ (if item == Nothing then
+                                                    []
+                                                else
+                                                    [ Views.NodeConnectors.view config.layout ( xDrag, yDrag ) center childCenters
+                                                    ]
+                                               )
                                 )
                             |> Maybe.withDefault []
                     )

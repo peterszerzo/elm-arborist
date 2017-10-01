@@ -7,7 +7,7 @@ import Html.Events exposing (onInput, onClick)
 import Data.Tree as Tree
 import Item
 import Arborist
-import Arborist.Config
+import Arborist.Config exposing (NodeState(..))
 import Styles
 
 
@@ -55,16 +55,16 @@ bubbleStyle : List ( String, String )
 bubbleStyle =
     [ ( "position", "absolute" )
     , ( "box-sizing", "border-box" )
-    , ( "border-radius", "50%" )
+    , ( "border-radius", "6px" )
     , ( "border", "1px solid #3E849B" )
-    , ( "width", "40px" )
-    , ( "height", "40px" )
-    , ( "padding-top", "10px" )
+    , ( "width", "80px" )
+    , ( "height", "30px" )
+    , ( "padding-top", "6px" )
     , ( "color", "black" )
     , ( "text-align", "center" )
     , ( "background", "#FFFFFF" )
-    , ( "top", "-63px" )
-    , ( "left", "calc(50% - 20px + 2px)" )
+    , ( "top", "-58px" )
+    , ( "left", "calc(50% - 40px + 2px)" )
     , ( "z-index", "200" )
     ]
 
@@ -73,52 +73,74 @@ arboristConfig : Arborist.Config.Config Item.Item msg
 arboristConfig =
     { view =
         (\context item ->
-            div
-                [ style <|
-                    nodeContainerStyle
-                        ++ [ ( "background-color"
-                             , if context.isActive then
-                                "#4DC433"
-                               else if context.isDropTarget then
-                                "#F18F01"
-                               else
-                                "#3E849B"
-                             )
-                           , ( "color", "white" )
-                           ]
-                ]
-                [ div [] <|
-                    (if item.answer /= "" then
-                        [ p
+            item
+                |> Maybe.map
+                    (\item ->
+                        div
                             [ style <|
-                                bubbleStyle
-                                    ++ []
+                                nodeContainerStyle
+                                    ++ [ ( "background-color"
+                                         , case context.state of
+                                            Active ->
+                                                "#4DC433"
+
+                                            DropTarget ->
+                                                "#F18F01"
+
+                                            Normal ->
+                                                "#3E849B"
+                                         )
+                                       , ( "color", "white" )
+                                       ]
                             ]
-                            [ text item.answer ]
-                        ]
-                     else
-                        []
+                            [ div [] <|
+                                (if item.answer /= "" then
+                                    [ p
+                                        [ style <|
+                                            bubbleStyle
+                                                ++ []
+                                        ]
+                                        [ text item.answer ]
+                                    ]
+                                 else
+                                    []
+                                )
+                                    ++ [ p [ style <| textStyle ] [ text item.question ]
+                                       ]
+                            ]
                     )
-                        ++ [ p [ style <| textStyle ] [ text item.question ]
-                           ]
-                ]
-        )
-    , placeholderView =
-        (\context ->
-            div
-                [ style <|
-                    nodeContainerStyle
-                        ++ [ ( "background-color", "transparent" )
-                           , ( "border", "1px dashed #CECECE" )
-                           ]
-                ]
-                [ p [ style <| textStyle ] [ text "New child" ] ]
+                |> Maybe.withDefault
+                    (div
+                        [ style <|
+                            nodeContainerStyle
+                                ++ (case context.state of
+                                        Active ->
+                                            [ ( "background-color", "#4DC433" )
+                                            , ( "color", "white" )
+                                            , ( "border", "0" )
+                                            ]
+
+                                        DropTarget ->
+                                            [ ( "background-color", "#F18F01" )
+                                            , ( "border", "0" )
+                                            , ( "color", "white" )
+                                            ]
+
+                                        Normal ->
+                                            [ ( "background-color", "transparent" )
+                                            , ( "border", "1px dashed #CECECE" )
+                                            , ( "color", "black" )
+                                            ]
+                                   )
+                        ]
+                        [ p [ style <| textStyle ] [ text "New child" ] ]
+                    )
         )
     , layout =
         { width = 200
         , height = 60
-        , verticalGap = 120
-        , horizontalGap = 20
+        , level = 120
+        , gutter = 20
         }
     }
 

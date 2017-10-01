@@ -27,7 +27,7 @@ toCoord =
     floor >> toString
 
 
-view : { width : Float, height : Float, verticalGap : Float, horizontalGap : Float } -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
+view : { width : Float, height : Float, level : Float, gutter : Float } -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
 view layout ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
@@ -66,7 +66,7 @@ view layout ( dragX, dragY ) center childCenters =
 
         h =
             if h_ < 0 then
-                (layout.verticalGap)
+                (layout.level)
             else
                 h_
 

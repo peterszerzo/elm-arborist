@@ -3,22 +3,26 @@ module Arborist.Config exposing (..)
 import Html exposing (Html)
 
 
+type NodeState
+    = Normal
+    | Active
+    | DropTarget
+
+
 type alias Context item =
     { parent : Maybe item
     , siblings : List item
-    , isActive : Bool
-    , isDropTarget : Bool
+    , state : NodeState
     , position : ( Float, Float )
     }
 
 
 type alias Config item msg =
-    { view : Context item -> item -> Html msg
-    , placeholderView : Context item -> Html msg
+    { view : Context item -> Maybe item -> Html msg
     , layout :
         { width : Float
         , height : Float
-        , verticalGap : Float
-        , horizontalGap : Float
+        , level : Float
+        , gutter : Float
         }
     }
