@@ -1,3 +1,3 @@
 # elm-arborist
 
-Edit a tree structure holding arbitrary data structures in its nodes.
+Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes.

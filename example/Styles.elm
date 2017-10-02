@@ -1,6 +1,27 @@
 module Styles exposing (..)
 
-import Colors exposing (..)
+{-| Program styling
+-}
+
+
+blue : String
+blue =
+    "#265075"
+
+
+gray : String
+gray =
+    "#828481"
+
+
+faintGray : String
+faintGray =
+    "#D1D7D4"
+
+
+black : String
+black =
+    "#090B09"
 
 
 raw : String
@@ -14,7 +35,7 @@ raw =
 
 body {
   background-color: #D3DBDC;
-  padding: 40px;
+  padding: 30px;
 }
 
 h1 {
@@ -27,6 +48,12 @@ p {
 
 .intro {
   text-align: center;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid currentColor;
 }
 
 input {
@@ -81,14 +108,8 @@ button {
 
 box : List ( String, String )
 box =
-    [ ( "width", "1000px" )
-    , ( "height", "560px" )
-    , ( "background-color", "white" )
+    [ ( "background-color", "white" )
     , ( "margin", "auto" )
-    , ( "text-align", "left" )
-    , ( "vertical-align", "top" )
-    , ( "overflow", "hidden" )
-    , ( "position", "relative" )
     , ( "box-shadow", "0 0 12px rgba(0, 0, 0, 0.15)" )
     , ( "border-radius", "6px" )
     , ( "border", "1px solid " ++ faintGray )
@@ -105,4 +126,44 @@ popup =
     , ( "overflow", "auto" )
     , ( "position", "absolute" )
     , ( "box-shadow", "0 0 12px rgba(0, 0, 0, 0.25)" )
+    ]
+
+
+nodeContainer : List ( String, String )
+nodeContainer =
+    [ ( "width", "100%" )
+    , ( "height", "60px" )
+    , ( "border-radius", "4px" )
+    , ( "padding", "4px 20px" )
+    , ( "box-sizing", "border-box" )
+    , ( "padding", "5px" )
+    , ( "display", "flex" )
+    , ( "align-items", "center" )
+    , ( "justify-content", "center" )
+    ]
+
+
+text : List ( String, String )
+text =
+    [ ( "margin", "0" )
+    , ( "line-height", "0.9" )
+    , ( "text-align", "center" )
+    ]
+
+
+bubble : List ( String, String )
+bubble =
+    [ ( "position", "absolute" )
+    , ( "box-sizing", "border-box" )
+    , ( "border-radius", "6px" )
+    , ( "border", "1px solid #3E849B" )
+    , ( "width", "80px" )
+    , ( "height", "30px" )
+    , ( "padding-top", "6px" )
+    , ( "color", "black" )
+    , ( "text-align", "center" )
+    , ( "background", "#FFFFFF" )
+    , ( "top", "-58px" )
+    , ( "left", "calc(50% - 40px + 2px)" )
+    , ( "z-index", "200" )
     ]

@@ -1,76 +1,18 @@
 module Main exposing (..)
 
 import Json.Decode as Decode
-import Html exposing (Html, div, node, h1, h2, h3, p, text, beginnerProgram, label, input, map, button)
-import Html.Attributes exposing (class, style, value, type_)
+import Html exposing (Html, div, node, h1, h2, h3, p, a, text, beginnerProgram, label, input, map, button)
+import Html.Attributes exposing (class, style, value, type_, href)
 import Html.Events exposing (onInput, onClick)
-import Data.Tree as Tree
-import Item
 import Arborist
+import Arborist.Tree exposing (..)
 import Arborist.Config exposing (NodeState(..))
 import Styles
 
 
-type alias NodeId =
-    String
-
-
-type alias Model =
-    { arborist : Arborist.Model Item.Item
-    , newItem : Item.Item
-    }
-
-
-type Msg
-    = ArboristMsg (Arborist.Msg Item.Item)
-    | EditNewItemQuestion String
-    | EditNewItemAnswer String
-    | SetActive Item.Item
-    | DeleteActive
-    | NoOp
-
-
-nodeContainerStyle : List ( String, String )
-nodeContainerStyle =
-    [ ( "width", "100%" )
-    , ( "height", "60px" )
-    , ( "border-radius", "4px" )
-    , ( "padding", "4px 20px" )
-    , ( "box-sizing", "border-box" )
-    , ( "padding", "5px" )
-    , ( "display", "flex" )
-    , ( "align-items", "center" )
-    , ( "justify-content", "center" )
-    ]
-
-
-textStyle : List ( String, String )
-textStyle =
-    [ ( "margin", "0" )
-    , ( "line-height", "0.9" )
-    , ( "text-align", "center" )
-    ]
-
-
-bubbleStyle : List ( String, String )
-bubbleStyle =
-    [ ( "position", "absolute" )
-    , ( "box-sizing", "border-box" )
-    , ( "border-radius", "6px" )
-    , ( "border", "1px solid #3E849B" )
-    , ( "width", "80px" )
-    , ( "height", "30px" )
-    , ( "padding-top", "6px" )
-    , ( "color", "black" )
-    , ( "text-align", "center" )
-    , ( "background", "#FFFFFF" )
-    , ( "top", "-58px" )
-    , ( "left", "calc(50% - 40px + 2px)" )
-    , ( "z-index", "200" )
-    ]
-
-
-arboristConfig : Arborist.Config.Config Item.Item msg
+{-| Configure Arborist
+-}
+arboristConfig : Arborist.Config.Config Item
 arboristConfig =
     { view =
         (\context item ->
@@ -79,7 +21,7 @@ arboristConfig =
                     (\item ->
                         div
                             [ style <|
-                                nodeContainerStyle
+                                Styles.nodeContainer
                                     ++ [ ( "background-color"
                                          , case context.state of
                                             Active ->
@@ -98,7 +40,7 @@ arboristConfig =
                                 (if item.answer /= "" then
                                     [ p
                                         [ style <|
-                                            bubbleStyle
+                                            Styles.bubble
                                                 ++ []
                                         ]
                                         [ text item.answer ]
@@ -106,14 +48,14 @@ arboristConfig =
                                  else
                                     []
                                 )
-                                    ++ [ p [ style <| textStyle ] [ text item.question ]
+                                    ++ [ p [ style <| Styles.text ] [ text item.question ]
                                        ]
                             ]
                     )
                 |> Maybe.withDefault
                     (div
                         [ style <|
-                            nodeContainerStyle
+                            Styles.nodeContainer
                                 ++ (case context.state of
                                         Active ->
                                             [ ( "background-color", "#4DC433" )
@@ -134,16 +76,92 @@ arboristConfig =
                                             ]
                                    )
                         ]
-                        [ p [ style <| textStyle ] [ text "New child" ] ]
+                        [ p [ style <| Styles.text ] [ text "New child" ] ]
                     )
         )
     , layout =
-        { width = 200
-        , height = 60
+        { nodeWidth = 200
+        , nodeHeight = 60
+        , canvasWidth = 1000
+        , canvasHeight = 560
         , level = 120
         , gutter = 20
         }
     }
+
+
+
+-- Program model
+
+
+type alias Model =
+    { arborist : Arborist.Model Item
+    , newItem : Item
+    }
+
+
+
+-- The Item data type held in the tree's nodes
+
+
+type alias Item =
+    { question : String
+    , answer : String
+    }
+
+
+init : Item
+init =
+    { question = "", answer = "" }
+
+
+setQuestion : String -> Item -> Item
+setQuestion val item =
+    { item | question = val }
+
+
+setAnswer : String -> Item -> Item
+setAnswer val item =
+    { item | answer = val }
+
+
+decoder : Decode.Decoder Item
+decoder =
+    Decode.map2 Item
+        (Decode.field "question" Decode.string)
+        (Decode.field "answer" Decode.string)
+
+
+
+-- The starting tree itself.
+
+
+tree : Tree Item
+tree =
+    Node { answer = "", question = "Do you like trees?" }
+        [ Node { answer = "yes", question = "How much?" }
+            [ Node { answer = "A lot!", question = "Where were you all my life?" } []
+            ]
+        , Node { answer = "No.", question = "Seriously?" }
+            [ Node { answer = "Yes", question = "How about rollercoasters?" } []
+            ]
+        ]
+
+
+
+-- Msg
+
+
+type Msg
+    = ArboristMsg (Arborist.Msg Item)
+    | EditNewItemQuestion String
+    | EditNewItemAnswer String
+    | SetActive Item
+    | DeleteActive
+
+
+
+-- Update
 
 
 update : Msg -> Model -> Model
@@ -153,127 +171,83 @@ update msg model =
             { model | arborist = Arborist.update arboristConfig arboristMsg model.arborist }
 
         SetActive newItem ->
-            { model | arborist = Arborist.setActive newItem model.arborist }
+            { model | arborist = Arborist.setActiveNode newItem model.arborist }
 
         DeleteActive ->
-            { model | arborist = Arborist.deleteActive model.arborist }
+            { model | arborist = Arborist.deleteActiveNode model.arborist }
 
         EditNewItemQuestion val ->
             { model
-                | newItem = Item.setQuestion val model.newItem
+                | newItem = setQuestion val model.newItem
             }
 
         EditNewItemAnswer val ->
             { model
-                | newItem = Item.setAnswer val model.newItem
+                | newItem = setAnswer val model.newItem
             }
 
-        NoOp ->
-            model
+
+
+-- View
 
 
 view : Model -> Html Msg
 view model =
-    div []
+    div [] <|
         [ node "style" [] [ text Styles.raw ]
         , div [ class "intro" ]
             [ h1 [] [ text "elm-arborist" ]
-            , p [] [ text "a 🌲 editing interface" ]
+            , p [] [ text "a 🌲 editing interface (", a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ], text ")" ]
             ]
-        , div [ style Styles.box ] <|
-            [ Arborist.view arboristConfig [ style [ ( "width", "100%" ), ( "height", "100%" ) ] ] model.arborist |> Html.map ArboristMsg ]
-                ++ (Arborist.active arboristConfig model.arborist
-                        |> Maybe.map
-                            (\( item, ( x, y ) ) ->
-                                [ div
-                                    [ style <|
-                                        Styles.popup
-                                            ++ [ ( "left", (toString (x + 600 - 220)) ++ "px" )
-                                               , ( "top", (toString (y + 130)) ++ "px" )
-                                               ]
-                                    ]
-                                  <|
-                                    (case item of
-                                        Just item ->
-                                            [ label []
-                                                [ text "Question"
-                                                , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
-                                                ]
-                                            , label []
-                                                [ text "Answer"
-                                                , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
-                                                ]
-                                            , button [ onClick DeleteActive ] [ text "Delete" ]
-                                            ]
-
-                                        Nothing ->
-                                            [ label []
-                                                [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
-                                            , label []
-                                                [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
-                                            , button [ type_ "submit", onClick (SetActive model.newItem) ] [ text "Add node" ]
-                                            ]
-                                    )
+        ]
+            ++ [ Arborist.view arboristConfig [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
+            ++ (Arborist.activeNode arboristConfig model.arborist
+                    |> Maybe.map
+                        (\( item, ( x, y ) ) ->
+                            [ div
+                                [ style <|
+                                    Styles.popup
+                                        ++ [ ( "left", (toString (x + 420)) ++ "px" )
+                                           , ( "top", (toString (y + 240)) ++ "px" )
+                                           ]
                                 ]
-                            )
-                        |> Maybe.withDefault []
-                   )
-        ]
+                                (case item of
+                                    Just item ->
+                                        [ label []
+                                            [ text "Question"
+                                            , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                            ]
+                                        , label []
+                                            [ text "Answer"
+                                            , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
+                                            ]
+                                        , button [ onClick DeleteActive ] [ text "Delete" ]
+                                        ]
+
+                                    Nothing ->
+                                        [ label []
+                                            [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
+                                        , label []
+                                            [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
+                                        , button [ type_ "submit", onClick (SetActive model.newItem) ] [ text "Add node" ]
+                                        ]
+                                )
+                            ]
+                        )
+                    |> Maybe.withDefault []
+               )
 
 
-example : Tree.Tree Item.Item
-example =
-    """
-  {
-    "value": {
-      "question": "Do you like trees?",
-      "answer": ""
-    },
-    "children": [
-      {
-        "value": {
-          "question": "How much?",
-          "answer": "Yes"
-        },
-        "children": [
-          {
-            "value": {
-              "question": "Where were you all my life?",
-              "answer": "A lot!!"
-            },
-            "children": []
-          }
-        ]
-      },
-      {
-        "value": {
-          "question": "Seriously?",
-          "answer": "No."
-        },
-        "children": [
-          {
-            "value": {
-              "question": "How about rollercoasters?",
-              "answer": "Yes."
-            },
-            "children": []
-          }
-        ]
-      }
-    ]
-  }
-  """
-        |> Decode.decodeString (Tree.decoder Item.decoder)
-        |> Result.toMaybe
-        |> Maybe.withDefault Tree.Empty
+
+-- Entry point
 
 
 main : Program Never Model Msg
 main =
     beginnerProgram
         { model =
-            { arborist = Arborist.init example
-            , newItem = Item.init
+            { arborist = Arborist.init tree
+            , newItem = init
             }
         , update = update
         , view = view

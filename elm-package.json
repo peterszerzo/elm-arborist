@@ -8,6 +8,7 @@
     ],
     "exposed-modules": [
         "Arborist",
+        "Arborist.Tree",
         "Arborist.Config"
     ],
     "dependencies": {

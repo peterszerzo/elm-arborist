@@ -1,18 +1,20 @@
 module Views.Styles exposing (..)
 
+import Arborist.Config as Config
 
-coordinate : Float -> Float -> Float -> List ( String, String )
-coordinate width x y =
-    [ ( "left", "calc(50% + " ++ (toString (x - (width / 2))) ++ "px)" )
-    , ( "top", "calc(10% + " ++ (toString y) ++ "px)" )
+
+coordinate : Config.Layout -> ( Float, Float ) -> List ( String, String )
+coordinate layout ( x, y ) =
+    [ ( "left", ((toString << floor) (layout.canvasWidth / 2 + x - (layout.nodeWidth / 2))) ++ "px" )
+    , ( "top", ((toString << floor) (layout.canvasHeight * 0.1 + y)) ++ "px" )
     ]
 
 
-nodeBase : Float -> Float -> List ( String, String )
-nodeBase width height =
-    [ ( "width", (toString (floor width)) ++ "px" )
+nodeBase : Config.Layout -> List ( String, String )
+nodeBase layout =
+    [ ( "width", (toString (floor layout.nodeWidth)) ++ "px" )
     , ( "height", "auto" )
-    , ( "min-height", (toString (floor height)) ++ "px" )
+    , ( "min-height", (toString (floor layout.nodeHeight)) ++ "px" )
     , ( "position", "absolute" )
     , ( "user-select", "none" )
     , ( "cursor", "pointer" )

@@ -1,30 +1,16 @@
-module Data.Tree exposing (..)
+module Utils.Tree exposing (..)
 
 import Dict
 import Json.Decode as Decode
 import Utils
+import Arborist.Tree exposing (..)
 
 
 -- Data structure
 
 
-type Tree a
-    = Empty
-    | Node a (List (Tree a))
-
-
 type alias TreeNodePath =
     List Int
-
-
-decoder : Decode.Decoder a -> Decode.Decoder (Tree a)
-decoder nodeDecoder =
-    Decode.oneOf
-        [ Decode.null Empty
-        , Decode.map2 Node
-            (Decode.field "value" nodeDecoder)
-            (Decode.field "children" (Decode.lazy (\_ -> decoder nodeDecoder |> Decode.list)))
-        ]
 
 
 
@@ -50,53 +36,6 @@ type alias TreeAnalysis =
     , shortNodes : List TreeNodePath
     , nodeInfo : NodeInfo
     }
-
-
-
--- Update
-
-
-{-| Return an empty tree.
--}
-empty : Tree a
-empty =
-    Empty
-
-
-{-| Return a tree with a single element.
--}
-singleton : a -> Tree a
-singleton item =
-    Node item []
-
-
-{-| Find tree depth.
--}
-depth : Tree a -> Int
-depth tree =
-    depthTail 1 tree
-
-
-depthTail : Int -> Tree a -> Int
-depthTail currentDepth tree =
-    case tree of
-        Empty ->
-            currentDepth
-
-        Node item children ->
-            [ currentDepth ] ++ (List.map (depthTail (currentDepth + 1)) children) |> List.foldl max -1
-
-
-{-| Map over the items of the tree.
--}
-map : (a -> b) -> Tree a -> Tree b
-map fn tree =
-    case tree of
-        Empty ->
-            Empty
-
-        Node val children ->
-            Node (fn val) (List.map (map fn) children)
 
 
 {-| Add an empty element every

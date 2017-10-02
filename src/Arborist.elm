@@ -6,10 +6,24 @@ module Arborist
         , update
         , view
         , tree
-        , active
-        , setActive
-        , deleteActive
+        , activeNode
+        , setActiveNode
+        , deleteActiveNode
         )
+
+{-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes.
+
+
+# The editor module
+
+@docs Model, Msg, init, update, view
+
+
+# Tree query and manipulations
+
+@docs tree, activeNode, setActiveNode, deleteActiveNode
+
+-}
 
 import Dict
 import Json.Decode as Decode
@@ -19,16 +33,15 @@ import Html.Events exposing (onInput, on, onWithOptions)
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Html.Events exposing (onClick)
-import Data.Tree as Tree exposing (TreeNodePath)
+import Utils.Tree as Tree exposing (TreeNodePath)
+import Arborist.Tree
 import Data.ComputedTree as ComputedTree
 import MultiDrag as MultiDrag
 import Utils
 import Views.Styles as Styles
 import Views.NodeConnectors
 import Arborist.Config as Config
-
-
--- Model
+import Messages
 
 
 type ActiveNode
@@ -37,6 +50,14 @@ type ActiveNode
     | NewNode TreeNodePath
 
 
+type alias NodeGeometry =
+    { center : ( Float, Float )
+    , childCenters : List ( Float, Float )
+    }
+
+
+{-| Model, used for type annotation.
+-}
 type Model item
     = Model
         { computedTree : ComputedTree.ComputedTree item
@@ -50,7 +71,9 @@ type Model item
         }
 
 
-init : Tree.Tree item -> Model item
+{-| Initialize model from a [tree](/Arborist-Tree).
+-}
+init : Arborist.Tree.Tree item -> Model item
 init tree =
     Model
         { computedTree = ComputedTree.init tree
@@ -64,8 +87,10 @@ init tree =
         }
 
 
-active : Config.Config item (Msg item) -> Model item -> Maybe ( Maybe item, ( Float, Float ) )
-active config (Model { active, computedTree, panOffset, drag }) =
+{-| Returns the current active node. Returns a tuple of `Maybe item` (as the node maybe a placeholder for a new node), as well as its coordinates on the screen. Use these coordinates to position an active node-related pop-up (see example).
+-}
+activeNode : Config.Config item -> Model item -> Maybe ( Maybe item, ( Float, Float ) )
+activeNode config (Model { active, computedTree, panOffset, drag }) =
     active
         |> Maybe.map
             (\active ->
@@ -83,12 +108,16 @@ active config (Model { active, computedTree, panOffset, drag }) =
                             |> Maybe.map Tuple.second
                             |> Maybe.withDefault ( 0, 0 )
                 in
-                    ( ComputedTree.item active computedTree, Utils.addFloatTuples geo panOffset |> Utils.addFloatTuples dragOffset )
+                    ( ComputedTree.item active computedTree
+                    , [ ( config.layout.nodeWidth / 2, config.layout.nodeHeight / 10 ), geo, panOffset, dragOffset ] |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                    )
             )
 
 
-setActive : item -> Model item -> Model item
-setActive newItem (Model model) =
+{-| Sets a new item at the active node. This may be adding a completely new item from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNode](#activeNode) method.
+-}
+setActiveNode : item -> Model item -> Model item
+setActiveNode newItem (Model model) =
     let
         tree =
             ComputedTree.tree model.computedTree
@@ -128,8 +157,10 @@ setActive newItem (Model model) =
             }
 
 
-deleteActive : Model item -> Model item
-deleteActive (Model model) =
+{-| Delete the active node from a tree, including all of its children. If a placeholder is active, this method does nothing.
+-}
+deleteActiveNode : Model item -> Model item
+deleteActiveNode (Model model) =
     Model
         { model
             | computedTree =
@@ -140,33 +171,25 @@ deleteActive (Model model) =
         }
 
 
-tree : Model item -> Tree.Tree item
+{-| Access the current [tree](/Arborist-Tree).
+-}
+tree : Model item -> Arborist.Tree.Tree item
 tree (Model { computedTree }) =
     ComputedTree.tree computedTree
 
 
-
--- Msg
-
-
-type Msg item
-    = NodeMouseDown Bool TreeNodePath Float Float
-    | NodeMouseUp Float Float
-    | CanvasMouseMove Float Float
-    | CanvasMouseDown Float Float
-    | CanvasMouseUp Float Float
-    | CanvasMouseLeave
-    | NoOp
+{-| Msg type annotation for the program.
+-}
+type alias Msg item =
+    Messages.Msg item
 
 
-
--- Update
-
-
-update : Config.Config item (Msg item) -> Msg item -> Model item -> Model item
+{-| Update method, with the global editor [Config](/Arborist-Config#Config) as its first argument.
+-}
+update : Config.Config item -> Msg item -> Model item -> Model item
 update config msg (Model model) =
     case msg of
-        NodeMouseDown isPlaceholder path x y ->
+        Messages.NodeMouseDown isPlaceholder path x y ->
             Model
                 { model
                     | drag =
@@ -181,10 +204,10 @@ update config msg (Model model) =
                             Nothing
                 }
 
-        NodeMouseUp x y ->
+        Messages.NodeMouseUp x y ->
             let
                 isPlaceholder =
-                    (active config (Model model) |> Maybe.map Tuple.first)
+                    (activeNode config (Model model) |> Maybe.map Tuple.first)
                         == (Just Nothing)
 
                 active_ =
@@ -258,7 +281,7 @@ update config msg (Model model) =
                         , isDragging = False
                     }
 
-        CanvasMouseMove xm ym ->
+        Messages.CanvasMouseMove xm ym ->
             Model
                 { model
                     | drag =
@@ -270,13 +293,13 @@ update config msg (Model model) =
                             False
                 }
 
-        CanvasMouseDown x y ->
+        Messages.CanvasMouseDown x y ->
             Model
                 { model
                     | drag = MultiDrag.start Nothing x y
                 }
 
-        CanvasMouseUp x y ->
+        Messages.CanvasMouseUp x y ->
             Model
                 { model
                     | drag = MultiDrag.init
@@ -309,20 +332,14 @@ update config msg (Model model) =
                             |> Maybe.withDefault Nothing
                 }
 
-        CanvasMouseLeave ->
+        Messages.CanvasMouseLeave ->
             Model { model | drag = MultiDrag.init }
 
-        NoOp ->
+        Messages.NoOp ->
             Model model
 
 
-type alias NodeGeometry =
-    { center : ( Float, Float )
-    , childCenters : List ( Float, Float )
-    }
-
-
-getDropTarget : Config.Config item (Msg item) -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
+getDropTarget : Config.Config item -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
 getDropTarget config path ( dragX, dragY ) computedTree =
     let
         flat =
@@ -360,8 +377,8 @@ getDropTarget config path ( dragX, dragY ) computedTree =
                             (List.all identity
                                 [ not (Utils.startsWith path path_)
                                 , not (Utils.startsWith path_ path)
-                                , dx < config.layout.width
-                                , dy < config.layout.height
+                                , dx < config.layout.nodeWidth
+                                , dy < config.layout.nodeHeight
                                 ]
                             )
                         then
@@ -372,17 +389,17 @@ getDropTarget config path ( dragX, dragY ) computedTree =
             |> List.sortWith
                 (\( _, d1 ) ( _, d2 ) ->
                     if d1 > d2 then
-                        LT
+                        GT
                     else if d1 == d2 then
                         EQ
                     else
-                        GT
+                        LT
                 )
             |> List.head
             |> Maybe.map Tuple.first
 
 
-nodeGeometry : Config.Config item (Msg item) -> List Int -> Tree.Layout -> Maybe NodeGeometry
+nodeGeometry : Config.Config item -> List Int -> Tree.Layout -> Maybe NodeGeometry
 nodeGeometry config path layout =
     layout
         |> Dict.get path
@@ -393,14 +410,14 @@ nodeGeometry config path layout =
                         center
                 in
                     { center =
-                        ( centerX * (config.layout.width + config.layout.gutter)
-                        , centerY * (config.layout.height + config.layout.level)
+                        ( centerX * (config.layout.nodeWidth + config.layout.gutter)
+                        , centerY * (config.layout.nodeHeight + config.layout.level)
                         )
                     , childCenters =
                         List.map
                             (\center ->
-                                ( center * (config.layout.width + config.layout.gutter)
-                                , (centerY + 1) * (config.layout.height + config.layout.level)
+                                ( center * (config.layout.nodeWidth + config.layout.gutter)
+                                , (centerY + 1) * (config.layout.nodeHeight + config.layout.level)
                                 )
                             )
                             childCenters
@@ -408,7 +425,9 @@ nodeGeometry config path layout =
             )
 
 
-view : Config.Config item (Msg item) -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
+{-| The view, as a function of the `Config`, some custom html attributes for the container, and the Model.
+-}
+view : Config.Config item -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
 view config attrs (Model model) =
     let
         flatTree =
@@ -418,10 +437,10 @@ view config attrs (Model model) =
             ComputedTree.layout model.computedTree
 
         nodeBaseStyle =
-            Styles.nodeBase config.layout.width config.layout.height
+            Styles.nodeBase config.layout
 
         coordStyle =
-            Styles.coordinate config.layout.width
+            Styles.coordinate config.layout
 
         dragState =
             MultiDrag.state model.drag
@@ -448,24 +467,27 @@ view config attrs (Model model) =
     in
         div
             ([ on "mousemove"
-                (Decode.map2 CanvasMouseMove
+                (Decode.map2 Messages.CanvasMouseMove
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
              , on "mousedown"
-                (Decode.map2 CanvasMouseDown
+                (Decode.map2 Messages.CanvasMouseDown
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
              , on "mouseup"
-                (Decode.map2 CanvasMouseUp
+                (Decode.map2 Messages.CanvasMouseUp
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
-             , on "mouseleave" (Decode.succeed CanvasMouseLeave)
+             , on "mouseleave" (Decode.succeed Messages.CanvasMouseLeave)
              , style
                 [ ( "overflow", "hidden" )
+                , ( "width", (flip (++) "px" << toString << floor) config.layout.canvasWidth )
+                , ( "height", (flip (++) "px" << toString << floor) config.layout.canvasHeight )
                 , ( "box-sizing", "border-box" )
+                , ( "position", "relative" )
                 , ( "cursor"
                   , if isCanvasDragging then
                         "move"
@@ -531,7 +553,6 @@ view config attrs (Model model) =
                                         itemViewContext =
                                             { parent = Nothing
                                             , siblings = []
-                                            , position = ( x, y )
                                             , state =
                                                 if (model.active == Just path) then
                                                     Config.Active
@@ -544,7 +565,7 @@ view config attrs (Model model) =
                                         [ div
                                             [ style <|
                                                 nodeBaseStyle
-                                                    ++ (coordStyle xWithDrag yWithDrag)
+                                                    ++ (coordStyle ( xWithDrag, yWithDrag ))
                                                     ++ (if isDragged then
                                                             [ ( "z-index", "100" )
                                                             , ( "cursor", "move" )
@@ -552,12 +573,12 @@ view config attrs (Model model) =
                                                         else
                                                             []
                                                        )
-                                            , Utils.onClickStopPropagation NoOp
+                                            , Utils.onClickStopPropagation Messages.NoOp
                                             , onWithOptions "mousedown"
                                                 { stopPropagation = True
                                                 , preventDefault = False
                                                 }
-                                                (Decode.map2 (NodeMouseDown (item == Nothing) path)
+                                                (Decode.map2 (Messages.NodeMouseDown (item == Nothing) path)
                                                     (Decode.field "screenX" Decode.float)
                                                     (Decode.field "screenY" Decode.float)
                                                 )
@@ -565,7 +586,7 @@ view config attrs (Model model) =
                                                 { stopPropagation = True
                                                 , preventDefault = False
                                                 }
-                                                (Decode.map2 NodeMouseUp
+                                                (Decode.map2 Messages.NodeMouseUp
                                                     (Decode.field "screenX" Decode.float)
                                                     (Decode.field "screenY" Decode.float)
                                                 )
@@ -578,7 +599,7 @@ view config attrs (Model model) =
                                                         [ style <|
                                                             nodeBaseStyle
                                                                 ++ Styles.dragShadowNode
-                                                                ++ (coordStyle x y)
+                                                                ++ (coordStyle ( x, y ))
                                                         ]
                                                         []
                                                     ]
