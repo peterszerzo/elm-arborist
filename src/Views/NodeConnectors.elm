@@ -28,8 +28,8 @@ toCoord =
     floor >> toString
 
 
-view : Config.Layout -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
-view layout ( dragX, dragY ) center childCenters =
+view : Config.Layout -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
+view layout opacity ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
             [ stroke strokeColor
@@ -87,7 +87,7 @@ view layout ( dragX, dragY ) center childCenters =
                     "-2 0 " ++ (toString (w + 4)) ++ " " ++ (toString h)
                 )
             , style <|
-                [ ( "position", "absolute" ) ]
+                [ ( "position", "absolute" ), ( "opacity", toString opacity ) ]
                     ++ (Styles.coordinate layout
                             ( (minX + (layout.nodeWidth / 2) + dragX)
                             , (minY + layout.nodeHeight + dragY)

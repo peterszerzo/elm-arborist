@@ -141,7 +141,6 @@ setActiveNode newItem (Model model) =
                                     |> List.filter (\( path, _ ) -> active == path)
                                     |> List.head
                                     |> Maybe.map Tuple.second
-                                    |> Debug.log "item"
                         in
                             case item of
                                 Just (Just item) ->
@@ -237,8 +236,25 @@ update config msg (Model model) =
                 flat =
                     ComputedTree.flat model.computedTree
 
+                layout =
+                    ComputedTree.layout model.computedTree
+
                 tree =
                     ComputedTree.tree model.computedTree
+
+                newPanOffset =
+                    active_
+                        |> Maybe.andThen
+                            (\active_ ->
+                                nodeGeometry config active_ layout
+                                    |> Maybe.map .center
+                                    |> Maybe.map
+                                        (\( cx, cy ) ->
+                                            ( config.layout.canvasWidth / 2 - cx
+                                            , config.layout.canvasHeight * 0.4 - config.layout.nodeHeight / 2 - cy
+                                            )
+                                        )
+                            )
 
                 newTree =
                     MultiDrag.state model.drag
@@ -283,6 +299,7 @@ update config msg (Model model) =
                             MultiDrag.init
                         , computedTree = ComputedTree.init newTree
                         , prevComputedTree = model.computedTree
+                        , panOffset = newPanOffset |> Maybe.withDefault model.panOffset
                         , active = active_
                         , isDragging = False
                     }
@@ -626,13 +643,18 @@ view config attrs (Model model) =
                                                         ]
                                                         []
                                                     ]
+                                                        ++ (if item == Nothing then
+                                                                []
+                                                            else
+                                                                [ Views.NodeConnectors.view config.layout 0.3 ( 0, 0 ) center childCenters ]
+                                                           )
                                                 else
                                                     []
                                                )
                                             ++ (if item == Nothing then
                                                     []
                                                 else
-                                                    [ Views.NodeConnectors.view config.layout ( xDrag, yDrag ) center childCenters
+                                                    [ Views.NodeConnectors.view config.layout 1.0 ( xDrag, yDrag ) center childCenters
                                                     ]
                                                )
                                 )
