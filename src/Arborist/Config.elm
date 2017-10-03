@@ -18,11 +18,18 @@ import Html exposing (Html)
 import Messages exposing (Msg)
 
 
-{-| The state of a node at a given time. May be normal (rest state), active or an active drop target (indicating that a swap or insert of the dragged subtree may take place at this node).
+{-| The state of a node at a given time. May be normal one of the following:
+
+  - `Normal`: node in rest state
+  - `Hovered`: a hovered over node
+  - `Active`: an activated node. Overrides hover
+  - `DropTarget`: indicates that a swap or insert of the dragged subtree will take place at this node upon release
+
 -}
 type NodeState
     = Normal
     | Active
+    | Hovered
     | DropTarget
 
 

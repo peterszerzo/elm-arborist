@@ -63,6 +63,7 @@ type Model item
         { computedTree : ComputedTree.ComputedTree item
         , prevComputedTree : ComputedTree.ComputedTree item
         , active : Maybe TreeNodePath
+        , hovered : Maybe TreeNodePath
         , isDragging : Bool
         , focus : Maybe TreeNodePath
         , drag : MultiDrag.Drag (Maybe TreeNodePath)
@@ -79,6 +80,7 @@ init tree =
         { computedTree = ComputedTree.init tree
         , prevComputedTree = ComputedTree.init tree
         , active = Nothing
+        , hovered = Nothing
         , isDragging = False
         , focus = Nothing
         , drag = (MultiDrag.init)
@@ -142,7 +144,7 @@ setActiveNode newItem (Model model) =
                                     Tree.update active newItem tree
 
                                 Just Nothing ->
-                                    Tree.insert (List.take (List.length active - 1) active |> Debug.log "a") (Just newItem) tree
+                                    Tree.insert (List.take (List.length active - 1) active) (Just newItem) tree
 
                                 _ ->
                                     -- Impossible state
@@ -280,6 +282,19 @@ update config msg (Model model) =
                         , active = active_
                         , isDragging = False
                     }
+
+        Messages.NodeMouseEnter path ->
+            Model { model | hovered = Just path }
+
+        Messages.NodeMouseLeave path ->
+            Model
+                { model
+                    | hovered =
+                        if model.hovered == Just path then
+                            Nothing
+                        else
+                            model.hovered
+                }
 
         Messages.CanvasMouseMove xm ym ->
             Model
@@ -558,6 +573,8 @@ view config attrs (Model model) =
                                                     Config.Active
                                                 else if isDropTarget then
                                                     Config.DropTarget
+                                                else if (model.hovered == Just path) then
+                                                    Config.Hovered
                                                 else
                                                     Config.Normal
                                             }
@@ -590,6 +607,8 @@ view config attrs (Model model) =
                                                     (Decode.field "screenX" Decode.float)
                                                     (Decode.field "screenY" Decode.float)
                                                 )
+                                            , on "mouseenter" (Decode.succeed (Messages.NodeMouseEnter path))
+                                            , on "mouseleave" (Decode.succeed (Messages.NodeMouseLeave path))
                                             ]
                                             [ config.view itemViewContext item
                                             ]

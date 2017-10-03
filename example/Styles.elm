@@ -6,7 +6,22 @@ module Styles exposing (..)
 
 blue : String
 blue =
-    "#265075"
+    "#3E849B"
+
+
+lightBlue : String
+lightBlue =
+    "#4594ad"
+
+
+green : String
+green =
+    "#4DC433"
+
+
+orange : String
+orange =
+    "#F18F01"
 
 
 gray : String

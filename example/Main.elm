@@ -25,13 +25,16 @@ arboristConfig =
                                     ++ [ ( "background-color"
                                          , case context.state of
                                             Active ->
-                                                "#4DC433"
+                                                Styles.green
+
+                                            Hovered ->
+                                                Styles.lightBlue
 
                                             DropTarget ->
-                                                "#F18F01"
+                                                Styles.orange
 
                                             Normal ->
-                                                "#3E849B"
+                                                Styles.blue
                                          )
                                        , ( "color", "white" )
                                        ]
@@ -69,7 +72,7 @@ arboristConfig =
                                             , ( "color", "white" )
                                             ]
 
-                                        Normal ->
+                                        _ ->
                                             [ ( "background-color", "transparent" )
                                             , ( "border", "1px dashed #CECECE" )
                                             , ( "color", "black" )
