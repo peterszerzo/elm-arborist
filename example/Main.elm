@@ -203,42 +203,53 @@ view model =
             , p [] [ text "a 🌲 editing interface (", a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ], text ")" ]
             ]
         ]
-            ++ [ Arborist.view arboristConfig [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
-            ++ (Arborist.activeNode arboristConfig model.arborist
-                    |> Maybe.map
-                        (\( item, ( x, y ) ) ->
-                            [ div
-                                [ style <|
-                                    Styles.popup
-                                        ++ [ ( "left", (toString (x + 420)) ++ "px" )
-                                           , ( "top", (toString (y + 240)) ++ "px" )
-                                           ]
-                                ]
-                                (case item of
-                                    Just item ->
-                                        [ label []
-                                            [ text "Question"
-                                            , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+            ++ [ -- For pop-up coordinates to work, include view in a container
+                 div
+                    [ style
+                        [ ( "margin", "auto" )
+                        , ( "width", "1000px" )
+                        , ( "height", "560px" )
+                        , ( "position", "relative" )
+                        ]
+                    ]
+                 <|
+                    [ Arborist.view arboristConfig [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
+                        ++ (Arborist.activeNode arboristConfig model.arborist
+                                |> Maybe.map
+                                    (\( item, ( x, y ) ) ->
+                                        [ div
+                                            [ style <|
+                                                Styles.popup
+                                                    ++ [ ( "left", (toString x) ++ "px" )
+                                                       , ( "top", (toString y) ++ "px" )
+                                                       ]
                                             ]
-                                        , label []
-                                            [ text "Answer"
-                                            , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
-                                            ]
-                                        , button [ onClick DeleteActive ] [ text "Delete" ]
-                                        ]
+                                            (case item of
+                                                Just item ->
+                                                    [ label []
+                                                        [ text "Question"
+                                                        , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                                        ]
+                                                    , label []
+                                                        [ text "Answer"
+                                                        , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
+                                                        ]
+                                                    , button [ onClick DeleteActive ] [ text "Delete" ]
+                                                    ]
 
-                                    Nothing ->
-                                        [ label []
-                                            [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
-                                        , label []
-                                            [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
-                                        , button [ type_ "submit", onClick (SetActive model.newItem) ] [ text "Add node" ]
+                                                Nothing ->
+                                                    [ label []
+                                                        [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
+                                                    , label []
+                                                        [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
+                                                    , button [ type_ "submit", onClick (SetActive model.newItem) ] [ text "Add node" ]
+                                                    ]
+                                            )
                                         ]
-                                )
-                            ]
-                        )
-                    |> Maybe.withDefault []
-               )
+                                    )
+                                |> Maybe.withDefault []
+                           )
+               ]
 
 
 

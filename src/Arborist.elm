@@ -111,7 +111,11 @@ activeNode config (Model { active, computedTree, panOffset, drag }) =
                             |> Maybe.withDefault ( 0, 0 )
                 in
                     ( ComputedTree.item active computedTree
-                    , [ ( config.layout.nodeWidth / 2, config.layout.nodeHeight / 10 ), geo, panOffset, dragOffset ] |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                    , [ geo
+                      , panOffset
+                      , dragOffset
+                      ]
+                        |> List.foldl Utils.addFloatTuples ( 0, 0 )
                     )
             )
 
@@ -425,14 +429,14 @@ nodeGeometry config path layout =
                         center
                 in
                     { center =
-                        ( centerX * (config.layout.nodeWidth + config.layout.gutter)
-                        , centerY * (config.layout.nodeHeight + config.layout.level)
+                        ( config.layout.canvasWidth / 2 + centerX * (config.layout.nodeWidth + config.layout.gutter)
+                        , config.layout.canvasHeight * 0.1 + centerY * (config.layout.nodeHeight + config.layout.level)
                         )
                     , childCenters =
                         List.map
                             (\center ->
-                                ( center * (config.layout.nodeWidth + config.layout.gutter)
-                                , (centerY + 1) * (config.layout.nodeHeight + config.layout.level)
+                                ( config.layout.canvasWidth / 2 + center * (config.layout.nodeWidth + config.layout.gutter)
+                                , config.layout.canvasHeight * 0.1 + (centerY + 1) * (config.layout.nodeHeight + config.layout.level)
                                 )
                             )
                             childCenters

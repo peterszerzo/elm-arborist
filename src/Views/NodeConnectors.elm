@@ -88,7 +88,11 @@ view layout ( dragX, dragY ) center childCenters =
                 )
             , style <|
                 [ ( "position", "absolute" ) ]
-                    ++ (Styles.coordinate layout ( (minX + (layout.nodeWidth / 2) + dragX), (minY + layout.nodeHeight + dragY) ))
+                    ++ (Styles.coordinate layout
+                            ( (minX + (layout.nodeWidth / 2) + dragX)
+                            , (minY + layout.nodeHeight + dragY)
+                            )
+                       )
             ]
         <|
             (if List.length childCenters == 0 then

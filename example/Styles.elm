@@ -140,6 +140,7 @@ popup =
     , ( "padding", "20px" )
     , ( "overflow", "auto" )
     , ( "position", "absolute" )
+    , ( "transform", "translate3d(-50%, 75px, 0)" )
     , ( "box-shadow", "0 0 12px rgba(0, 0, 0, 0.25)" )
     ]
 

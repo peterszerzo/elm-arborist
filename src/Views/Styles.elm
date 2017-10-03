@@ -5,8 +5,8 @@ import Arborist.Config as Config
 
 coordinate : Config.Layout -> ( Float, Float ) -> List ( String, String )
 coordinate layout ( x, y ) =
-    [ ( "left", ((toString << floor) (layout.canvasWidth / 2 + x - (layout.nodeWidth / 2))) ++ "px" )
-    , ( "top", ((toString << floor) (layout.canvasHeight * 0.1 + y)) ++ "px" )
+    [ ( "left", ((toString << floor) (x - (layout.nodeWidth / 2))) ++ "px" )
+    , ( "top", ((toString << floor) (y)) ++ "px" )
     ]
 
 
