@@ -5,6 +5,11 @@ import Html exposing (Attribute)
 import Html.Events exposing (onWithOptions)
 
 
+floatToPxString : Float -> String
+floatToPxString =
+    flip (++) "px" << toString << floor
+
+
 addFloatTuples : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
 addFloatTuples ( x1, y1 ) ( x2, y2 ) =
     ( x1 + x2, y1 + y2 )

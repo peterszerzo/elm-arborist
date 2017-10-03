@@ -1,10 +1,12 @@
 module Messages exposing (..)
 
 import Utils.Tree exposing (TreeNodePath)
+import Time
 
 
 type Msg item
-    = NodeMouseDown Bool TreeNodePath Float Float
+    = AnimationFrameTick Time.Time
+    | NodeMouseDown Bool TreeNodePath Float Float
     | NodeMouseUp Float Float
     | NodeMouseEnter TreeNodePath
     | NodeMouseLeave TreeNodePath

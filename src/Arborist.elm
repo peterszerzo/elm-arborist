@@ -2,6 +2,7 @@ module Arborist
     exposing
         ( Model
         , Msg
+        , subscriptions
         , init
         , update
         , view
@@ -16,7 +17,7 @@ module Arborist
 
 # The editor module
 
-@docs Model, Msg, init, update, view
+@docs Model, Msg, init, update, view, subscriptions
 
 
 # Tree query and manipulations
@@ -26,6 +27,7 @@ module Arborist
 -}
 
 import Dict
+import AnimationFrame
 import Json.Decode as Decode
 import Html exposing (Html, Attribute, node, div, text, p, h1, h3, label, input, button)
 import Html.Attributes exposing (style, value)
@@ -65,10 +67,12 @@ type Model item
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
         , isDragging : Bool
+        , isReceivingAnimationFrames : Bool
         , focus : Maybe TreeNodePath
         , drag : MultiDrag.Drag (Maybe TreeNodePath)
         , displayRoot : Maybe TreeNodePath
         , panOffset : ( Float, Float )
+        , targetPanOffset : Maybe ( Float, Float )
         }
 
 
@@ -82,10 +86,12 @@ init tree =
         , active = Nothing
         , hovered = Nothing
         , isDragging = False
+        , isReceivingAnimationFrames = False
         , focus = Nothing
         , drag = (MultiDrag.init)
         , displayRoot = Nothing
         , panOffset = ( 0, 0 )
+        , targetPanOffset = Nothing
         }
 
 
@@ -176,6 +182,16 @@ deleteActiveNode (Model model) =
         }
 
 
+{-| Subscriptions responsible for obtaining animation frames used when animating a view centering. See example for usage.
+-}
+subscriptions : Model item -> Sub (Msg item)
+subscriptions (Model model) =
+    if model.isReceivingAnimationFrames && model.targetPanOffset == Nothing then
+        Sub.none
+    else
+        AnimationFrame.times Messages.AnimationFrameTick
+
+
 {-| Access the current [tree](/Arborist-Tree).
 -}
 tree : Model item -> Arborist.Tree.Tree item
@@ -194,6 +210,51 @@ type alias Msg item =
 update : Config.Config item -> Msg item -> Model item -> Model item
 update config msg (Model model) =
     case msg of
+        Messages.AnimationFrameTick time ->
+            Model
+                { model
+                    | isReceivingAnimationFrames = True
+                    , panOffset =
+                        model.targetPanOffset
+                            |> Maybe.map
+                                (\( targetX, targetY ) ->
+                                    let
+                                        ( x, y ) =
+                                            model.panOffset
+
+                                        d =
+                                            ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
+
+                                        dx =
+                                            if (targetX == x) then
+                                                0
+                                            else
+                                                (d / 10) * (targetX - x) / d
+
+                                        dy =
+                                            if (targetY == y) then
+                                                0
+                                            else
+                                                (d / 10) * (targetY - y) / d
+                                    in
+                                        ( x + dx, y + dy )
+                                )
+                            |> Maybe.withDefault model.panOffset
+                    , targetPanOffset =
+                        model.targetPanOffset
+                            |> Maybe.andThen
+                                (\( targetX, targetY ) ->
+                                    let
+                                        ( x, y ) =
+                                            model.panOffset
+                                    in
+                                        if abs (targetX - x) + abs (targetY - y) < 5 then
+                                            Nothing
+                                        else
+                                            Just ( targetX, targetY )
+                                )
+                }
+
         Messages.NodeMouseDown isPlaceholder path x y ->
             Model
                 { model
@@ -299,7 +360,20 @@ update config msg (Model model) =
                             MultiDrag.init
                         , computedTree = ComputedTree.init newTree
                         , prevComputedTree = model.computedTree
-                        , panOffset = newPanOffset |> Maybe.withDefault model.panOffset
+
+                        -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
+                        , targetPanOffset =
+                            if model.isReceivingAnimationFrames then
+                                newPanOffset
+                            else
+                                Nothing
+
+                        -- Otherwise, center the view directly
+                        , panOffset =
+                            if model.isReceivingAnimationFrames then
+                                model.panOffset
+                            else
+                                newPanOffset |> Maybe.withDefault model.panOffset
                         , active = active_
                         , isDragging = False
                     }
@@ -520,8 +594,8 @@ view config attrs (Model model) =
              , on "mouseleave" (Decode.succeed Messages.CanvasMouseLeave)
              , style
                 [ ( "overflow", "hidden" )
-                , ( "width", (flip (++) "px" << toString << floor) config.layout.canvasWidth )
-                , ( "height", (flip (++) "px" << toString << floor) config.layout.canvasHeight )
+                , ( "width", Utils.floatToPxString config.layout.canvasWidth )
+                , ( "height", Utils.floatToPxString config.layout.canvasHeight )
                 , ( "box-sizing", "border-box" )
                 , ( "position", "relative" )
                 , ( "cursor"
@@ -539,7 +613,7 @@ view config attrs (Model model) =
                     [ ( "width", "100%" )
                     , ( "height", "100%" )
                     , ( "position", "relative" )
-                    , ( "transform", "translate3d(" ++ (toString canvasTotalDragOffsetX) ++ "px, " ++ (toString canvasTotalDragOffsetY) ++ "px, 0)" )
+                    , ( "transform", "translate3d(" ++ (Utils.floatToPxString canvasTotalDragOffsetX) ++ ", " ++ (Utils.floatToPxString canvasTotalDragOffsetY) ++ ", 0)" )
                     ]
                 ]
               <|
@@ -587,8 +661,42 @@ view config attrs (Model model) =
                                             y + yDrag
 
                                         itemViewContext =
-                                            { parent = Nothing
-                                            , siblings = []
+                                            { parent =
+                                                flatTree
+                                                    |> List.filterMap
+                                                        (\( path_, item ) ->
+                                                            if path_ == List.take (List.length path - 1) path then
+                                                                item
+                                                            else
+                                                                Nothing
+                                                        )
+                                                    |> List.head
+                                            , siblings =
+                                                flatTree
+                                                    |> List.filterMap
+                                                        (\( path_, item ) ->
+                                                            item
+                                                                |> Maybe.andThen
+                                                                    (\item ->
+                                                                        if path /= path_ && List.length path == List.length path_ && List.take (List.length path_ - 1) path_ == List.take (List.length path - 1) path then
+                                                                            Just item
+                                                                        else
+                                                                            Nothing
+                                                                    )
+                                                        )
+                                            , children =
+                                                flatTree
+                                                    |> List.filterMap
+                                                        (\( path_, item ) ->
+                                                            item
+                                                                |> Maybe.andThen
+                                                                    (\item ->
+                                                                        if List.length path_ == List.length path + 1 && List.take (List.length path) path_ == path then
+                                                                            Just item
+                                                                        else
+                                                                            Nothing
+                                                                    )
+                                                        )
                                             , state =
                                                 if (model.active == Just path) then
                                                     Config.Active

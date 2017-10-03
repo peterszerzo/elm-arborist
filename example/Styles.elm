@@ -133,9 +133,9 @@ box =
 
 popup : List ( String, String )
 popup =
-    [ ( "width", "240px" )
+    [ ( "width", "360px" )
     , ( "background-color", "white" )
-    , ( "height", "180px" )
+    , ( "height", "240px" )
     , ( "border-top", "4px solid #4DC433" )
     , ( "padding", "20px" )
     , ( "overflow", "auto" )
