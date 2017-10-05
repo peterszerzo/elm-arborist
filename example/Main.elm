@@ -14,86 +14,82 @@ import Window exposing (size, resizes)
 
 {-| Configure Arborist
 -}
-arboristConfig : Arborist.Config.Config Item
-arboristConfig =
+arboristConfig : Window.Size -> Arborist.Config.Config Item
+arboristConfig windowSize =
     { view =
         (\context item ->
-            let
-                _ =
-                    ( context, item ) |> Debug.log "c"
-            in
-                item
-                    |> Maybe.map
-                        (\item ->
-                            div
-                                [ style <|
-                                    Styles.nodeContainer
-                                        ++ [ ( "background-color"
-                                             , case context.state of
-                                                Active ->
-                                                    Styles.green
-
-                                                Hovered ->
-                                                    Styles.lightBlue
-
-                                                DropTarget ->
-                                                    Styles.orange
-
-                                                Normal ->
-                                                    Styles.blue
-                                             )
-                                           , ( "color", "white" )
-                                           ]
-                                ]
-                                [ div [] <|
-                                    (if item.answer /= "" then
-                                        [ p
-                                            [ style <|
-                                                Styles.bubble
-                                                    ++ []
-                                            ]
-                                            [ text item.answer ]
-                                        ]
-                                     else
-                                        []
-                                    )
-                                        ++ [ p [ style <| Styles.text ] [ text item.question ]
-                                           ]
-                                ]
-                        )
-                    |> Maybe.withDefault
-                        (div
+            item
+                |> Maybe.map
+                    (\item ->
+                        div
                             [ style <|
                                 Styles.nodeContainer
-                                    ++ (case context.state of
+                                    ++ [ ( "background-color"
+                                         , case context.state of
                                             Active ->
-                                                [ ( "background-color", "#4DC433" )
-                                                , ( "color", "white" )
-                                                , ( "border", "0" )
-                                                ]
+                                                Styles.green
+
+                                            Hovered ->
+                                                Styles.lightBlue
 
                                             DropTarget ->
-                                                [ ( "background-color", "#F18F01" )
-                                                , ( "border", "0" )
-                                                , ( "color", "white" )
-                                                ]
+                                                Styles.orange
 
-                                            _ ->
-                                                [ ( "background-color", "transparent" )
-                                                , ( "border", "1px dashed #CECECE" )
-                                                , ( "color", "black" )
-                                                ]
-                                       )
+                                            Normal ->
+                                                Styles.blue
+                                         )
+                                       , ( "color", "white" )
+                                       ]
                             ]
-                            [ p [ style <| Styles.text ] [ text "New child" ] ]
-                        )
+                            [ div [] <|
+                                (if item.answer /= "" then
+                                    [ p
+                                        [ style <|
+                                            Styles.bubble
+                                                ++ []
+                                        ]
+                                        [ text item.answer ]
+                                    ]
+                                 else
+                                    []
+                                )
+                                    ++ [ p [ style <| Styles.text ] [ text item.question ]
+                                       ]
+                            ]
+                    )
+                |> Maybe.withDefault
+                    (div
+                        [ style <|
+                            Styles.nodeContainer
+                                ++ (case context.state of
+                                        Active ->
+                                            [ ( "background-color", Styles.green )
+                                            , ( "color", "white" )
+                                            , ( "border", "0" )
+                                            ]
+
+                                        DropTarget ->
+                                            [ ( "background-color", Styles.orange )
+                                            , ( "border", "0" )
+                                            , ( "color", "white" )
+                                            ]
+
+                                        _ ->
+                                            [ ( "background-color", "transparent" )
+                                            , ( "border", "1px dashed #CECECE" )
+                                            , ( "color", "black" )
+                                            ]
+                                   )
+                        ]
+                        [ p [ style <| Styles.text ] [ text "New child" ] ]
+                    )
         )
     , layout =
-        { nodeWidth = 200
-        , nodeHeight = 60
-        , canvasWidth = 1000
-        , canvasHeight = 560
-        , level = 120
+        { nodeWidth = 120
+        , nodeHeight = 36
+        , canvasWidth = toFloat windowSize.width
+        , canvasHeight = toFloat windowSize.height
+        , level = 80
         , gutter = 20
         }
     }
@@ -183,7 +179,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ArboristMsg arboristMsg ->
-            ( { model | arborist = Arborist.update arboristConfig arboristMsg model.arborist }
+            ( { model | arborist = Arborist.update (arboristConfig model.windowSize) arboristMsg model.arborist }
             , Cmd.none
             )
 
@@ -227,21 +223,24 @@ view model =
         [ node "style" [] [ text Styles.raw ]
         , div [ class "intro" ]
             [ h1 [] [ text "elm-arborist" ]
-            , p [] [ text "a 🌲 editing interface (", a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ], text ")" ]
+            , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
+            , p [ class "intro__icon" ] [ text "🌲" ]
             ]
         ]
             ++ [ -- For pop-up coordinates to work, include view in a container
                  div
                     [ style
                         [ ( "margin", "auto" )
-                        , ( "width", "1000px" )
-                        , ( "height", "560px" )
-                        , ( "position", "relative" )
+                        , ( "position", "absolute" )
+                        , ( "top", "0" )
+                        , ( "left", "0" )
+                        , ( "width", (toString model.windowSize.width) ++ "px" )
+                        , ( "height", (toString model.windowSize.height) ++ "px" )
                         ]
                     ]
                  <|
-                    [ Arborist.view arboristConfig [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
-                        ++ (Arborist.activeNode arboristConfig model.arborist
+                    [ Arborist.view (arboristConfig model.windowSize) [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
+                        ++ (Arborist.activeNode (arboristConfig model.windowSize) model.arborist
                                 |> Maybe.map
                                     (\( item, ( x, y ) ) ->
                                         [ div
@@ -261,7 +260,7 @@ view model =
                                                         [ text "Answer"
                                                         , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
                                                         ]
-                                                    , button [ onClick DeleteActive ] [ text "Delete" ]
+                                                    , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
                                                     ]
 
                                                 Nothing ->
@@ -269,7 +268,7 @@ view model =
                                                         [ text "Question", input [ value model.newItem.question, onInput EditNewItemQuestion ] [] ]
                                                     , label []
                                                         [ text "Answer", input [ value model.newItem.answer, onInput EditNewItemAnswer ] [] ]
-                                                    , button [ type_ "submit", onClick (SetActive model.newItem) ] [ text "Add node" ]
+                                                    , button [ style Styles.button, type_ "submit", onClick (SetActive model.newItem) ] [ text "Add node" ]
                                                     ]
                                             )
                                         ]
