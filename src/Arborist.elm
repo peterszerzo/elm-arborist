@@ -2,9 +2,11 @@ module Arborist
     exposing
         ( Model
         , Msg
+        , UpdateConfig
         , subscriptions
         , init
         , update
+        , updateWith
         , view
         , tree
         , activeNode
@@ -17,7 +19,7 @@ module Arborist
 
 # The editor module
 
-@docs Model, Msg, init, update, view, subscriptions
+@docs Model, Msg, init, update, updateWith, UpdateConfig, view, subscriptions
 
 
 # Tree query and manipulations
@@ -205,10 +207,20 @@ type alias Msg item =
     Messages.Msg item
 
 
-{-| Update method, with the global editor [Config](/Arborist-Config#Config) as its first argument.
+{-| A special update configuration object used in the custom [updateWith](/Arborist#updateWith) method. It holds the following fields:
+
+    - `centerAt`: given the width and height of the canvas as float values, where should an activated node be centered. Defaults to `\width height -> ( width / 2, height / 2 )`
+
 -}
-update : Config.Config item -> Msg item -> Model item -> Model item
-update config msg (Model model) =
+type alias UpdateConfig =
+    { centerAt : Float -> Float -> ( Float, Float )
+    }
+
+
+{-| A custom version of [update](/Arborist#update), using a [configuration](/Arborist#UpdateConfig).
+-}
+updateWith : UpdateConfig -> Config.Config item -> Msg item -> Model item -> Model item
+updateWith { centerAt } config msg (Model model) =
     case msg of
         Messages.AnimationFrameTick time ->
             Model
@@ -311,9 +323,12 @@ update config msg (Model model) =
                                     |> Maybe.map .center
                                     |> Maybe.map
                                         (\( cx, cy ) ->
-                                            ( config.layout.canvasWidth / 2 - cx
-                                            , config.layout.canvasHeight * 0.4 - config.layout.nodeHeight / 2 - cy
-                                            )
+                                            Utils.addFloatTuples
+                                                (centerAt
+                                                    config.layout.canvasWidth
+                                                    config.layout.canvasHeight
+                                                )
+                                                ( -cx, -config.layout.nodeHeight / 2 - cy )
                                         )
                             )
 
@@ -447,6 +462,13 @@ update config msg (Model model) =
 
         Messages.NoOp ->
             Model model
+
+
+{-| Update method, with the global editor [Config](/Arborist-Config#Config) as its first argument.
+-}
+update : Config.Config item -> Msg item -> Model item -> Model item
+update =
+    updateWith { centerAt = (\width height -> ( width / 2, height / 2 )) }
 
 
 getDropTarget : Config.Config item -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath

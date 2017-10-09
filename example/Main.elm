@@ -179,7 +179,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ArboristMsg arboristMsg ->
-            ( { model | arborist = Arborist.update (arboristConfig model.windowSize) arboristMsg model.arborist }
+            ( { model | arborist = Arborist.updateWith { centerAt = (\width height -> ( width / 2, height * 0.3 )) } (arboristConfig model.windowSize) arboristMsg model.arborist }
             , Cmd.none
             )
 
