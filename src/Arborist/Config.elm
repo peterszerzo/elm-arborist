@@ -75,7 +75,6 @@ type alias Layout =
   - `layout`: bits of geometry information, detailed [here](/Arborist-Context#Layout)
 
 -}
-type alias Config item =
-    { view : Context item -> Maybe item -> Html (Msg item)
-    , layout : Layout
+type alias Config =
+    { layout : Layout
     }

@@ -99,7 +99,7 @@ init tree =
 
 {-| Returns the current active node. Returns a tuple of `Maybe item` (as the node maybe a placeholder for a new node), as well as its coordinates on the screen. Use these coordinates to position an active node-related pop-up (see example).
 -}
-activeNode : Config.Config item -> Model item -> Maybe ( Maybe item, ( Float, Float ) )
+activeNode : Config.Config -> Model item -> Maybe ( Maybe item, ( Float, Float ) )
 activeNode config (Model { active, computedTree, panOffset, drag }) =
     active
         |> Maybe.map
@@ -219,7 +219,7 @@ type alias UpdateConfig =
 
 {-| A custom version of [update](/Arborist#update), using a [configuration](/Arborist#UpdateConfig).
 -}
-updateWith : UpdateConfig -> Config.Config item -> Msg item -> Model item -> Model item
+updateWith : UpdateConfig -> Config.Config -> Msg item -> Model item -> Model item
 updateWith { centerAt } config msg (Model model) =
     case msg of
         Messages.AnimationFrameTick time ->
@@ -466,12 +466,12 @@ updateWith { centerAt } config msg (Model model) =
 
 {-| Update method, with the global editor [Config](/Arborist-Config#Config) as its first argument.
 -}
-update : Config.Config item -> Msg item -> Model item -> Model item
+update : Config.Config -> Msg item -> Model item -> Model item
 update =
     updateWith { centerAt = (\width height -> ( width / 2, height / 2 )) }
 
 
-getDropTarget : Config.Config item -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
+getDropTarget : Config.Config -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
 getDropTarget config path ( dragX, dragY ) computedTree =
     let
         flat =
@@ -531,7 +531,7 @@ getDropTarget config path ( dragX, dragY ) computedTree =
             |> Maybe.map Tuple.first
 
 
-nodeGeometry : Config.Config item -> List Int -> Tree.Layout -> Maybe NodeGeometry
+nodeGeometry : Config.Config -> List Int -> Tree.Layout -> Maybe NodeGeometry
 nodeGeometry config path layout =
     layout
         |> Dict.get path
@@ -559,8 +559,8 @@ nodeGeometry config path layout =
 
 {-| The view, as a function of the `Config`, some custom html attributes for the container, and the Model.
 -}
-view : Config.Config item -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
-view config attrs (Model model) =
+view : Config.Config -> (Config.Context item -> Maybe item -> Html (Msg item)) -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
+view config viewItem attrs (Model model) =
     let
         flatTree =
             ComputedTree.flat model.computedTree
@@ -761,7 +761,7 @@ view config attrs (Model model) =
                                             , on "mouseenter" (Decode.succeed (Messages.NodeMouseEnter path))
                                             , on "mouseleave" (Decode.succeed (Messages.NodeMouseLeave path))
                                             ]
-                                            [ config.view itemViewContext item
+                                            [ viewItem itemViewContext item
                                             ]
                                         ]
                                             ++ (if isDragged then

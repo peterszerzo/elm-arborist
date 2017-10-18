@@ -14,77 +14,9 @@ import Window exposing (size, resizes)
 
 {-| Configure Arborist
 -}
-arboristConfig : Window.Size -> Arborist.Config.Config Item
+arboristConfig : Window.Size -> Arborist.Config.Config
 arboristConfig windowSize =
-    { view =
-        (\context item ->
-            item
-                |> Maybe.map
-                    (\item ->
-                        div
-                            [ style <|
-                                Styles.nodeContainer
-                                    ++ [ ( "background-color"
-                                         , case context.state of
-                                            Active ->
-                                                Styles.green
-
-                                            Hovered ->
-                                                Styles.lightBlue
-
-                                            DropTarget ->
-                                                Styles.orange
-
-                                            Normal ->
-                                                Styles.blue
-                                         )
-                                       , ( "color", "white" )
-                                       ]
-                            ]
-                            [ div [] <|
-                                (if item.answer /= "" then
-                                    [ p
-                                        [ style <|
-                                            Styles.bubble
-                                                ++ []
-                                        ]
-                                        [ text item.answer ]
-                                    ]
-                                 else
-                                    []
-                                )
-                                    ++ [ p [ style <| Styles.text ] [ text item.question ]
-                                       ]
-                            ]
-                    )
-                |> Maybe.withDefault
-                    (div
-                        [ style <|
-                            Styles.nodeContainer
-                                ++ (case context.state of
-                                        Active ->
-                                            [ ( "background-color", Styles.green )
-                                            , ( "color", "white" )
-                                            , ( "border", "0" )
-                                            ]
-
-                                        DropTarget ->
-                                            [ ( "background-color", Styles.orange )
-                                            , ( "border", "0" )
-                                            , ( "color", "white" )
-                                            ]
-
-                                        _ ->
-                                            [ ( "background-color", "transparent" )
-                                            , ( "border", "1px dashed #CECECE" )
-                                            , ( "color", "black" )
-                                            ]
-                                   )
-                        ]
-                        [ p [ style <| Styles.text ] [ text "New child" ] ]
-                    )
-        )
-    , layout =
+    { layout =
         { nodeWidth = 120
         , nodeHeight = 36
         , canvasWidth = toFloat windowSize.width
@@ -93,6 +25,74 @@ arboristConfig windowSize =
         , gutter = 20
         }
     }
+
+
+itemView context item =
+    item
+        |> Maybe.map
+            (\item ->
+                div
+                    [ style <|
+                        Styles.nodeContainer
+                            ++ [ ( "background-color"
+                                 , case context.state of
+                                    Active ->
+                                        Styles.green
+
+                                    Hovered ->
+                                        Styles.lightBlue
+
+                                    DropTarget ->
+                                        Styles.orange
+
+                                    Normal ->
+                                        Styles.blue
+                                 )
+                               , ( "color", "white" )
+                               ]
+                    ]
+                    [ div [] <|
+                        (if item.answer /= "" then
+                            [ p
+                                [ style <|
+                                    Styles.bubble
+                                        ++ []
+                                ]
+                                [ text item.answer ]
+                            ]
+                         else
+                            []
+                        )
+                            ++ [ p [ style <| Styles.text ] [ text item.question ]
+                               ]
+                    ]
+            )
+        |> Maybe.withDefault
+            (div
+                [ style <|
+                    Styles.nodeContainer
+                        ++ (case context.state of
+                                Active ->
+                                    [ ( "background-color", Styles.green )
+                                    , ( "color", "white" )
+                                    , ( "border", "0" )
+                                    ]
+
+                                DropTarget ->
+                                    [ ( "background-color", Styles.orange )
+                                    , ( "border", "0" )
+                                    , ( "color", "white" )
+                                    ]
+
+                                _ ->
+                                    [ ( "background-color", "transparent" )
+                                    , ( "border", "1px dashed #CECECE" )
+                                    , ( "color", "black" )
+                                    ]
+                           )
+                ]
+                [ p [ style <| Styles.text ] [ text "New child" ] ]
+            )
 
 
 
@@ -239,7 +239,7 @@ view model =
                         ]
                     ]
                  <|
-                    [ Arborist.view (arboristConfig model.windowSize) [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
+                    [ Arborist.view (arboristConfig model.windowSize) itemView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
                         ++ (Arborist.activeNode (arboristConfig model.windowSize) model.arborist
                                 |> Maybe.map
                                     (\( item, ( x, y ) ) ->
