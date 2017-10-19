@@ -5,7 +5,7 @@ import Html.Attributes exposing (style)
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth, strokeLinecap, strokeLinejoin)
 import Views.Styles as Styles
-import Arborist.Config as Config
+import Arborist.Settings as Settings
 
 
 strokeColor : String
@@ -28,8 +28,8 @@ toCoord =
     floor >> toString
 
 
-view : Config.Layout -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
-view layout opacity ( dragX, dragY ) center childCenters =
+view : Settings.Settings -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
+view settings opacity ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
             [ stroke strokeColor
@@ -63,11 +63,11 @@ view layout opacity ( dragX, dragY ) center childCenters =
                 w_
 
         h_ =
-            maxY - minY - layout.nodeHeight
+            maxY - minY - settings.nodeHeight
 
         h =
             if h_ < 0 then
-                (layout.level)
+                (settings.level)
             else
                 h_
 
@@ -88,9 +88,9 @@ view layout opacity ( dragX, dragY ) center childCenters =
                 )
             , style <|
                 [ ( "position", "absolute" ), ( "opacity", toString opacity ) ]
-                    ++ (Styles.coordinate layout
-                            ( (minX + (layout.nodeWidth / 2) + dragX)
-                            , (minY + layout.nodeHeight + dragY)
+                    ++ (Styles.coordinate settings
+                            ( (minX + (settings.nodeWidth / 2) + dragX)
+                            , (minY + settings.nodeHeight + dragY)
                             )
                        )
             ]

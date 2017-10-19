@@ -2,11 +2,9 @@ module Arborist
     exposing
         ( Model
         , Msg
-        , UpdateConfig
         , subscriptions
         , init
         , update
-        , updateWith
         , view
         , tree
         , activeNode
@@ -44,7 +42,8 @@ import MultiDrag as MultiDrag
 import Utils
 import Views.Styles as Styles
 import Views.NodeConnectors
-import Arborist.Config as Config
+import Arborist.Settings as Settings
+import Arborist.Context as Context
 import Messages
 
 
@@ -64,7 +63,8 @@ type alias NodeGeometry =
 -}
 type Model item
     = Model
-        { computedTree : ComputedTree.ComputedTree item
+        { settings : Settings.Settings
+        , computedTree : ComputedTree.ComputedTree item
         , prevComputedTree : ComputedTree.ComputedTree item
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
@@ -83,7 +83,8 @@ type Model item
 init : Arborist.Tree.Tree item -> Model item
 init tree =
     Model
-        { computedTree = ComputedTree.init tree
+        { settings = Settings.defaultSettings
+        , computedTree = ComputedTree.init tree
         , prevComputedTree = ComputedTree.init tree
         , active = Nothing
         , hovered = Nothing
@@ -99,17 +100,17 @@ init tree =
 
 {-| Returns the current active node. Returns a tuple of `Maybe item` (as the node maybe a placeholder for a new node), as well as its coordinates on the screen. Use these coordinates to position an active node-related pop-up (see example).
 -}
-activeNode : Config.Config -> Model item -> Maybe ( Maybe item, ( Float, Float ) )
-activeNode config (Model { active, computedTree, panOffset, drag }) =
+activeNode : Model item -> Maybe ( Maybe item, ( Float, Float ) )
+activeNode (Model { settings, active, computedTree, panOffset, drag }) =
     active
         |> Maybe.map
             (\active ->
                 let
-                    layout =
+                    treeLayout =
                         ComputedTree.layout computedTree
 
                     geo =
-                        nodeGeometry config active layout
+                        nodeGeometry settings active treeLayout
                             |> Maybe.map .center
                             |> Maybe.withDefault ( 0, 0 )
 
@@ -207,20 +208,10 @@ type alias Msg item =
     Messages.Msg item
 
 
-{-| A special update configuration object used in the custom [updateWith](/Arborist#updateWith) method. It holds the following fields:
-
-    - `centerAt`: given the width and height of the canvas as float values, where should an activated node be centered. Defaults to `\width height -> ( width / 2, height / 2 )`
-
--}
-type alias UpdateConfig =
-    { centerAt : Float -> Float -> ( Float, Float )
-    }
-
-
 {-| A custom version of [update](/Arborist#update), using a [configuration](/Arborist#UpdateConfig).
 -}
-updateWith : UpdateConfig -> Config.Config -> Msg item -> Model item -> Model item
-updateWith { centerAt } config msg (Model model) =
+update : Msg item -> Model item -> Model item
+update msg (Model model) =
     case msg of
         Messages.AnimationFrameTick time ->
             Model
@@ -285,7 +276,7 @@ updateWith { centerAt } config msg (Model model) =
         Messages.NodeMouseUp x y ->
             let
                 isPlaceholder =
-                    (activeNode config (Model model) |> Maybe.map Tuple.first)
+                    (activeNode (Model model) |> Maybe.map Tuple.first)
                         == (Just Nothing)
 
                 active_ =
@@ -319,16 +310,17 @@ updateWith { centerAt } config msg (Model model) =
                     active_
                         |> Maybe.andThen
                             (\active_ ->
-                                nodeGeometry config active_ layout
+                                nodeGeometry model.settings active_ layout
                                     |> Maybe.map .center
                                     |> Maybe.map
                                         (\( cx, cy ) ->
-                                            Utils.addFloatTuples
-                                                (centerAt
-                                                    config.layout.canvasWidth
-                                                    config.layout.canvasHeight
-                                                )
-                                                ( -cx, -config.layout.nodeHeight / 2 - cy )
+                                            [ model.settings.centerOffset
+                                            , ( model.settings.canvasWidth / 2
+                                              , model.settings.canvasHeight / 2
+                                              )
+                                            , ( -cx, -model.settings.nodeHeight / 2 - cy )
+                                            ]
+                                                |> List.foldl Utils.addFloatTuples ( 0, 0 )
                                         )
                             )
 
@@ -339,7 +331,7 @@ updateWith { centerAt } config msg (Model model) =
                                 path
                                     |> Maybe.map
                                         (\path ->
-                                            getDropTarget config path dragOffset model.computedTree
+                                            getDropTarget model.settings path dragOffset model.computedTree
                                                 |> Maybe.map
                                                     (\dropTargetPath ->
                                                         flat
@@ -464,15 +456,8 @@ updateWith { centerAt } config msg (Model model) =
             Model model
 
 
-{-| Update method, with the global editor [Config](/Arborist-Config#Config) as its first argument.
--}
-update : Config.Config -> Msg item -> Model item -> Model item
-update =
-    updateWith { centerAt = (\width height -> ( width / 2, height / 2 )) }
-
-
-getDropTarget : Config.Config -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
-getDropTarget config path ( dragX, dragY ) computedTree =
+getDropTarget : Settings.Settings -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
+getDropTarget settings path ( dragX, dragY ) computedTree =
     let
         flat =
             ComputedTree.flat computedTree
@@ -481,7 +466,7 @@ getDropTarget config path ( dragX, dragY ) computedTree =
             ComputedTree.layout computedTree
 
         ( x0, y0 ) =
-            nodeGeometry config path layout
+            nodeGeometry settings path layout
                 |> Maybe.map .center
                 |> Maybe.withDefault ( 0, 0 )
 
@@ -495,7 +480,7 @@ getDropTarget config path ( dragX, dragY ) computedTree =
                 (\( path_, _ ) ->
                     let
                         ( xo, yo ) =
-                            nodeGeometry config path_ layout
+                            nodeGeometry settings path_ layout
                                 |> Maybe.map .center
                                 |> Maybe.withDefault ( 0, 0 )
 
@@ -509,8 +494,8 @@ getDropTarget config path ( dragX, dragY ) computedTree =
                             (List.all identity
                                 [ not (Utils.startsWith path path_)
                                 , not (Utils.startsWith path_ path)
-                                , dx < config.layout.nodeWidth
-                                , dy < config.layout.nodeHeight
+                                , dx < settings.nodeWidth
+                                , dy < settings.nodeHeight
                                 ]
                             )
                         then
@@ -531,8 +516,8 @@ getDropTarget config path ( dragX, dragY ) computedTree =
             |> Maybe.map Tuple.first
 
 
-nodeGeometry : Config.Config -> List Int -> Tree.Layout -> Maybe NodeGeometry
-nodeGeometry config path layout =
+nodeGeometry : Settings.Settings -> List Int -> Tree.Layout -> Maybe NodeGeometry
+nodeGeometry settings path layout =
     layout
         |> Dict.get path
         |> Maybe.map
@@ -542,14 +527,14 @@ nodeGeometry config path layout =
                         center
                 in
                     { center =
-                        ( config.layout.canvasWidth / 2 + centerX * (config.layout.nodeWidth + config.layout.gutter)
-                        , config.layout.canvasHeight * 0.1 + centerY * (config.layout.nodeHeight + config.layout.level)
+                        ( settings.canvasWidth / 2 + centerX * (settings.nodeWidth + settings.gutter)
+                        , settings.canvasHeight * 0.1 + centerY * (settings.nodeHeight + settings.level)
                         )
                     , childCenters =
                         List.map
                             (\center ->
-                                ( config.layout.canvasWidth / 2 + center * (config.layout.nodeWidth + config.layout.gutter)
-                                , config.layout.canvasHeight * 0.1 + (centerY + 1) * (config.layout.nodeHeight + config.layout.level)
+                                ( settings.canvasWidth / 2 + center * (settings.nodeWidth + settings.gutter)
+                                , settings.canvasHeight * 0.1 + (centerY + 1) * (settings.nodeHeight + settings.level)
                                 )
                             )
                             childCenters
@@ -559,8 +544,8 @@ nodeGeometry config path layout =
 
 {-| The view, as a function of the `Config`, some custom html attributes for the container, and the Model.
 -}
-view : Config.Config -> (Config.Context item -> Maybe item -> Html (Msg item)) -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
-view config viewItem attrs (Model model) =
+view : (Context.Context item -> Maybe item -> Html (Msg item)) -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
+view viewItem attrs (Model model) =
     let
         flatTree =
             ComputedTree.flat model.computedTree
@@ -569,10 +554,10 @@ view config viewItem attrs (Model model) =
             ComputedTree.layout model.computedTree
 
         nodeBaseStyle =
-            Styles.nodeBase config.layout
+            Styles.nodeBase model.settings
 
         coordStyle =
-            Styles.coordinate config.layout
+            Styles.coordinate model.settings
 
         dragState =
             MultiDrag.state model.drag
@@ -616,8 +601,8 @@ view config viewItem attrs (Model model) =
              , on "mouseleave" (Decode.succeed Messages.CanvasMouseLeave)
              , style
                 [ ( "overflow", "hidden" )
-                , ( "width", Utils.floatToPxString config.layout.canvasWidth )
-                , ( "height", Utils.floatToPxString config.layout.canvasHeight )
+                , ( "width", Utils.floatToPxString model.settings.canvasWidth )
+                , ( "height", Utils.floatToPxString model.settings.canvasHeight )
                 , ( "box-sizing", "border-box" )
                 , ( "position", "relative" )
                 , ( "cursor"
@@ -641,7 +626,7 @@ view config viewItem attrs (Model model) =
               <|
                 (List.map
                     (\( path, item ) ->
-                        nodeGeometry config path layout
+                        nodeGeometry model.settings path layout
                             |> Maybe.map
                                 (\{ center, childCenters } ->
                                     let
@@ -660,7 +645,7 @@ view config viewItem attrs (Model model) =
                                                                 Just draggedPath ->
                                                                     let
                                                                         isDropTarget =
-                                                                            getDropTarget config draggedPath offset model.computedTree
+                                                                            getDropTarget model.settings draggedPath offset model.computedTree
                                                                                 |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
                                                                                 |> Maybe.withDefault False
                                                                     in
@@ -721,13 +706,13 @@ view config viewItem attrs (Model model) =
                                                         )
                                             , state =
                                                 if (model.active == Just path) then
-                                                    Config.Active
+                                                    Context.Active
                                                 else if isDropTarget then
-                                                    Config.DropTarget
+                                                    Context.DropTarget
                                                 else if (model.hovered == Just path) then
-                                                    Config.Hovered
+                                                    Context.Hovered
                                                 else
-                                                    Config.Normal
+                                                    Context.Normal
                                             }
                                     in
                                         [ div
@@ -776,7 +761,7 @@ view config viewItem attrs (Model model) =
                                                         ++ (if item == Nothing then
                                                                 []
                                                             else
-                                                                [ Views.NodeConnectors.view config.layout 0.3 ( 0, 0 ) center childCenters ]
+                                                                [ Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters ]
                                                            )
                                                 else
                                                     []
@@ -784,7 +769,7 @@ view config viewItem attrs (Model model) =
                                             ++ (if item == Nothing then
                                                     []
                                                 else
-                                                    [ Views.NodeConnectors.view config.layout 1.0 ( xDrag, yDrag ) center childCenters
+                                                    [ Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters
                                                     ]
                                                )
                                 )

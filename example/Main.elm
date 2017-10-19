@@ -7,24 +7,9 @@ import Html.Attributes exposing (class, style, value, type_, href)
 import Html.Events exposing (onInput, onClick)
 import Arborist
 import Arborist.Tree exposing (..)
-import Arborist.Config exposing (NodeState(..))
+import Arborist.Context exposing (NodeState(..))
 import Styles
 import Window exposing (size, resizes)
-
-
-{-| Configure Arborist
--}
-arboristConfig : Window.Size -> Arborist.Config.Config
-arboristConfig windowSize =
-    { layout =
-        { nodeWidth = 120
-        , nodeHeight = 36
-        , canvasWidth = toFloat windowSize.width
-        , canvasHeight = toFloat windowSize.height
-        , level = 80
-        , gutter = 20
-        }
-    }
 
 
 itemView context item =
@@ -179,7 +164,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ArboristMsg arboristMsg ->
-            ( { model | arborist = Arborist.updateWith { centerAt = (\width height -> ( width / 2, height * 0.3 )) } (arboristConfig model.windowSize) arboristMsg model.arborist }
+            ( { model | arborist = Arborist.update arboristMsg model.arborist }
             , Cmd.none
             )
 
@@ -239,8 +224,8 @@ view model =
                         ]
                     ]
                  <|
-                    [ Arborist.view (arboristConfig model.windowSize) itemView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
-                        ++ (Arborist.activeNode (arboristConfig model.windowSize) model.arborist
+                    [ Arborist.view itemView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
+                        ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
                                     (\( item, ( x, y ) ) ->
                                         [ div

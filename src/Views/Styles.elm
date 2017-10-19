@@ -1,21 +1,21 @@
 module Views.Styles exposing (..)
 
-import Arborist.Config as Config
+import Arborist.Settings as Settings
 import Utils
 
 
-coordinate : Config.Layout -> ( Float, Float ) -> List ( String, String )
-coordinate layout ( x, y ) =
-    [ ( "left", Utils.floatToPxString (x - (layout.nodeWidth / 2)) )
+coordinate : Settings.Settings -> ( Float, Float ) -> List ( String, String )
+coordinate settings ( x, y ) =
+    [ ( "left", Utils.floatToPxString (x - (settings.nodeWidth / 2)) )
     , ( "top", Utils.floatToPxString y )
     ]
 
 
-nodeBase : Config.Layout -> List ( String, String )
-nodeBase layout =
-    [ ( "width", Utils.floatToPxString layout.nodeWidth )
+nodeBase : Settings.Settings -> List ( String, String )
+nodeBase settings =
+    [ ( "width", Utils.floatToPxString settings.nodeWidth )
     , ( "height", "auto" )
-    , ( "min-height", Utils.floatToPxString layout.nodeHeight )
+    , ( "min-height", Utils.floatToPxString settings.nodeHeight )
     , ( "position", "absolute" )
     , ( "user-select", "none" )
     , ( "cursor", "pointer" )
