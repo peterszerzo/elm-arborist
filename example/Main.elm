@@ -192,8 +192,8 @@ update msg model =
             , Cmd.none
             )
 
-        Resize size ->
-            ( { model | windowSize = size }
+        Resize { width, height } ->
+            ( { model | arborist = Arborist.resize width height model.arborist }
             , Cmd.none
             )
 

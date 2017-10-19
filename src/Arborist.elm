@@ -4,6 +4,9 @@ module Arborist
         , Msg
         , subscriptions
         , init
+        , initWith
+        , applySettings
+        , resize
         , update
         , view
         , tree
@@ -15,12 +18,17 @@ module Arborist
 {-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes.
 
 
-# The editor module
+# Module setup
 
-@docs Model, Msg, init, update, updateWith, UpdateConfig, view, subscriptions
+@docs Model, Msg, init, initWith, update, view, subscriptions
 
 
-# Tree query and manipulations
+# Configuration
+
+@docs applySettings, resize
+
+
+# Tree getters and modifiers
 
 @docs tree, activeNode, setActiveNode, deleteActiveNode
 
@@ -42,7 +50,7 @@ import MultiDrag as MultiDrag
 import Utils
 import Views.Styles as Styles
 import Views.NodeConnectors
-import Arborist.Settings as Settings
+import Data.Settings as Settings exposing (Setting)
 import Arborist.Context as Context
 import Messages
 
@@ -78,20 +86,31 @@ type Model item
         }
 
 
+defaultSettings : Settings.Settings
+defaultSettings =
+    { nodeWidth = 120
+    , nodeHeight = 36
+    , canvasWidth = 600
+    , canvasHeight = 480
+    , level = 80
+    , gutter = 20
+    , centerOffset = ( 0, 0 )
+    }
+
+
 {-| Initialize model from a [tree](/Arborist-Tree).
 -}
 init : Arborist.Tree.Tree item -> Model item
-init tree =
+init =
+    initWith []
+
+
+{-| Initialize model from a [tree](/Arborist-Tree), using a list of [settings](/Arborist-Settings).
+-}
+initWith : List Setting -> Arborist.Tree.Tree item -> Model item
+initWith settings tree =
     Model
-        { settings =
-            { nodeWidth = 120
-            , nodeHeight = 36
-            , canvasWidth = 600
-            , canvasHeight = 480
-            , level = 80
-            , gutter = 20
-            , centerOffset = ( 0, 0 )
-            }
+        { settings = Settings.apply settings defaultSettings
         , computedTree = ComputedTree.init tree
         , prevComputedTree = ComputedTree.init tree
         , active = Nothing
@@ -104,6 +123,26 @@ init tree =
         , panOffset = ( 0, 0 )
         , targetPanOffset = Nothing
         }
+
+
+{-| Apply a new list of settings to the model.
+-}
+applySettings : List Setting -> Model item -> Model item
+applySettings settings (Model model) =
+    Model
+        { model
+            | settings = Settings.apply settings model.settings
+        }
+
+
+{-| Resize the canvas - a more specific version of [applySettings](/Arborist#applySettings)
+-}
+resize : Int -> Int -> Model item -> Model item
+resize width height =
+    applySettings
+        [ Settings.CanvasWidth width
+        , Settings.CanvasHeight height
+        ]
 
 
 {-| Returns the current active node. Returns a tuple of `Maybe item` (as the node maybe a placeholder for a new node), as well as its coordinates on the screen. Use these coordinates to position an active node-related pop-up (see example).

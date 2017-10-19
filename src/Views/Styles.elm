@@ -1,6 +1,6 @@
 module Views.Styles exposing (..)
 
-import Arborist.Settings as Settings
+import Data.Settings as Settings
 import Utils
 
 
