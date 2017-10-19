@@ -4,7 +4,7 @@ import Utils.Tree exposing (TreeNodePath)
 import Time
 
 
-type Msg item
+type Msg
     = AnimationFrameTick Time.Time
     | NodeMouseDown Bool TreeNodePath Float Float
     | NodeMouseUp Float Float

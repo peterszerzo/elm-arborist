@@ -148,7 +148,7 @@ tree =
 
 
 type Msg
-    = ArboristMsg (Arborist.Msg Item)
+    = ArboristMsg Arborist.Msg
     | EditNewItemQuestion String
     | EditNewItemAnswer String
     | SetActive Item

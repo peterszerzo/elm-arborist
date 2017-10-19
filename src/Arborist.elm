@@ -187,7 +187,7 @@ deleteActiveNode (Model model) =
 
 {-| Subscriptions responsible for obtaining animation frames used when animating a view centering. See example for usage.
 -}
-subscriptions : Model item -> Sub (Msg item)
+subscriptions : Model item -> Sub Msg
 subscriptions (Model model) =
     if model.isReceivingAnimationFrames && model.targetPanOffset == Nothing then
         Sub.none
@@ -204,13 +204,13 @@ tree (Model { computedTree }) =
 
 {-| Msg type annotation for the program.
 -}
-type alias Msg item =
-    Messages.Msg item
+type alias Msg =
+    Messages.Msg
 
 
 {-| A custom version of [update](/Arborist#update), using a [configuration](/Arborist#UpdateConfig).
 -}
-update : Msg item -> Model item -> Model item
+update : Msg -> Model item -> Model item
 update msg (Model model) =
     case msg of
         Messages.AnimationFrameTick time ->
@@ -544,7 +544,7 @@ nodeGeometry settings path layout =
 
 {-| The view, as a function of the `Config`, some custom html attributes for the container, and the Model.
 -}
-view : (Context.Context item -> Maybe item -> Html (Msg item)) -> List (Attribute (Msg item)) -> Model item -> Html (Msg item)
+view : (Context.Context item -> Maybe item -> Html Msg) -> List (Attribute Msg) -> Model item -> Html Msg
 view viewItem attrs (Model model) =
     let
         flatTree =
