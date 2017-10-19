@@ -1,7 +1,6 @@
 module Arborist.Settings
     exposing
         ( Settings
-        , defaultSettings
         , nodeWidth
         , nodeHeight
         , canvasWidth
@@ -44,18 +43,6 @@ type alias Settings =
     , level : Float
     , gutter : Float
     , centerOffset : ( Float, Float )
-    }
-
-
-defaultSettings : Settings
-defaultSettings =
-    { nodeWidth = 120
-    , nodeHeight = 36
-    , canvasWidth = 600
-    , canvasHeight = 480
-    , level = 80
-    , gutter = 20
-    , centerOffset = ( 0, 0 )
     }
 
 
