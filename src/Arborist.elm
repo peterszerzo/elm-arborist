@@ -8,6 +8,7 @@ module Arborist
         , applySettings
         , resize
         , update
+        , NodeView
         , view
         , tree
         , activeNode
@@ -15,12 +16,12 @@ module Arborist
         , deleteActiveNode
         )
 
-{-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes.
+{-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes. Structured as a TEA component defining its own init, update and view, `elm-arborist` allows you to easily initialize a tree editor from a [recursively defined tree structure](/Arborist-Tree), keep its state in an opaque model, and access the [edited result at any time](/Arborist#tree).
 
 
 # Module setup
 
-@docs Model, Msg, init, initWith, update, view, subscriptions
+@docs Model, Msg, init, initWith, update, NodeView, view, subscriptions
 
 
 # Configuration
@@ -69,11 +70,11 @@ type alias NodeGeometry =
 
 {-| Model, used for type annotation.
 -}
-type Model item
+type Model node
     = Model
         { settings : Settings.Settings
-        , computedTree : ComputedTree.ComputedTree item
-        , prevComputedTree : ComputedTree.ComputedTree item
+        , computedTree : ComputedTree.ComputedTree node
+        , prevComputedTree : ComputedTree.ComputedTree node
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
         , isDragging : Bool
@@ -100,14 +101,14 @@ defaultSettings =
 
 {-| Initialize model from a [tree](/Arborist-Tree).
 -}
-init : Arborist.Tree.Tree item -> Model item
+init : Arborist.Tree.Tree node -> Model node
 init =
     initWith []
 
 
 {-| Initialize model from a [tree](/Arborist-Tree), using a list of [settings](/Arborist-Settings).
 -}
-initWith : List Setting -> Arborist.Tree.Tree item -> Model item
+initWith : List Setting -> Arborist.Tree.Tree node -> Model node
 initWith settings tree =
     Model
         { settings = Settings.apply settings defaultSettings
@@ -127,7 +128,7 @@ initWith settings tree =
 
 {-| Apply a new list of settings to the model.
 -}
-applySettings : List Setting -> Model item -> Model item
+applySettings : List Setting -> Model node -> Model node
 applySettings settings (Model model) =
     Model
         { model
@@ -137,7 +138,7 @@ applySettings settings (Model model) =
 
 {-| Resize the canvas - a more specific version of [applySettings](/Arborist#applySettings)
 -}
-resize : Int -> Int -> Model item -> Model item
+resize : Int -> Int -> Model node -> Model node
 resize width height =
     applySettings
         [ Settings.CanvasWidth width
@@ -145,9 +146,9 @@ resize width height =
         ]
 
 
-{-| Returns the current active node. Returns a tuple of `Maybe item` (as the node maybe a placeholder for a new node), as well as its coordinates on the screen. Use these coordinates to position an active node-related pop-up (see example).
+{-| Returns the current active node. Returns a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its coordinates on the screen. Use these coordinates to position an active node-related pop-up (see example).
 -}
-activeNode : Model item -> Maybe ( Maybe item, ( Float, Float ) )
+activeNode : Model node -> Maybe ( Maybe node, ( Float, Float ) )
 activeNode (Model { settings, active, computedTree, panOffset, drag }) =
     active
         |> Maybe.map
@@ -176,9 +177,9 @@ activeNode (Model { settings, active, computedTree, panOffset, drag }) =
             )
 
 
-{-| Sets a new item at the active node. This may be adding a completely new item from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNode](#activeNode) method.
+{-| Sets a new node at the active node. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNode](#activeNode) method.
 -}
-setActiveNode : item -> Model item -> Model item
+setActiveNode : node -> Model node -> Model node
 setActiveNode newItem (Model model) =
     let
         tree =
@@ -192,14 +193,14 @@ setActiveNode newItem (Model model) =
                 |> Maybe.map
                     (\active ->
                         let
-                            item =
+                            node =
                                 flat
                                     |> List.filter (\( path, _ ) -> active == path)
                                     |> List.head
                                     |> Maybe.map Tuple.second
                         in
-                            case item of
-                                Just (Just item) ->
+                            case node of
+                                Just (Just node) ->
                                     Tree.update active newItem tree
 
                                 Just Nothing ->
@@ -220,7 +221,7 @@ setActiveNode newItem (Model model) =
 
 {-| Delete the active node from a tree, including all of its children. If a placeholder is active, this method does nothing.
 -}
-deleteActiveNode : Model item -> Model item
+deleteActiveNode : Model node -> Model node
 deleteActiveNode (Model model) =
     Model
         { model
@@ -232,9 +233,9 @@ deleteActiveNode (Model model) =
         }
 
 
-{-| Subscriptions responsible for obtaining animation frames used when animating a view centering. See example for usage.
+{-| Subscriptions responsible for obtaining animation frames used to smoothly center an activated tree node. Using these subscriptions is completely optional - if they aren't wired up in your app, the editor will simply jump to the activated node without an animation. We recommend adding these subscriptions as you familiarize yourself with the package, as it is a significant user experience improvement.
 -}
-subscriptions : Model item -> Sub Msg
+subscriptions : Model node -> Sub Msg
 subscriptions (Model model) =
     if model.isReceivingAnimationFrames && model.targetPanOffset == Nothing then
         Sub.none
@@ -242,22 +243,22 @@ subscriptions (Model model) =
         AnimationFrame.times Messages.AnimationFrameTick
 
 
-{-| Access the current [tree](/Arborist-Tree).
+{-| Access the current state of the [tree](/Arborist-Tree) through this getter. The result reflects all changes since it was [initialized](/Arborist#init).
 -}
-tree : Model item -> Arborist.Tree.Tree item
+tree : Model node -> Arborist.Tree.Tree node
 tree (Model { computedTree }) =
     ComputedTree.tree computedTree
 
 
-{-| Msg type annotation for the program.
+{-| Message type annotation for the program. When wiring up the editor within a larger program, you will define a `ArboristMsg Arborist.Msg` message type, one that will trigger this package's [update](/Arborist#update) function.
 -}
 type alias Msg =
     Messages.Msg
 
 
-{-| A custom version of [update](/Arborist#update), using a [configuration](/Arborist#UpdateConfig).
+{-| Update function handling changes in the model.
 -}
-update : Msg -> Model item -> Model item
+update : Msg -> Model node -> Model node
 update msg (Model model) =
     case msg of
         Messages.AnimationFrameTick time ->
@@ -382,13 +383,13 @@ update msg (Model model) =
                                                 |> Maybe.map
                                                     (\dropTargetPath ->
                                                         flat
-                                                            |> List.filter (\( path, item ) -> path == dropTargetPath)
+                                                            |> List.filter (\( path, node ) -> path == dropTargetPath)
                                                             |> List.head
                                                             |> Maybe.andThen
-                                                                (\( path, item ) ->
-                                                                    case item of
-                                                                        Just item ->
-                                                                            Just ( path, item )
+                                                                (\( path, node ) ->
+                                                                    case node of
+                                                                        Just node ->
+                                                                            Just ( path, node )
 
                                                                         Nothing ->
                                                                             Nothing
@@ -503,7 +504,7 @@ update msg (Model model) =
             Model model
 
 
-getDropTarget : Settings.Settings -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree item -> Maybe TreeNodePath
+getDropTarget : Settings.Settings -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree node -> Maybe TreeNodePath
 getDropTarget settings path ( dragX, dragY ) computedTree =
     let
         flat =
@@ -589,9 +590,20 @@ nodeGeometry settings path layout =
             )
 
 
-{-| The view, as a function of the `Config`, some custom html attributes for the container, and the Model.
+{-| View function for an individual node.
 -}
-view : (Context.Context item -> Maybe item -> Html Msg) -> List (Attribute Msg) -> Model item -> Html Msg
+type alias NodeView node =
+    Context.Context node -> Maybe node -> Html Msg
+
+
+{-| The editor's view function, taking the following arguments:
+
+  - [NodeView](/Arborist#NodeView): view function for an individual node.
+  - a list of html attributes for the container element.
+  - the editor's [model](/Arborist#Model).
+
+-}
+view : NodeView node -> List (Attribute Msg) -> Model node -> Html Msg
 view viewItem attrs (Model model) =
     let
         flatTree =
@@ -672,7 +684,7 @@ view viewItem attrs (Model model) =
                 ]
               <|
                 (List.map
-                    (\( path, item ) ->
+                    (\( path, node ) ->
                         nodeGeometry model.settings path layout
                             |> Maybe.map
                                 (\{ center, childCenters } ->
@@ -714,13 +726,13 @@ view viewItem attrs (Model model) =
                                         yWithDrag =
                                             y + yDrag
 
-                                        itemViewContext =
+                                        nodeViewContext =
                                             { parent =
                                                 flatTree
                                                     |> List.filterMap
-                                                        (\( path_, item ) ->
+                                                        (\( path_, node ) ->
                                                             if path_ == List.take (List.length path - 1) path then
-                                                                item
+                                                                node
                                                             else
                                                                 Nothing
                                                         )
@@ -728,12 +740,12 @@ view viewItem attrs (Model model) =
                                             , siblings =
                                                 flatTree
                                                     |> List.filterMap
-                                                        (\( path_, item ) ->
-                                                            item
+                                                        (\( path_, node ) ->
+                                                            node
                                                                 |> Maybe.andThen
-                                                                    (\item ->
+                                                                    (\node ->
                                                                         if path /= path_ && List.length path == List.length path_ && List.take (List.length path_ - 1) path_ == List.take (List.length path - 1) path then
-                                                                            Just item
+                                                                            Just node
                                                                         else
                                                                             Nothing
                                                                     )
@@ -741,12 +753,12 @@ view viewItem attrs (Model model) =
                                             , children =
                                                 flatTree
                                                     |> List.filterMap
-                                                        (\( path_, item ) ->
-                                                            item
+                                                        (\( path_, node ) ->
+                                                            node
                                                                 |> Maybe.andThen
-                                                                    (\item ->
+                                                                    (\node ->
                                                                         if List.length path_ == List.length path + 1 && List.take (List.length path) path_ == path then
-                                                                            Just item
+                                                                            Just node
                                                                         else
                                                                             Nothing
                                                                     )
@@ -778,7 +790,7 @@ view viewItem attrs (Model model) =
                                                 { stopPropagation = True
                                                 , preventDefault = False
                                                 }
-                                                (Decode.map2 (Messages.NodeMouseDown (item == Nothing) path)
+                                                (Decode.map2 (Messages.NodeMouseDown (node == Nothing) path)
                                                     (Decode.field "screenX" Decode.float)
                                                     (Decode.field "screenY" Decode.float)
                                                 )
@@ -793,7 +805,7 @@ view viewItem attrs (Model model) =
                                             , on "mouseenter" (Decode.succeed (Messages.NodeMouseEnter path))
                                             , on "mouseleave" (Decode.succeed (Messages.NodeMouseLeave path))
                                             ]
-                                            [ viewItem itemViewContext item
+                                            [ viewItem nodeViewContext node
                                             ]
                                         ]
                                             ++ (if isDragged then
@@ -805,7 +817,7 @@ view viewItem attrs (Model model) =
                                                         ]
                                                         []
                                                     ]
-                                                        ++ (if item == Nothing then
+                                                        ++ (if node == Nothing then
                                                                 []
                                                             else
                                                                 [ Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters ]
@@ -813,7 +825,7 @@ view viewItem attrs (Model model) =
                                                 else
                                                     []
                                                )
-                                            ++ (if item == Nothing then
+                                            ++ (if node == Nothing then
                                                     []
                                                 else
                                                     [ Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters

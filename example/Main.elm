@@ -6,12 +6,14 @@ import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, i
 import Html.Attributes exposing (class, style, value, type_, href)
 import Html.Events exposing (onInput, onClick)
 import Arborist
-import Arborist.Tree exposing (..)
+import Arborist.Tree as Tree
+import Arborist.Settings as Settings
 import Arborist.Context exposing (NodeState(..))
 import Styles
 import Window exposing (size, resizes)
 
 
+itemView : Arborist.NodeView Item
 itemView context item =
     item
         |> Maybe.map
@@ -102,7 +104,7 @@ type alias Item =
 
 
 init =
-    ( { arborist = Arborist.init tree
+    ( { arborist = Arborist.initWith [ Settings.centerOffset 0 -200 ] tree
       , newItem = { question = "", answer = "" }
       , windowSize = { width = 0, height = 0 }
       }
@@ -131,14 +133,14 @@ decoder =
 -- The starting tree itself.
 
 
-tree : Tree Item
+tree : Tree.Tree Item
 tree =
-    Node { answer = "", question = "Do you like trees?" }
-        [ Node { answer = "yes", question = "How much?" }
-            [ Node { answer = "A lot!", question = "Where were you all my life?" } []
+    Tree.Node { answer = "", question = "Do you like trees?" }
+        [ Tree.Node { answer = "yes", question = "How much?" }
+            [ Tree.Node { answer = "A lot!", question = "Where were you all my life?" } []
             ]
-        , Node { answer = "No.", question = "Seriously?" }
-            [ Node { answer = "Yes", question = "How about rollercoasters?" } []
+        , Tree.Node { answer = "No.", question = "Seriously?" }
+            [ Tree.Node { answer = "Yes", question = "How about rollercoasters?" } []
             ]
         ]
 

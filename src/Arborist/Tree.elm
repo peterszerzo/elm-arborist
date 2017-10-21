@@ -24,14 +24,14 @@ import Json.Decode as Decode
 
 {-| Recursive tree structure, holding any data type `a`, and any number of child nodes.
 -}
-type Tree item
+type Tree node
     = Empty
-    | Node item (List (Tree item))
+    | Node node (List (Tree node))
 
 
 {-| Tree decoder as a function of the node's decoder. Assumes a `value` and `children` fields, holding the current node contents and an array of children, respectively.
 -}
-decoder : Decode.Decoder item -> Decode.Decoder (Tree item)
+decoder : Decode.Decoder node -> Decode.Decoder (Tree node)
 decoder nodeDecoder =
     Decode.oneOf
         [ Decode.null Empty
@@ -43,22 +43,22 @@ decoder nodeDecoder =
 
 {-| Tree depth.
 -}
-depth : Tree item -> Int
+depth : Tree node -> Int
 depth tree =
     depthHelper 1 tree
 
 
-depthHelper : Int -> Tree item -> Int
+depthHelper : Int -> Tree node -> Int
 depthHelper currentDepth tree =
     case tree of
         Empty ->
             currentDepth
 
-        Node item children ->
+        Node node children ->
             [ currentDepth ] ++ (List.map (depthHelper (currentDepth + 1)) children) |> List.foldl max -1
 
 
-{-| Map over the items of the tree.
+{-| Map over the nodes of the tree.
 -}
 map : (a -> b) -> Tree a -> Tree b
 map fn tree =

@@ -1,6 +1,10 @@
 module Arborist.Context exposing (..)
 
-{-| View context.
+{-| This module defines the node view context, an object passed to the [NodeView](/Arborist#NodeView) function responsible for rendering individual nodes within a tree's layout. It holds information such as the node's parent, siblings, hover state etc.
+
+Effective tree editors need to give the users feedback on whether the node they're about to create is valid, or if it creates conflicts with its surrounding nodes based on your domain's rules. Imagine modeling a conversation as a tree structure, where a set of sibling nodes answer a question represented in the common parent. Would you allow two nodes representing the answer 'no'? By having access to the context when defining how nodes should look, you can render these error messages flexibly to the user.
+
+The best part: at no point will you have to think about traversing a recursive tree structure. Just work with a simple summary record handed down to you in context.
 
 @docs Context, NodeState
 
