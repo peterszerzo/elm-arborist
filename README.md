@@ -1,3 +1,9 @@
+```
+  🌲           🌲                             🌲          
+ 🌲🌲   🌲🌲 🌲      🌲   🌲  🌲   🌲     🌲  🌲      🌲🌲             🌲    
+🌲🌲🌲  🌲🌲🌲 🌲  🌲🌲🌲 🌲🌲  🌲  🌲🌲🌲 🌲🌲🌲   🌲 🌲🌲        🌲🌲      🌲   
+```
+
 # elm-arborist
 
 Drag-and-drop interface to edit, dissect and-rearrange tree structures, with nodes holding any data type you wish. Here is a [demo](http://elm-arborist.peterszerzo.com), and here some [docs](http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest).
@@ -18,10 +24,10 @@ We can then use the `Arborist.Tree` module to construct a tree structure:
 import Arborist.Tree as Tree
 
 tree =
-  Tree.node ( "Frank", 54 )
-    [ Tree.node ( "Mark", 36 ) []
-    , Tree.node ( "Sally", 31 )
-        [ Tree.node ( "Robert", 14 )
+  Tree.Node ( "Frank", 54 )
+    [ Tree.Node ( "Mark", 36 ) []
+    , Tree.Node ( "Sally", 31 )
+        [ Tree.Node ( "Robert", 14 )
         ]
     ]
 ```
@@ -89,7 +95,7 @@ Replace `init` with `initWith [ Arborist.canvasWidth 800, Arborist.nodeHeight 40
 Using the `Arborist.subscriptions`, you can smoothly animate to center a node when it is activated. See example for details.
 
 ```
-  🌲           🌲                             🌲          
- 🌲🌲   🌲🌲 🌲      🌲   🌲  🌲   🌲     🌲  🌲      🌲🌲             🌲    
 🌲🌲🌲  🌲🌲🌲 🌲  🌲🌲🌲 🌲🌲  🌲  🌲🌲🌲 🌲🌲🌲   🌲 🌲🌲        🌲🌲      🌲   
+ 🌲🌲   🌲🌲 🌲      🌲   🌲  🌲   🌲     🌲  🌲      🌲🌲             🌲    
+  🌲           🌲                             🌲          
 ```

@@ -3,7 +3,7 @@ module Utils.Tree exposing (..)
 import Dict
 import Json.Decode as Decode
 import Utils
-import Arborist.Tree exposing (..)
+import Arborist.Tree as Tree exposing (..)
 
 
 -- Data structure
@@ -43,10 +43,10 @@ type alias TreeAnalysis =
 addTrailingEmpties : Tree a -> Tree a
 addTrailingEmpties tree =
     case tree of
-        Empty ->
+        Tree.Empty ->
             Empty
 
-        Node item children ->
+        Tree.Node item children ->
             Node item <| (List.map addTrailingEmpties children) ++ [ Empty ]
 
 

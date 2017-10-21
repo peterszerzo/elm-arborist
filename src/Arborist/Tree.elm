@@ -22,7 +22,10 @@ module Arborist.Tree exposing (Tree(..), decoder, depth, map)
 import Json.Decode as Decode
 
 
-{-| Recursive tree structure, holding any data type `a`, and any number of child nodes.
+{-| Recursive tree structure, holding any data type `node`, and any number of child nodes. Creating a tree of strings, for instance, would look like this:
+
+    Tree.Node "Parent" [ Tree.Node "Child1" [], Tree.Node "Child2" [] ]
+
 -}
 type Tree node
     = Empty

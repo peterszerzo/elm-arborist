@@ -13,8 +13,46 @@ import Styles
 import Window exposing (size, resizes)
 
 
-itemView : Arborist.NodeView Item
-itemView context item =
+{-| Program model.
+-}
+type alias Model =
+    { arborist : Arborist.Model Item
+    , newItem : Item
+    , windowSize : Window.Size
+    }
+
+
+{-| The Item data type held in the tree's nodes
+-}
+type alias Item =
+    { question : String
+    , answer : String
+    }
+
+
+setQuestion : String -> Item -> Item
+setQuestion val item =
+    { item | question = val }
+
+
+setAnswer : String -> Item -> Item
+setAnswer val item =
+    { item | answer = val }
+
+
+init =
+    ( { arborist = Arborist.initWith [ Settings.centerOffset 0 -150 ] tree
+      , newItem = { question = "", answer = "" }
+      , windowSize = { width = 0, height = 0 }
+      }
+    , Task.perform Resize Window.size
+    )
+
+
+{-| Describe how a node should render inside the tree's layout.
+-}
+nodeView : Arborist.NodeView Item
+nodeView context item =
     item
         |> Maybe.map
             (\item ->
@@ -82,57 +120,8 @@ itemView context item =
             )
 
 
-
--- Program model
-
-
-type alias Model =
-    { arborist : Arborist.Model Item
-    , newItem : Item
-    , windowSize : Window.Size
-    }
-
-
-
--- The Item data type held in the tree's nodes
-
-
-type alias Item =
-    { question : String
-    , answer : String
-    }
-
-
-init =
-    ( { arborist = Arborist.initWith [ Settings.centerOffset 0 -200 ] tree
-      , newItem = { question = "", answer = "" }
-      , windowSize = { width = 0, height = 0 }
-      }
-    , Task.perform Resize Window.size
-    )
-
-
-setQuestion : String -> Item -> Item
-setQuestion val item =
-    { item | question = val }
-
-
-setAnswer : String -> Item -> Item
-setAnswer val item =
-    { item | answer = val }
-
-
-decoder : Decode.Decoder Item
-decoder =
-    Decode.map2 Item
-        (Decode.field "question" Decode.string)
-        (Decode.field "answer" Decode.string)
-
-
-
--- The starting tree itself.
-
-
+{-| The starting tree.
+-}
 tree : Tree.Tree Item
 tree =
     Tree.Node { answer = "", question = "Do you like trees?" }
@@ -145,10 +134,8 @@ tree =
         ]
 
 
-
--- Msg
-
-
+{-| Program message
+-}
 type Msg
     = ArboristMsg Arborist.Msg
     | EditNewItemQuestion String
@@ -226,7 +213,7 @@ view model =
                         ]
                     ]
                  <|
-                    [ Arborist.view itemView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
+                    [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
                         ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
                                     (\( item, ( x, y ) ) ->
@@ -265,10 +252,8 @@ view model =
                ]
 
 
-
--- Entry point
-
-
+{-| Entry point
+-}
 main : Program Never Model Msg
 main =
     program
