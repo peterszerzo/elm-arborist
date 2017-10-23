@@ -35,25 +35,25 @@ module Arborist
 
 -}
 
-import Dict
 import AnimationFrame
-import Json.Decode as Decode
+import Arborist.Context as Context
+import Dict
 import Html exposing (Html, Attribute, node, div, text, p, h1, h3, label, input, button)
 import Html.Attributes exposing (style, value)
+import Html.Events exposing (onClick)
 import Html.Events exposing (onInput, on, onWithOptions)
+import Json.Decode as Decode
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
-import Html.Events exposing (onClick)
-import Utils.Tree as Tree exposing (TreeNodePath)
 import Arborist.Tree
 import Data.ComputedTree as ComputedTree
+import Data.Settings as Settings exposing (Setting)
+import Messages
 import MultiDrag as MultiDrag
 import Utils
-import Views.Styles as Styles
+import Utils.Tree as Tree exposing (TreeNodePath)
 import Views.NodeConnectors
-import Data.Settings as Settings exposing (Setting)
-import Arborist.Context as Context
-import Messages
+import Views.Styles as Styles
 
 
 type ActiveNode
@@ -68,7 +68,7 @@ type alias NodeGeometry =
     }
 
 
-{-| Model, used for type annotation.
+{-| Opaque type for the editor's model, dependent on a node type variable. You can only use this for type annotation - to initialize a new model, see [init](/Arborist#init).
 -}
 type Model node
     = Model
@@ -136,7 +136,10 @@ applySettings settings (Model model) =
         }
 
 
-{-| Resize the canvas - a more specific version of [applySettings](/Arborist#applySettings)
+{-| Resize the canvas by passing a new width and a new height. Note that you can reproduce this using [applySettings](/Arborist#applySettings) as follows:
+
+    resize 600 400 arborist == applySettings [ Settings.canvasWidth 600, Settings.canvasHeight 400 ] arborist
+
 -}
 resize : Int -> Int -> Model node -> Model node
 resize width height =
@@ -146,7 +149,7 @@ resize width height =
         ]
 
 
-{-| Returns the current active node. Returns a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its coordinates on the screen. Use these coordinates to position an active node-related pop-up (see example).
+{-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its coordinates in the editor's container. Use these coordinates to position an active node-related pop-up (see example).
 -}
 activeNode : Model node -> Maybe ( Maybe node, ( Float, Float ) )
 activeNode (Model { settings, active, computedTree, panOffset, drag }) =
@@ -177,10 +180,10 @@ activeNode (Model { settings, active, computedTree, panOffset, drag }) =
             )
 
 
-{-| Sets a new node at the active node. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNode](#activeNode) method.
+{-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNode](#activeNode) method.
 -}
 setActiveNode : node -> Model node -> Model node
-setActiveNode newItem (Model model) =
+setActiveNode newNode (Model model) =
     let
         tree =
             ComputedTree.tree model.computedTree
@@ -201,10 +204,10 @@ setActiveNode newItem (Model model) =
                         in
                             case node of
                                 Just (Just node) ->
-                                    Tree.update active newItem tree
+                                    Tree.update active newNode tree
 
                                 Just Nothing ->
-                                    Tree.insert (List.take (List.length active - 1) active) (Just newItem) tree
+                                    Tree.insert (List.take (List.length active - 1) active) (Just newNode) tree
 
                                 _ ->
                                     -- Impossible state
@@ -590,7 +593,7 @@ nodeGeometry settings path layout =
             )
 
 
-{-| View function for an individual node.
+{-| View function for an individual node, depending on its [context](/Arborist-Context), and its value. This value is expressed as a maybe because the node may contain an `insert new node`-type placeholder.
 -}
 type alias NodeView node =
     Context.Context node -> Maybe node -> Html Msg
@@ -604,7 +607,7 @@ type alias NodeView node =
 
 -}
 view : NodeView node -> List (Attribute Msg) -> Model node -> Html Msg
-view viewItem attrs (Model model) =
+view viewNode attrs (Model model) =
     let
         flatTree =
             ComputedTree.flat model.computedTree
@@ -805,7 +808,7 @@ view viewItem attrs (Model model) =
                                             , on "mouseenter" (Decode.succeed (Messages.NodeMouseEnter path))
                                             , on "mouseleave" (Decode.succeed (Messages.NodeMouseLeave path))
                                             ]
-                                            [ viewItem nodeViewContext node
+                                            [ viewNode nodeViewContext node
                                             ]
                                         ]
                                             ++ (if isDragged then
