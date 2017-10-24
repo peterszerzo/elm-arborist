@@ -16,7 +16,7 @@ module Arborist
         , deleteActiveNode
         )
 
-{-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes. Structured as a TEA component defining its own init, update and view, `elm-arborist` allows you to easily initialize a tree editor from a [recursively defined tree structure](/Arborist-Tree), keep its state in an opaque model, and access the [edited result at any time](/Arborist#tree).
+{-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes. Structured as a TEA component defining its own init, update and view, `elm-arborist` allows you to easily initialize a tree editor, keep its state in an opaque model, and access the [edited result at any time](#tree).
 
 
 # Module setup
@@ -68,7 +68,7 @@ type alias NodeGeometry =
     }
 
 
-{-| Opaque type for the editor's model, dependent on a node type variable. You can only use this for type annotation - to initialize a new model, see [init](/Arborist#init).
+{-| Opaque type for the editor's model, dependent on a node type variable. You can only use this for type annotation - to initialize a new model, see [init](#init).
 -}
 type Model node
     = Model
@@ -136,7 +136,7 @@ applySettings settings (Model model) =
         }
 
 
-{-| Resize the canvas by passing a new width and a new height. Note that you can reproduce this using [applySettings](/Arborist#applySettings) as follows:
+{-| Resize the canvas by passing a new width and a new height. Note that you can reproduce this using [applySettings](#applySettings) as follows:
 
     resize 600 400 arborist == applySettings [ Settings.canvasWidth 600, Settings.canvasHeight 400 ] arborist
 
@@ -246,14 +246,14 @@ subscriptions (Model model) =
         AnimationFrame.times Messages.AnimationFrameTick
 
 
-{-| Access the current state of the [tree](/Arborist-Tree) through this getter. The result reflects all changes since it was [initialized](/Arborist#init).
+{-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
 -}
 tree : Model node -> Arborist.Tree.Tree node
 tree (Model { computedTree }) =
     ComputedTree.tree computedTree
 
 
-{-| Message type annotation for the program. When wiring up the editor within a larger program, you will define a `ArboristMsg Arborist.Msg` message type, one that will trigger this package's [update](/Arborist#update) function.
+{-| Message type annotation for the program. When wiring up the editor within a larger program, you will define a `ArboristMsg Arborist.Msg` message type, one that will trigger this package's [update](#update) function.
 -}
 type alias Msg =
     Messages.Msg
@@ -601,9 +601,9 @@ type alias NodeView node =
 
 {-| The editor's view function, taking the following arguments:
 
-  - [NodeView](/Arborist#NodeView): view function for an individual node.
+  - [NodeView](#NodeView): view function for an individual node.
   - a list of html attributes for the container element.
-  - the editor's [model](/Arborist#Model).
+  - the editor's [model](#Model).
 
 -}
 view : NodeView node -> List (Attribute Msg) -> Model node -> Html Msg
