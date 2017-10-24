@@ -99,14 +99,14 @@ defaultSettings =
     }
 
 
-{-| Initialize model from a [tree](/Arborist-Tree).
+{-| Initialize model from a [tree](Tree).
 -}
 init : Arborist.Tree.Tree node -> Model node
 init =
     initWith []
 
 
-{-| Initialize model from a [tree](/Arborist-Tree), using a list of [settings](/Arborist-Settings).
+{-| Initialize model from a [tree](Tree), using a list of [settings](Settings).
 -}
 initWith : List Setting -> Arborist.Tree.Tree node -> Model node
 initWith settings tree =
@@ -593,7 +593,7 @@ nodeGeometry settings path layout =
             )
 
 
-{-| View function for an individual node, depending on its [context](/Arborist-Context), and its value. This value is expressed as a maybe because the node may contain an `insert new node`-type placeholder.
+{-| View function for an individual node, depending on its [context](Context), and its value. This value is expressed as a maybe because the node may contain an `insert new node`-type placeholder.
 -}
 type alias NodeView node =
     Context.Context node -> Maybe node -> Html Msg

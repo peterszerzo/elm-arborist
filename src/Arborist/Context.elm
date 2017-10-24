@@ -31,7 +31,7 @@ type NodeState
   - `parent`: the item at the parent, not available for the root node
   - `siblings`: a list of all direct siblings
   - `children`: a list of all direct children
-  - `state`: node [state](Arborist-Settings#NodeState)
+  - `state`: node [state](#NodeState)
 
 -}
 type alias Context item =
