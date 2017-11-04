@@ -149,33 +149,40 @@ resize width height =
         ]
 
 
-{-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its coordinates in the editor's container. Use these coordinates to position an active node-related pop-up (see example).
+{-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as some contextual information as a two-field record:
+
+  - `position : ( Float, Float )`: the node's position on the canvas (useful for rendering an edit pop-up).
+  - `context`: view context, identical to the one provided in [NodeView](#NodeView).
+
 -}
-activeNode : Model node -> Maybe ( Maybe node, ( Float, Float ) )
-activeNode (Model { settings, active, computedTree, panOffset, drag }) =
-    active
+activeNode : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
+activeNode (Model model) =
+    model.active
         |> Maybe.map
             (\active ->
                 let
                     treeLayout =
-                        ComputedTree.layout computedTree
+                        ComputedTree.layout model.computedTree
 
                     geo =
-                        nodeGeometry settings active treeLayout
+                        nodeGeometry model.settings active treeLayout
                             |> Maybe.map .center
                             |> Maybe.withDefault ( 0, 0 )
 
                     dragOffset =
-                        MultiDrag.state drag
+                        MultiDrag.state model.drag
                             |> Maybe.map Tuple.second
                             |> Maybe.withDefault ( 0, 0 )
                 in
-                    ( ComputedTree.item active computedTree
-                    , [ geo
-                      , panOffset
-                      , dragOffset
-                      ]
-                        |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                    ( ComputedTree.item active model.computedTree
+                    , { position =
+                            [ geo
+                            , model.panOffset
+                            , dragOffset
+                            ]
+                                |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                      , context = viewContext (Model model) active
+                      }
                     )
             )
 
@@ -599,6 +606,84 @@ type alias NodeView node =
     Context.Context node -> Maybe node -> Html Msg
 
 
+viewContext : Model node -> List Int -> Context.Context node
+viewContext (Model model) path =
+    let
+        flatTree =
+            ComputedTree.flat model.computedTree
+
+        modelIsDragging =
+            model.isDragging
+
+        isDropTarget =
+            if modelIsDragging then
+                MultiDrag.state model.drag
+                    |> Maybe.map
+                        (\( draggedPath, offset ) ->
+                            case draggedPath of
+                                Just draggedPath ->
+                                    getDropTarget model.settings draggedPath offset model.computedTree
+                                        |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
+                                        |> Maybe.withDefault False
+
+                                Nothing ->
+                                    False
+                        )
+                    |> Maybe.withDefault False
+            else
+                False
+
+        nodeViewContext =
+            { parent =
+                flatTree
+                    |> List.filterMap
+                        (\( path_, node ) ->
+                            if path_ == List.take (List.length path - 1) path then
+                                node
+                            else
+                                Nothing
+                        )
+                    |> List.head
+            , siblings =
+                flatTree
+                    |> List.filterMap
+                        (\( path_, node ) ->
+                            node
+                                |> Maybe.andThen
+                                    (\node ->
+                                        if path /= path_ && List.length path == List.length path_ && List.take (List.length path_ - 1) path_ == List.take (List.length path - 1) path then
+                                            Just node
+                                        else
+                                            Nothing
+                                    )
+                        )
+            , children =
+                flatTree
+                    |> List.filterMap
+                        (\( path_, node ) ->
+                            node
+                                |> Maybe.andThen
+                                    (\node ->
+                                        if List.length path_ == List.length path + 1 && List.take (List.length path) path_ == path then
+                                            Just node
+                                        else
+                                            Nothing
+                                    )
+                        )
+            , state =
+                if (model.active == Just path) then
+                    Context.Active
+                else if isDropTarget then
+                    Context.DropTarget
+                else if (model.hovered == Just path) then
+                    Context.Hovered
+                else
+                    Context.Normal
+            }
+    in
+        nodeViewContext
+
+
 {-| The editor's view function, taking the following arguments:
 
   - [NodeView](#NodeView): view function for an individual node.
@@ -730,52 +815,7 @@ view viewNode attrs (Model model) =
                                             y + yDrag
 
                                         nodeViewContext =
-                                            { parent =
-                                                flatTree
-                                                    |> List.filterMap
-                                                        (\( path_, node ) ->
-                                                            if path_ == List.take (List.length path - 1) path then
-                                                                node
-                                                            else
-                                                                Nothing
-                                                        )
-                                                    |> List.head
-                                            , siblings =
-                                                flatTree
-                                                    |> List.filterMap
-                                                        (\( path_, node ) ->
-                                                            node
-                                                                |> Maybe.andThen
-                                                                    (\node ->
-                                                                        if path /= path_ && List.length path == List.length path_ && List.take (List.length path_ - 1) path_ == List.take (List.length path - 1) path then
-                                                                            Just node
-                                                                        else
-                                                                            Nothing
-                                                                    )
-                                                        )
-                                            , children =
-                                                flatTree
-                                                    |> List.filterMap
-                                                        (\( path_, node ) ->
-                                                            node
-                                                                |> Maybe.andThen
-                                                                    (\node ->
-                                                                        if List.length path_ == List.length path + 1 && List.take (List.length path) path_ == path then
-                                                                            Just node
-                                                                        else
-                                                                            Nothing
-                                                                    )
-                                                        )
-                                            , state =
-                                                if (model.active == Just path) then
-                                                    Context.Active
-                                                else if isDropTarget then
-                                                    Context.DropTarget
-                                                else if (model.hovered == Just path) then
-                                                    Context.Hovered
-                                                else
-                                                    Context.Normal
-                                            }
+                                            viewContext (Model model) path
                                     in
                                         [ div
                                             [ style <|

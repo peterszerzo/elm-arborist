@@ -148,36 +148,40 @@ view model =
                     [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
                         ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
-                                    (\( item, ( x, y ) ) ->
-                                        [ div
-                                            [ style <|
-                                                Styles.popup
-                                                    ++ [ ( "left", (toString x) ++ "px" )
-                                                       , ( "top", (toString y) ++ "px" )
-                                                       ]
-                                            ]
-                                            (case item of
-                                                Just item ->
-                                                    [ label []
-                                                        [ text "Question"
-                                                        , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                    (\( item, { position } ) ->
+                                        let
+                                            ( x, y ) =
+                                                position
+                                        in
+                                            [ div
+                                                [ style <|
+                                                    Styles.popup
+                                                        ++ [ ( "left", (toString x) ++ "px" )
+                                                           , ( "top", (toString y) ++ "px" )
+                                                           ]
+                                                ]
+                                                (case item of
+                                                    Just item ->
+                                                        [ label []
+                                                            [ text "Question"
+                                                            , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                                            ]
+                                                        , label []
+                                                            [ text "Answer"
+                                                            , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
+                                                            ]
+                                                        , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
                                                         ]
-                                                    , label []
-                                                        [ text "Answer"
-                                                        , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
-                                                        ]
-                                                    , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
-                                                    ]
 
-                                                Nothing ->
-                                                    [ label []
-                                                        [ text "Question", input [ value model.newNode.question, onInput EditNewNodeQuestion ] [] ]
-                                                    , label []
-                                                        [ text "Answer", input [ value model.newNode.answer, onInput EditNewNodeAnswer ] [] ]
-                                                    , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
-                                                    ]
-                                            )
-                                        ]
+                                                    Nothing ->
+                                                        [ label []
+                                                            [ text "Question", input [ value model.newNode.question, onInput EditNewNodeQuestion ] [] ]
+                                                        , label []
+                                                            [ text "Answer", input [ value model.newNode.answer, onInput EditNewNodeAnswer ] [] ]
+                                                        , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
+                                                        ]
+                                                )
+                                            ]
                                     )
                                 |> Maybe.withDefault []
                            )

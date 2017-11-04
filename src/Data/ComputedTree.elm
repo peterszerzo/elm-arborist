@@ -1,6 +1,6 @@
 module Data.ComputedTree exposing (ComputedTree, tree, flat, layout, init, item)
 
-{-| This module encapsulates computed information on a tree, information typically used for layout. When the tree is updated, there is a guarantee that this data is recalculated, avoiding expensive render-time recalculations or leaving it up to the developer to make sure a cache doesn't go stale.
+{-| This module encapsulates computed information on a tree, information typically used for layout. When the tree is updated, there is a guarantee that this data is recalculated, avoiding expensive render-time recalculations or leaving it up to the developer to make sure the cache doesn't go stale.
 -}
 
 import Utils.Tree as Tree exposing (TreeNodePath)
