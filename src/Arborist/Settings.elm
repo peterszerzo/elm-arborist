@@ -8,11 +8,12 @@ module Arborist.Settings
         , gutter
         , centerOffset
         , connectorStrokeAttributes
+        , dragAndDrop
         )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes, dragAndDrop
 
 -}
 
@@ -79,3 +80,10 @@ Note the `Never` in the type signature: the compiler won't allow any event handl
 connectorStrokeAttributes : List (Svg.Attribute Never) -> Setting
 connectorStrokeAttributes =
     ConnectorStrokeAttributes
+
+
+{-| Enable or disable drag and drop with this boolean flag (`True` is enabled, which is the default value). Note that the tree can still be panned if drag and drop is disabled.
+-}
+dragAndDrop : Bool -> Setting
+dragAndDrop =
+    DragAndDrop

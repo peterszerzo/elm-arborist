@@ -98,6 +98,7 @@ defaultSettings =
     , gutter = 20
     , centerOffset = ( 0, 0 )
     , connectorStrokeAttributes = []
+    , isDragAndDropEnabled = True
     }
 
 
@@ -330,12 +331,13 @@ update msg (Model model) =
             Model
                 { model
                     | drag =
-                        if isPlaceholder then
+                        (if isPlaceholder || not model.settings.isDragAndDropEnabled then
                             MultiDrag.init
-                        else
+                         else
                             MultiDrag.start (Just path) x y
+                        )
                     , active =
-                        if isPlaceholder then
+                        if isPlaceholder || not model.settings.isDragAndDropEnabled then
                             Just path
                         else
                             Nothing
@@ -348,7 +350,7 @@ update msg (Model model) =
                         == (Just Nothing)
 
                 active_ =
-                    if isPlaceholder then
+                    if isPlaceholder || not model.settings.isDragAndDropEnabled then
                         model.active
                     else
                         MultiDrag.state model.drag
@@ -356,6 +358,8 @@ update msg (Model model) =
                                 (\( path, ( offsetX, offsetY ) ) ->
                                     case path of
                                         Just path ->
+                                            -- If the node was dragged far enough already, it is not activated
+                                            -- This case also protects from reading a slightly sloppy click as a drag
                                             if (abs offsetX + abs offsetY > 20) then
                                                 Nothing
                                             else

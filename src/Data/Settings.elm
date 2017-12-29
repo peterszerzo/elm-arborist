@@ -12,6 +12,7 @@ type alias Settings =
     , gutter : Float
     , centerOffset : ( Float, Float )
     , connectorStrokeAttributes : List (Svg.Attribute Never)
+    , isDragAndDropEnabled : Bool
     }
 
 
@@ -24,6 +25,7 @@ type Setting
     | Gutter Int
     | CenterOffset Int Int
     | ConnectorStrokeAttributes (List (Svg.Attribute Never))
+    | DragAndDrop Bool
 
 
 apply : List Setting -> Settings -> Settings
@@ -58,4 +60,7 @@ apply newSettings settings =
 
                     ConnectorStrokeAttributes attrs ->
                         { settings | connectorStrokeAttributes = attrs }
+
+                    DragAndDrop isEnabled ->
+                        { settings | isDragAndDropEnabled = isEnabled }
                 )
