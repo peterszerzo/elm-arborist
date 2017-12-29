@@ -12,6 +12,7 @@ module Arborist
         , view
         , tree
         , activeNode
+        , activeNode2
         , setActiveNode
         , deleteActiveNode
         )
@@ -31,7 +32,7 @@ module Arborist
 
 # Tree getters and modifiers
 
-@docs tree, activeNode, setActiveNode, deleteActiveNode
+@docs tree, activeNode, activeNode2, setActiveNode, deleteActiveNode
 
 -}
 
@@ -149,14 +150,22 @@ resize width height =
         ]
 
 
+{-| DEPRECATED, see [activeNode2](#activeNode2). Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its position on the screen. This is the older, less detailed version of [activeNode2](#activeNode2).
+-}
+activeNode : Model node -> Maybe ( Maybe node, ( Float, Float ) )
+activeNode model =
+    activeNode2 model
+        |> Maybe.map (\( node, { position, context } ) -> ( node, position ))
+
+
 {-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as some contextual information as a two-field record:
 
   - `position : ( Float, Float )`: the node's position on the canvas (useful for rendering an edit pop-up).
   - `context`: view context, identical to the one provided in [NodeView](#NodeView).
 
 -}
-activeNode : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
-activeNode (Model model) =
+activeNode2 : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
+activeNode2 (Model model) =
     model.active
         |> Maybe.map
             (\active ->
