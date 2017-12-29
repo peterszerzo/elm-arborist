@@ -11,6 +11,7 @@ type alias Settings =
     , level : Float
     , gutter : Float
     , centerOffset : ( Float, Float )
+    , connectorStrokeAttributes : List (Svg.Attribute Never)
     }
 
 
@@ -22,6 +23,7 @@ type Setting
     | Level Int
     | Gutter Int
     | CenterOffset Int Int
+    | ConnectorStrokeAttributes (List (Svg.Attribute Never))
 
 
 apply : List Setting -> Settings -> Settings
@@ -53,4 +55,7 @@ apply newSettings settings =
 
                     CenterOffset x y ->
                         { settings | centerOffset = ( toFloat x, toFloat y ) }
+
+                    ConnectorStrokeAttributes attrs ->
+                        { settings | connectorStrokeAttributes = attrs }
                 )

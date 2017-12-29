@@ -97,6 +97,7 @@ defaultSettings =
     , level = 80
     , gutter = 20
     , centerOffset = ( 0, 0 )
+    , connectorStrokeAttributes = []
     }
 
 

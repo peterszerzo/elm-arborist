@@ -7,11 +7,12 @@ module Arborist.Settings
         , level
         , gutter
         , centerOffset
+        , connectorStrokeAttributes
         )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes
 
 -}
 
@@ -66,3 +67,15 @@ gutter =
 centerOffset : Int -> Int -> Setting
 centerOffset =
     CenterOffset
+
+
+{-| Use this to specify SVG stroke attributes that will be applied for all paths linking nodes together, e.g:
+
+    connectorStrokeAttributes [ strokeWidth "3", stroke "#EFEFEF", strokeLinecap "round" ]
+
+Note the `Never` in the type signature: the compiler won't allow any event handlers with messages. Those are swallowed with an `Html.Attributes.map`.
+
+-}
+connectorStrokeAttributes : List (Svg.Attribute Never) -> Setting
+connectorStrokeAttributes =
+    ConnectorStrokeAttributes

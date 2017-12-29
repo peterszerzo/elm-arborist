@@ -6,7 +6,7 @@ import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, i
 import Html.Attributes exposing (class, style, value, type_, href)
 import Html.Events exposing (onInput, onClick)
 import Svg exposing (svg, path)
-import Svg.Attributes exposing (viewBox, d)
+import Svg.Attributes exposing (viewBox, d, stroke)
 import Arborist
 import Arborist.Tree as Tree
 import Arborist.Settings as Settings
@@ -66,6 +66,9 @@ init =
                 , Settings.nodeHeight 45
                 , Settings.level 100
                 , Settings.nodeWidth 160
+                , Settings.connectorStrokeAttributes
+                    [ stroke "#E2E2E2"
+                    ]
                 ]
                 tree
       , newNode = { question = "", answer = "" }

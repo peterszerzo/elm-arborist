@@ -68,6 +68,7 @@ p {
   left: 20px;
   z-index: 100;
   padding: 20px;
+  background-color: #FFF;
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
@@ -178,7 +179,7 @@ popup =
     , ( "overflow", "auto" )
     , ( "position", "absolute" )
     , ( "transform", "translate3d(-50%, 50px, 0)" )
-    , ( "box-shadow", "0 0 12px rgba(0, 0, 0, 0.25)" )
+    , ( "box-shadow", "0 0 12px rgba(0, 0, 0, 0.2)" )
     ]
 
 

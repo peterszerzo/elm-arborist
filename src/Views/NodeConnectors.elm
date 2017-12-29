@@ -4,6 +4,7 @@ import Html exposing (Html)
 import Html.Attributes exposing (style)
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth, strokeLinecap, strokeLinejoin)
+import Messages exposing (Msg)
 import Views.Styles as Styles
 import Data.Settings as Settings
 
@@ -28,7 +29,7 @@ toCoord =
     floor >> toString
 
 
-view : Settings.Settings -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
+view : Settings.Settings -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html Msg
 view settings opacity ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
@@ -37,6 +38,7 @@ view settings opacity ( dragX, dragY ) center childCenters =
             , strokeLinecap "round"
             , strokeLinejoin "round"
             ]
+                ++ (settings.connectorStrokeAttributes |> List.map (\attr -> Html.Attributes.map (always Messages.NoOp) attr))
 
         pts =
             [ center ] ++ childCenters
