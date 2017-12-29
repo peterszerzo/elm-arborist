@@ -152,7 +152,7 @@ view model =
             [ div [ class "intro__icon" ] [ logo ]
             , h1 [] [ text "elm-arborist" ]
             , p []
-                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v2.0 Docs" ]
+                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v2.1 Docs" ]
                 , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
                 ]
             ]
