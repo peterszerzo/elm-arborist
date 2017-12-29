@@ -9,11 +9,12 @@ module Arborist.Settings
         , centerOffset
         , connectorStrokeAttributes
         , dragAndDrop
+        , placeholderLeaves
         )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes, dragAndDrop
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes, dragAndDrop, placeholderLeaves
 
 -}
 
@@ -87,3 +88,10 @@ connectorStrokeAttributes =
 dragAndDrop : Bool -> Setting
 dragAndDrop =
     DragAndDrop
+
+
+{-| Set whether placeholder leaves should be displayed.
+-}
+placeholderLeaves : Bool -> Setting
+placeholderLeaves =
+    PlaceholderLeaves

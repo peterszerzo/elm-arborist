@@ -99,6 +99,7 @@ defaultSettings =
     , centerOffset = ( 0, 0 )
     , connectorStrokeAttributes = []
     , isDragAndDropEnabled = True
+    , showPlaceholderLeaves = True
     }
 
 
@@ -113,20 +114,27 @@ init =
 -}
 initWith : List Setting -> Arborist.Tree.Tree node -> Model node
 initWith settings tree =
-    Model
-        { settings = Settings.apply settings defaultSettings
-        , computedTree = ComputedTree.init tree
-        , prevComputedTree = ComputedTree.init tree
-        , active = Nothing
-        , hovered = Nothing
-        , isDragging = False
-        , isReceivingAnimationFrames = False
-        , focus = Nothing
-        , drag = (MultiDrag.init)
-        , displayRoot = Nothing
-        , panOffset = ( 0, 0 )
-        , targetPanOffset = Nothing
-        }
+    let
+        settings_ =
+            Settings.apply settings defaultSettings
+
+        computedTree =
+            ComputedTree.init (settings_.showPlaceholderLeaves) tree
+    in
+        Model
+            { settings = settings_
+            , computedTree = computedTree
+            , prevComputedTree = computedTree
+            , active = Nothing
+            , hovered = Nothing
+            , isDragging = False
+            , isReceivingAnimationFrames = False
+            , focus = Nothing
+            , drag = (MultiDrag.init)
+            , displayRoot = Nothing
+            , panOffset = ( 0, 0 )
+            , targetPanOffset = Nothing
+            }
 
 
 {-| Apply a new list of settings to the model.
@@ -235,7 +243,7 @@ setActiveNode newNode (Model model) =
     in
         Model
             { model
-                | computedTree = ComputedTree.init newTree
+                | computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
                 , prevComputedTree = model.computedTree
             }
 
@@ -248,7 +256,7 @@ deleteActiveNode (Model model) =
         { model
             | computedTree =
                 model.active
-                    |> Maybe.map (\active -> Tree.delete active (ComputedTree.tree model.computedTree) |> ComputedTree.init)
+                    |> Maybe.map (\active -> Tree.delete active (ComputedTree.tree model.computedTree) |> ComputedTree.init model.settings.showPlaceholderLeaves)
                     |> Maybe.withDefault model.computedTree
             , prevComputedTree = model.computedTree
         }
@@ -437,7 +445,7 @@ update msg (Model model) =
                     { model
                         | drag =
                             MultiDrag.init
-                        , computedTree = ComputedTree.init newTree
+                        , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
                         , prevComputedTree = model.computedTree
 
                         -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.

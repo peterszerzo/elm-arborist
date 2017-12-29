@@ -13,6 +13,7 @@ type alias Settings =
     , centerOffset : ( Float, Float )
     , connectorStrokeAttributes : List (Svg.Attribute Never)
     , isDragAndDropEnabled : Bool
+    , showPlaceholderLeaves : Bool
     }
 
 
@@ -26,6 +27,7 @@ type Setting
     | CenterOffset Int Int
     | ConnectorStrokeAttributes (List (Svg.Attribute Never))
     | DragAndDrop Bool
+    | PlaceholderLeaves Bool
 
 
 apply : List Setting -> Settings -> Settings
@@ -63,4 +65,7 @@ apply newSettings settings =
 
                     DragAndDrop isEnabled ->
                         { settings | isDragAndDropEnabled = isEnabled }
+
+                    PlaceholderLeaves show ->
+                        { settings | showPlaceholderLeaves = show }
                 )

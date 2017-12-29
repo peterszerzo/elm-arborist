@@ -38,11 +38,14 @@ item path (ComputedTree { flat }) =
         |> Maybe.andThen Tuple.second
 
 
-init : Arborist.Tree.Tree item -> ComputedTree item
-init tree =
+init : Bool -> Arborist.Tree.Tree item -> ComputedTree item
+init showPlaceholderLeaves tree =
     let
         withPlaceholders =
-            Tree.addTrailingEmpties tree
+            if showPlaceholderLeaves then
+                Tree.addTrailingEmpties tree
+            else
+                tree
 
         flat =
             Tree.flatten withPlaceholders
