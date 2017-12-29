@@ -20,7 +20,7 @@ pad =
 
 strokeWeight : Int
 strokeWeight =
-    4
+    2
 
 
 toCoord : Float -> String

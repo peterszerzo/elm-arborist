@@ -5,6 +5,8 @@ import Json.Decode as Decode
 import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
 import Html.Attributes exposing (class, style, value, type_, href)
 import Html.Events exposing (onInput, onClick)
+import Svg exposing (svg, path)
+import Svg.Attributes exposing (viewBox, d)
 import Arborist
 import Arborist.Tree as Tree
 import Arborist.Settings as Settings
@@ -58,7 +60,14 @@ tree =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { arborist = Arborist.initWith [ Settings.centerOffset 0 -150 ] tree
+    ( { arborist =
+            Arborist.initWith
+                [ Settings.centerOffset 0 -150
+                , Settings.nodeHeight 45
+                , Settings.level 100
+                , Settings.nodeWidth 160
+                ]
+                tree
       , newNode = { question = "", answer = "" }
       , windowSize = { width = 0, height = 0 }
       }
@@ -119,6 +128,15 @@ update msg model =
             )
 
 
+logo : Html msg
+logo =
+    svg [ viewBox "0 0 1000 1000" ]
+        [ path [ d "M520,720l220,-220l220,220l-440,0Z" ] []
+        , path [ d "M40,720l220,-220l220,220l-440,0Z" ] []
+        , path [ d "M280,480l220,-220l220,220l-440,0Z" ] []
+        ]
+
+
 
 -- View
 
@@ -128,9 +146,12 @@ view model =
     div [] <|
         [ node "style" [] [ text Styles.raw ]
         , div [ class "intro" ]
-            [ h1 [] [ text "elm-arborist" ]
-            , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
-            , p [ class "intro__icon" ] [ text "🌲" ]
+            [ div [ class "intro__icon" ] [ logo ]
+            , h1 [] [ text "elm-arborist" ]
+            , p []
+                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v2.0 Docs" ]
+                , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
+                ]
             ]
         ]
             ++ [ -- For pop-up coordinates to work, include view in a container
@@ -251,7 +272,7 @@ nodeView context item =
                                 _ ->
                                     [ ( "background-color", "transparent" )
                                     , ( "border", "1px dashed #CECECE" )
-                                    , ( "color", "black" )
+                                    , ( "color", "#898989" )
                                     ]
                            )
                 ]

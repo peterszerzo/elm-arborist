@@ -1,5 +1,7 @@
 module Data.Settings exposing (..)
 
+import Svg
+
 
 type alias Settings =
     { canvasWidth : Float

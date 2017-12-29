@@ -58,7 +58,7 @@ h1 {
 }
 
 p {
-  margin: 6 0 24px 0;
+  margin: 6px 0 0 0;
 }
 
 .intro {
@@ -68,22 +68,35 @@ p {
   left: 20px;
   z-index: 100;
   padding: 20px;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
-  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.intro a {
+  display: inline-block;
+  margin: 0 6px;
 }
 
 .intro__icon {
-  font-size: 2.5rem;
-  line-height: 1;
-  position: absolute;
-  top: -65px;
-  left: calc(50% - 20px);
+  width: 60px;
+  height: 60px;
+  margin: -10px auto;
+}
+
+.intro__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: """ ++ green ++ """;
 }
 
 a {
   text-decoration: none;
   color: inherit;
   border-bottom: 1px solid currentColor;
+  line-height: 1;
+}
+
+a:hover {
+  color: """ ++ green ++ """;
 }
 
 input {
@@ -110,7 +123,8 @@ h2 {
 }
 
 input:focus {
-  border-color: """ ++ blue ++ """;
+  box-shadow: 0 0 3px """ ++ green ++ """;
+  border-color: """ ++ green ++ """;
 }
 
 label {
@@ -125,13 +139,24 @@ label:not(:first-of-type) {
 input,
 label,
 p,
+button,
 a {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+}
+
+input,
+label,
+p {
   line-height: 1.6;
 }
 
 button {
   margin-top: 10px;
+}
+
+button:focus {
+  outline: none;
+  box-shadow: 0 0 3px """ ++ green ++ """;
 }
 """
 
@@ -147,7 +172,7 @@ popup : List ( String, String )
 popup =
     [ ( "width", "320px" )
     , ( "background-color", "white" )
-    , ( "height", "220px" )
+    , ( "height", "240px" )
     , ( "border-top", "4px solid " ++ green )
     , ( "padding", "20px 20px 0 20px" )
     , ( "overflow", "auto" )
@@ -160,12 +185,11 @@ popup =
 nodeContainer : List ( String, String )
 nodeContainer =
     [ ( "width", "100%" )
-    , ( "height", "36px" )
-    , ( "border-radius", "4px" )
-    , ( "font-size", "0.5rem" )
+    , ( "height", "45px" )
+    , ( "font-size", "0.875rem" )
     , ( "padding", "4px 20px" )
     , ( "box-sizing", "border-box" )
-    , ( "padding", "5px" )
+    , ( "padding", "0 12px" )
     , ( "display", "flex" )
     , ( "align-items", "center" )
     , ( "justify-content", "center" )
@@ -175,7 +199,7 @@ nodeContainer =
 text : List ( String, String )
 text =
     [ ( "margin", "0" )
-    , ( "font-size", "0.75" )
+    , ( "font-size", "0.875rem" )
     , ( "line-height", "1.2" )
     , ( "text-align", "center" )
     ]
@@ -185,7 +209,6 @@ button : List ( String, String )
 button =
     [ ( "background-color", green )
     , ( "border", "0" )
-    , ( "border-radius", "4px" )
     , ( "padding", "6px 12px" )
     , ( "margin", "20px auto" )
     , ( "color", "#FFFFFF" )
@@ -196,16 +219,20 @@ bubble : List ( String, String )
 bubble =
     [ ( "position", "absolute" )
     , ( "box-sizing", "border-box" )
-    , ( "border-radius", "4px" )
-    , ( "border", "1px solid #3E849B" )
-    , ( "width", "40px" )
-    , ( "height", "24px" )
+    , ( "width", "fit-content" )
+    , ( "min-width", "48px" )
+    , ( "height", "28px" )
+    , ( "border-radius", "14px" )
+    , ( "border", "2px solid #E2E2E2" )
+    , ( "background-color", "#FFF" )
     , ( "font-size", "0.75rem" )
-    , ( "padding-top", "3px" )
+    , ( "padding", "0 12px" )
     , ( "color", "black" )
-    , ( "text-align", "center" )
-    , ( "background", "#FFFFFF" )
-    , ( "top", "-44px" )
-    , ( "left", "calc(50% - 20px)" )
+    , ( "display", "flex" )
+    , ( "align-items", "center" )
+    , ( "justify-content", "center" )
+    , ( "top", "-46px" )
+    , ( "left", "50%" )
+    , ( "transform", "translateX(-50%)" )
     , ( "z-index", "200" )
     ]

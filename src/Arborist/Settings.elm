@@ -16,6 +16,7 @@ module Arborist.Settings
 -}
 
 import Data.Settings exposing (Setting(..))
+import Svg
 
 
 {-| Sets the width of node.
