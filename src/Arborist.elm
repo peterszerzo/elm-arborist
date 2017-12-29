@@ -12,7 +12,7 @@ module Arborist
         , view
         , tree
         , activeNode
-        , activeNode2
+        , activeNodeWithContext
         , setActiveNode
         , deleteActiveNode
         )
@@ -32,7 +32,7 @@ module Arborist
 
 # Tree getters and modifiers
 
-@docs tree, activeNode, activeNode2, setActiveNode, deleteActiveNode
+@docs tree, activeNode, activeNodeWithContext, setActiveNode, deleteActiveNode
 
 -}
 
@@ -150,11 +150,11 @@ resize width height =
         ]
 
 
-{-| DEPRECATED, see [activeNode2](#activeNode2). Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its position on the screen. This is the older, less detailed version of [activeNode2](#activeNode2).
+{-| DEPRECATED, see [activeNodeWithContext](#activeNodeWithContext). Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its position on the screen. This is the older, less detailed version of [activeNodeWithContext](#activeNodeWithContext).
 -}
 activeNode : Model node -> Maybe ( Maybe node, ( Float, Float ) )
 activeNode model =
-    activeNode2 model
+    activeNodeWithContext model
         |> Maybe.map (\( node, { position, context } ) -> ( node, position ))
 
 
@@ -164,8 +164,8 @@ activeNode model =
   - `context`: view context, identical to the one provided in [NodeView](#NodeView).
 
 -}
-activeNode2 : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
-activeNode2 (Model model) =
+activeNodeWithContext : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
+activeNodeWithContext (Model model) =
     model.active
         |> Maybe.map
             (\active ->
@@ -196,7 +196,7 @@ activeNode2 (Model model) =
             )
 
 
-{-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNode](#activeNode) method.
+{-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNodeWithContext](#activeNodeWithContext) method.
 -}
 setActiveNode : node -> Model node -> Model node
 setActiveNode newNode (Model model) =

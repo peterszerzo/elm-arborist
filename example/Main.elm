@@ -146,7 +146,7 @@ view model =
                     ]
                  <|
                     [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
-                        ++ (Arborist.activeNode2 model.arborist
+                        ++ (Arborist.activeNodeWithContext model.arborist
                                 |> Maybe.map
                                     (\( item, { position } ) ->
                                         let
