@@ -6,7 +6,7 @@
 
 # elm-arborist
 
-Drag-and-drop interface to edit, dissect and-rearrange tree structures, with nodes holding any data type you wish. Here is a [demo](http://elm-arborist.peterszerzo.com), and here some [docs](http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest).
+Drag-and-drop interface to edit, dissect and-rearrange tree structures, with nodes holding any data type you wish. Here is a [demo](https://peterszerzo.github.io/elm-arborist/), and here some [docs](http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest).
 
 ## Getting started: a family tree
 

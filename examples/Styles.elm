@@ -48,11 +48,6 @@ raw =
   font-family: 'PT Sans', sans-serif;
 }
 
-body {
-  background-color: #D3DBDC;
-  padding: 30px;
-}
-
 h1 {
   margin: 0;
 }
@@ -100,7 +95,7 @@ a:hover {
   color: """ ++ green ++ """;
 }
 
-input {
+input, textarea {
   outline: none;
   display: block;
   width: 100%;
@@ -123,7 +118,8 @@ h2 {
   margin: 0.5rem;
 }
 
-input:focus {
+input:focus,
+textarea:focus {
   box-shadow: 0 0 3px """ ++ green ++ """;
   border-color: """ ++ green ++ """;
 }
@@ -213,27 +209,4 @@ button =
     , ( "padding", "6px 12px" )
     , ( "margin", "20px auto" )
     , ( "color", "#FFFFFF" )
-    ]
-
-
-bubble : List ( String, String )
-bubble =
-    [ ( "position", "absolute" )
-    , ( "box-sizing", "border-box" )
-    , ( "width", "fit-content" )
-    , ( "min-width", "48px" )
-    , ( "height", "28px" )
-    , ( "border-radius", "14px" )
-    , ( "border", "2px solid #E2E2E2" )
-    , ( "background-color", "#FFF" )
-    , ( "font-size", "0.75rem" )
-    , ( "padding", "0 12px" )
-    , ( "color", "black" )
-    , ( "display", "flex" )
-    , ( "align-items", "center" )
-    , ( "justify-content", "center" )
-    , ( "top", "-46px" )
-    , ( "left", "50%" )
-    , ( "transform", "translateX(-50%)" )
-    , ( "z-index", "200" )
     ]

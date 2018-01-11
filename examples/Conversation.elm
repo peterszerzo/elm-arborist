@@ -1,4 +1,7 @@
-module Main exposing (..)
+module Conversation exposing (..)
+
+{-| A simple Arborist app modeling a conversation flow.
+-}
 
 import Task
 import Json.Decode as Decode
@@ -131,15 +134,6 @@ update msg model =
             )
 
 
-logo : Html msg
-logo =
-    svg [ viewBox "0 0 1000 1000" ]
-        [ path [ d "M520,720l220,-220l220,220l-440,0Z" ] []
-        , path [ d "M40,720l220,-220l220,220l-440,0Z" ] []
-        , path [ d "M280,480l220,-220l220,220l-440,0Z" ] []
-        ]
-
-
 
 -- View
 
@@ -148,14 +142,6 @@ view : Model -> Html Msg
 view model =
     div [] <|
         [ node "style" [] [ text Styles.raw ]
-        , div [ class "intro" ]
-            [ div [ class "intro__icon" ] [ logo ]
-            , h1 [] [ text "elm-arborist" ]
-            , p []
-                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v2.1 Docs" ]
-                , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
-                ]
-            ]
         ]
             ++ [ -- For pop-up coordinates to work, include view in a container
                  div
@@ -243,7 +229,7 @@ nodeView context item =
                         (if item.answer /= "" then
                             [ p
                                 [ style <|
-                                    Styles.bubble
+                                    bubble
                                         ++ []
                                 ]
                                 [ text item.answer ]
@@ -283,6 +269,37 @@ nodeView context item =
             )
 
 
+bubble : List ( String, String )
+bubble =
+    [ ( "position", "absolute" )
+    , ( "box-sizing", "border-box" )
+    , ( "width", "fit-content" )
+    , ( "min-width", "48px" )
+    , ( "height", "28px" )
+    , ( "border-radius", "14px" )
+    , ( "border", "2px solid #E2E2E2" )
+    , ( "background-color", "#FFF" )
+    , ( "font-size", "0.75rem" )
+    , ( "padding", "0 12px" )
+    , ( "color", "black" )
+    , ( "display", "flex" )
+    , ( "align-items", "center" )
+    , ( "justify-content", "center" )
+    , ( "top", "-46px" )
+    , ( "left", "50%" )
+    , ( "transform", "translateX(-50%)" )
+    , ( "z-index", "200" )
+    ]
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Arborist.subscriptions model.arborist |> Sub.map ArboristMsg
+        , Window.resizes Resize
+        ]
+
+
 {-| Entry point
 -}
 main : Program Never Model Msg
@@ -291,11 +308,5 @@ main =
         { init = init
         , update = update
         , view = view
-        , subscriptions =
-            (\model ->
-                Sub.batch
-                    [ Arborist.subscriptions model.arborist |> Sub.map ArboristMsg
-                    , Window.resizes Resize
-                    ]
-            )
+        , subscriptions = subscriptions
         }
