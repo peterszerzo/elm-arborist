@@ -17,6 +17,7 @@ function build() {
   elm-make Egg/Main.elm --output=../build/Egg/elm.js
   cp Egg/index.html ../build/Egg
   cp Egg/index.js ../build/Egg
+  cd ..
 }
 
 build
