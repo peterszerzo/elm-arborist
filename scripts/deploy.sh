@@ -1,11 +1,12 @@
 function deploy() {
   git branch -D gh-pages
   git checkout --orphan gh-pages
-  cp build/* .
-  trash src examples tests
+  mv build/* .
+  trash src examples tests build scripts README.md
   git add .
   git commit -m "Deploy"
   git push -f origin gh-pages
+  git checkout master
 }
 
 function build() {
