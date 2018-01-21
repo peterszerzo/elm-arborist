@@ -1,7 +1,4 @@
-port module Trui exposing (..)
-
-{-| ! EXPERIMENTAL ! a visual/hybrid user interface programming tool. See the `Conversation.elm` example for a gentle introduction to Arborist.
--}
+port module Egg.Main exposing (..)
 
 import Task
 import Json.Decode as Decode
@@ -43,9 +40,10 @@ type alias Model =
 tree : Tree.Tree Node
 tree =
     Tree.Node { code = """<div>
-  <Child1/>
+  <h1>Hello</h1>
+  {props.children}
 </div>""" }
-        [ Tree.Node { code = "<h1>Hello</h1>" }
+        [ Tree.Node { code = "<div>I'm Egg{props.children}</div>" }
             []
         , Tree.Node { code = "<p>World</p>" }
             [ Tree.Node { code = "<code>const a;</code>" } []
@@ -82,9 +80,9 @@ init =
     ( { arborist =
             Arborist.initWith
                 [ Settings.centerOffset 0 -180
-                , Settings.nodeHeight 45
-                , Settings.level 100
-                , Settings.nodeWidth 160
+                , Settings.nodeHeight 30
+                , Settings.level 80
+                , Settings.nodeWidth 100
                 , Settings.connectorStrokeAttributes
                     [ stroke "#E2E2E2"
                     ]
@@ -117,20 +115,35 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        sourceCode =
+        flatTree =
             Arborist.tree model.arborist
                 |> flatten
+
+        sourceCode =
+            flatTree
                 |> List.map
                     (\( path, { code } ) ->
                         let
+                            childrenCount =
+                                flatTree
+                                    |> List.filter (\( path_, _ ) -> List.take (List.length path) path_ == path && (List.length path_ == List.length path + 1))
+                                    |> List.length
+
                             pathPrefix =
-                                (List.map (\i -> toString (i + 1)) path |> String.join "")
+                                (String.join "" << List.map (\i -> toString (i + 1))) path
 
                             prefixedCode =
-                                Regex.replace (Regex.All)
-                                    (Regex.regex "<Child")
-                                    (\_ -> "<Child" ++ pathPrefix)
-                                    code
+                                code
+                                    |> Regex.replace (Regex.All) (Regex.regex "<Child") (\_ -> "<Child" ++ pathPrefix)
+                                    |> Regex.replace (Regex.All)
+                                        (Regex.regex "{props.children}")
+                                        (\_ ->
+                                            childrenCount
+                                                |> List.range 1
+                                                |> List.map toString
+                                                |> List.map (\p -> "<Child" ++ pathPrefix ++ p ++ "/>")
+                                                |> String.join ""
+                                        )
                         in
                             "function Child" ++ pathPrefix ++ " (props) {\n return " ++ prefixedCode ++ "\n}"
                     )
@@ -206,10 +219,8 @@ view model =
                                                     Styles.popup
                                                         ++ [ ( "left", (toString x) ++ "px" )
                                                            , ( "top", (toString y) ++ "px" )
-                                                           , ( "width", "60vw" )
-                                                           , ( "height", "60vh" )
-                                                           , ( "max-height", "600px" )
-                                                           , ( "max-width", "600px" )
+                                                           , ( "height", "320px" )
+                                                           , ( "width", "480px" )
                                                            ]
                                                 ]
                                                 (case item of
@@ -233,9 +244,18 @@ view model =
 textareaStyle : List ( String, String )
 textareaStyle =
     [ ( "font-family", "monospace" )
-    , ( "min-height", "300px" )
+    , ( "min-height", "200px" )
     , ( "font-size", "1.25rem" )
     ]
+
+
+firstOpeningTag : String -> String
+firstOpeningTag code =
+    code
+        |> String.indices ">"
+        |> List.head
+        |> Maybe.map (\index -> String.left (index + 1) code)
+        |> Maybe.withDefault "Tag"
 
 
 {-| Describe how a node should render inside the tree's layout.
@@ -263,15 +283,17 @@ nodeView context item =
                                         Styles.blue
                                  )
                                , ( "color", "white" )
+                               , ( "height", "30px" )
                                ]
                     ]
-                    [ p [ style <| Styles.text ] [ text "Code" ]
+                    [ p [ style <| Styles.text ] [ text (firstOpeningTag item.code) ]
                     ]
             )
         |> Maybe.withDefault
             (div
                 [ style <|
                     Styles.nodeContainer
+                        ++ [ ( "height", "30px" ) ]
                         ++ (case context.state of
                                 Active ->
                                     [ ( "background-color", Styles.green )

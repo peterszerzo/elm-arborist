@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>egg | visual ui editor</title>
+    <style>
+      #playground-container {
+        position: absolute;
+        background-color: #FFF;
+        top: 0;
+        left: 50%;
+        width: 50%;
+        height: 100%;
+        z-index: 10000;
+        border-left: 2px solid #dedede;
+      }
+
+      pre {
+        padding: 20;
+      }
+
+      pre * {
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="elm-container"></div>
+    <div id="playground-container">
+    </div> 
+    <script src="/_compile/Egg/Main.elm"></script>
+    <script src="elm.js"></script>
+    <script src="index.js"></script>
+  </body>
+</html>
+

@@ -101,6 +101,7 @@ view model =
             , p []
                 [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v2.1 Docs" ]
                 , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
+                , a [ href "Egg/index.html" ] [ text "* Fun stuff!" ]
                 ]
             ]
         , Conversation.view model.conversation |> Html.map ConversationMsg

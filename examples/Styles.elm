@@ -69,7 +69,7 @@ p {
 
 .intro a {
   display: inline-block;
-  margin: 0 6px;
+  margin: 0 8px;
 }
 
 .intro__icon {
