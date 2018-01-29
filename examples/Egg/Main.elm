@@ -4,8 +4,8 @@ import Task
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Regex
-import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, textarea, map, button)
-import Html.Attributes exposing (class, style, value, type_, href)
+import Html exposing (Html, header, div, node, h1, h2, h3, p, a, text, program, label, textarea, map, button)
+import Html.Attributes exposing (class, style, value, type_, href, id)
 import Html.Events exposing (onInput, onClick)
 import Svg exposing (svg, path)
 import Svg.Attributes exposing (viewBox, d, stroke)
@@ -40,14 +40,16 @@ type alias Model =
 tree : Tree.Tree Node
 tree =
     Tree.Node { code = """<div>
-  <h1>Hello</h1>
   {props.children}
 </div>""" }
-        [ Tree.Node { code = "<div>I'm Egg{props.children}</div>" }
+        [ Tree.Node { code = "<header>I'm Egg{props.children}</header>" }
             []
-        , Tree.Node { code = "<p>World</p>" }
+        , Tree.Node { code = "<main>World</main>" }
             [ Tree.Node { code = "<code>const a;</code>" } []
             ]
+        , Tree.Node { code = "<footer>Made with a frying pan at ...</footer>" }
+            []
+        , Tree.Node { code = "<style>{`\nheader {\n  background-color: #FFF;\n}\n\nfooter {\n  background-color: #dedede;\n}\n`}</style>" } []
         ]
 
 
@@ -84,7 +86,7 @@ init =
                 , Settings.level 80
                 , Settings.nodeWidth 100
                 , Settings.connectorStrokeAttributes
-                    [ stroke "#E2E2E2"
+                    [ stroke "#454545"
                     ]
                 ]
                 tree
@@ -189,20 +191,57 @@ update msg model =
 -- View
 
 
+viewHeader : Html Msg
+viewHeader =
+    header
+        [ style
+            [ ( "width", "100%" )
+            , ( "height", "60px" )
+            , ( "position", "absolute" )
+            , ( "top", "0" )
+            , ( "left", "0" )
+            , ( "padding", "0 20px" )
+            , ( "display", "flex" )
+            , ( "align-items", "center" )
+            , ( "background-color", "#001122" )
+            , ( "font-size", "1.5rem" )
+            , ( "color", "#FFF" )
+            , ( "border-bottom", "1px solid #454545" )
+            ]
+        ]
+        [ text "Egg" ]
+
+
 view : Model -> Html Msg
 view model =
     div [] <|
-        [ node "style" [] [ text Styles.raw ]
+        [ viewHeader
+        , node "style" [] [ text Styles.raw ]
         ]
-            ++ [ -- For pop-up coordinates to work, include view in a container
+            ++ [ div
+                    [ id "playground-container"
+                    , style
+                        [ ( "position", "absolute" )
+                        , ( "background-color", "#FFF" )
+                        , ( "top", "60px" )
+                        , ( "left", "50%" )
+                        , ( "width", "50%" )
+                        , ( "height", "calc(100% - 60px)" )
+                        , ( "z-index", "10000" )
+                        , ( "border-left", "1px solid #dedede" )
+                        ]
+                    ]
+                    []
+               , -- For pop-up coordinates to work, include view in a container
                  div
                     [ style
                         [ ( "margin", "auto" )
                         , ( "position", "absolute" )
-                        , ( "top", "0" )
+                        , ( "background-color", "#232323" )
+                        , ( "top", "60px" )
                         , ( "left", "0" )
                         , ( "width", (toString (model.windowSize.width // 2)) ++ "px" )
-                        , ( "height", (toString model.windowSize.height) ++ "px" )
+                        , ( "height", (toString (model.windowSize.height - 60)) ++ "px" )
                         ]
                     ]
                  <|
@@ -310,11 +349,11 @@ nodeView context item =
                                 _ ->
                                     [ ( "background-color", "transparent" )
                                     , ( "border", "1px dashed #CECECE" )
-                                    , ( "color", "#898989" )
+                                    , ( "color", "white" )
                                     ]
                            )
                 ]
-                [ p [ style <| Styles.text ] [ text "New child" ] ]
+                [ p [ style <| Styles.text ] [ text "+" ] ]
             )
 
 

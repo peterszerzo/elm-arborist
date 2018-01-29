@@ -1,5 +1,4 @@
 const elmContainer = document.getElementById("elm-container")
-const playgroundContainer = document.getElementById("playground-container")
 const app = Elm.Egg.Main.embed(elmContainer)
 const urls = [
   "https://cdnjs.cloudflare.com/ajax/libs/react/16.2.0/umd/react.development.js",
@@ -29,16 +28,17 @@ const start = () => {
         `
       }
     }
+    const container = document.getElementById("playground-container")
     const prevScript = document.querySelector("#compiled")
     if (prevScript) {
-      ReactDOM.unmountComponentAtNode(playgroundContainer)
+      ReactDOM.unmountComponentAtNode(container)
       prevScript.parentNode && prevScript.parentNode.removeChild(prevScript)
     }
     const script = document.createElement("script")
     script.id = "compiled"
     script.textContent = code.code
     document.body.appendChild(script)
-    ReactDOM.render(React.createElement(Child), playgroundContainer)
+    container && ReactDOM.render(React.createElement(Child), container) 
   })
 }
 load(urls[0])

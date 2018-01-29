@@ -160,8 +160,7 @@ button:focus {
 
 box : List ( String, String )
 box =
-    [ ( "background-color", "white" )
-    , ( "margin", "auto" )
+    [ ( "margin", "auto" )
     ]
 
 
