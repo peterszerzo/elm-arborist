@@ -218,28 +218,33 @@ setActiveNode newNode (Model model) =
             ComputedTree.flat model.computedTree
 
         newTree =
-            model.active
-                |> Maybe.map
-                    (\active ->
-                        let
-                            node =
-                                flat
-                                    |> List.filter (\( path, _ ) -> active == path)
-                                    |> List.head
-                                    |> Maybe.map Tuple.second
-                        in
-                            case node of
-                                Just (Just node) ->
-                                    Tree.update active newNode tree
+            -- Handle special case when the tree is completely empty
+            -- and a new node is added at the root.
+            if tree == Arborist.Tree.Empty && model.active == Just [] then
+                Arborist.Tree.Node newNode []
+            else
+                model.active
+                    |> Maybe.map
+                        (\active ->
+                            let
+                                node =
+                                    flat
+                                        |> List.filter (\( path, _ ) -> active == path)
+                                        |> List.head
+                                        |> Maybe.map Tuple.second
+                            in
+                                case node of
+                                    Just (Just node) ->
+                                        Tree.update active newNode tree
 
-                                Just Nothing ->
-                                    Tree.insert (List.take (List.length active - 1) active) (Just newNode) tree
+                                    Just Nothing ->
+                                        Tree.insert (List.take (List.length active - 1) active) (Just newNode) tree
 
-                                _ ->
-                                    -- Impossible state
-                                    tree
-                    )
-                |> Maybe.withDefault tree
+                                    _ ->
+                                        -- Impossible state
+                                        tree
+                        )
+                    |> Maybe.withDefault tree
     in
         Model
             { model

@@ -1,2 +1,2 @@
-cd example
+cd examples
 elm-reactor

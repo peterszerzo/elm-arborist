@@ -1,5 +1,5 @@
 {
-    "version": "2.1.0",
+    "version": "2.1.1",
     "summary": "Tree-editing interface for Elm",
     "repository": "https://github.com/peterszerzo/elm-arborist.git",
     "license": "BSD3",
