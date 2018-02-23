@@ -1,4 +1,4 @@
-module Arborist.Tree exposing (Tree(..), decoder, depth, map)
+module Arborist.Tree exposing (Tree(..), decoder, encoder, flatten, depth, map)
 
 {-| A tiny tiny tree module. Only a few utility methods are provided here - after all, if you want to manupilate the tree, you should probably do so using the interface 🤓.
 
@@ -10,16 +10,17 @@ module Arborist.Tree exposing (Tree(..), decoder, depth, map)
 
 # Json
 
-@docs decoder
+@docs decoder, encoder
 
 
 # Methods
 
-@docs depth, map
+@docs depth, flatten, map
 
 -}
 
 import Json.Decode as Decode
+import Json.Encode as Encode
 
 
 {-| Recursive tree structure, holding any data type `node`, and any number of child nodes. Creating a tree of strings, for instance, would look like this:
@@ -42,6 +43,21 @@ decoder nodeDecoder =
             (Decode.field "value" nodeDecoder)
             (Decode.field "children" (Decode.lazy (\_ -> decoder nodeDecoder |> Decode.list)))
         ]
+
+
+{-| Encodes a tree into JSON, given its node encoder.
+-}
+encoder : (node -> Encode.Value) -> Tree node -> Encode.Value
+encoder nodeEncoder tree =
+    case tree of
+        Empty ->
+            Encode.null
+
+        Node node children ->
+            Encode.object
+                [ ( "value", nodeEncoder node )
+                , ( "children", List.map (encoder nodeEncoder) children |> Encode.list )
+                ]
 
 
 {-| Tree depth.
@@ -71,3 +87,27 @@ map fn tree =
 
         Node val children ->
             Node (fn val) (List.map (map fn) children)
+
+
+{-| Flatten a tree into a list of ( path, node ) tuples. The path is a list of integers showing how you can get to the node (the root would be `[]`, its first child `[ 1 ]`).
+-}
+flatten : Tree a -> List ( List Int, a )
+flatten =
+    flattenTail []
+
+
+flattenTail : List Int -> Tree a -> List ( List Int, a )
+flattenTail path tree =
+    case tree of
+        Empty ->
+            []
+
+        Node val children ->
+            [ ( path, val ) ]
+                ++ (List.indexedMap
+                        (\index child ->
+                            (flattenTail (path ++ [ index ]) child)
+                        )
+                        children
+                        |> List.foldl (++) []
+                   )

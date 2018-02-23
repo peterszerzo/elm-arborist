@@ -1,9 +1,12 @@
 module TreeTests exposing (..)
 
+import Json.Encode as Encode
+import Json.Decode as Decode
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Test exposing (..)
-import Data.Tree as Tree
+import Arborist.Tree as Tree
+import Utils.Tree
 
 
 tree : Tree.Tree String
@@ -22,7 +25,7 @@ suite =
         [ test "Deletes" <|
             \_ ->
                 Expect.equal
-                    (Tree.delete [ 1, 0 ]
+                    (Utils.Tree.delete [ 1, 0 ]
                         (Tree.Node "Apple"
                             [ Tree.Node "Pear"
                                 [ Tree.Node "Pear2" []
@@ -40,7 +43,7 @@ suite =
                     )
         , test "Updates" <|
             \_ ->
-                Expect.equal (Tree.update [ 1, 0 ] "Apricot2" tree)
+                Expect.equal (Utils.Tree.update [ 1, 0 ] "Apricot2" tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -50,7 +53,7 @@ suite =
                     )
         , test "Inserts" <|
             \_ ->
-                Expect.equal (Tree.insert [] (Just "Banana") tree)
+                Expect.equal (Utils.Tree.insert [] (Just "Banana") tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -62,4 +65,7 @@ suite =
         , test "Calculates depth" <|
             \_ ->
                 Expect.equal (Tree.depth tree) 3
+        , test "Encodes and decoders" <|
+            \_ ->
+                Expect.equal (tree |> Tree.encoder Encode.string |> Decode.decodeValue (Tree.decoder Decode.string)) (Ok tree)
         ]
