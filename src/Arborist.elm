@@ -532,6 +532,7 @@ update msg (Model model) =
                                         model.active
                                 )
                             |> Maybe.withDefault Nothing
+                    , isDragging = False
                 }
 
         Messages.CanvasMouseLeave ->
