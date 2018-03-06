@@ -13,7 +13,7 @@ import Arborist
 import Arborist.Tree as Tree
 import Arborist.Settings as Settings
 import Arborist.Context exposing (NodeState(..))
-import Styles
+import Egg.Styles as Styles
 import Window exposing (size, resizes)
 
 

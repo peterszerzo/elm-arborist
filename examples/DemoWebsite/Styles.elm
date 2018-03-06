@@ -1,4 +1,4 @@
-module Styles exposing (..)
+module DemoWebsite.Styles exposing (..)
 
 {-| Program styling
 -}

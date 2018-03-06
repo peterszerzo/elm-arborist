@@ -1,4 +1,4 @@
-module Main exposing (..)
+module DemoWebsite.Main exposing (..)
 
 {-| Code for the Arborist website.
 -}
@@ -14,8 +14,8 @@ import Arborist
 import Arborist.Tree as Tree
 import Arborist.Settings as Settings
 import Arborist.Context exposing (NodeState(..))
-import Styles
-import Conversation
+import DemoWebsite.Styles as Styles
+import Simple.Main as Conversation
 import Window exposing (size, resizes)
 
 

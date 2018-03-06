@@ -294,252 +294,258 @@ type alias Msg =
 -}
 update : Msg -> Model node -> Model node
 update msg (Model model) =
-    case msg of
-        Messages.AnimationFrameTick time ->
-            Model
-                { model
-                    | isReceivingAnimationFrames = True
-                    , panOffset =
-                        model.targetPanOffset
-                            |> Maybe.map
-                                (\( targetX, targetY ) ->
-                                    let
-                                        ( x, y ) =
-                                            model.panOffset
+    let
+        _ =
+            Debug.log "msg" (toString msg)
 
-                                        d =
-                                            ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
+        a_ =
+            Debug.log "active-before-update" (toString model.active)
+    in
+        case msg of
+            Messages.AnimationFrameTick time ->
+                Model
+                    { model
+                        | isReceivingAnimationFrames = True
+                        , panOffset =
+                            model.targetPanOffset
+                                |> Maybe.map
+                                    (\( targetX, targetY ) ->
+                                        let
+                                            ( x, y ) =
+                                                model.panOffset
 
-                                        dx =
-                                            if (targetX == x) then
-                                                0
-                                            else
-                                                (d / 10) * (targetX - x) / d
+                                            d =
+                                                ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
 
-                                        dy =
-                                            if (targetY == y) then
-                                                0
-                                            else
-                                                (d / 10) * (targetY - y) / d
-                                    in
-                                        ( x + dx, y + dy )
-                                )
-                            |> Maybe.withDefault model.panOffset
-                    , targetPanOffset =
-                        model.targetPanOffset
-                            |> Maybe.andThen
-                                (\( targetX, targetY ) ->
-                                    let
-                                        ( x, y ) =
-                                            model.panOffset
-                                    in
-                                        if abs (targetX - x) + abs (targetY - y) < 5 then
-                                            Nothing
-                                        else
-                                            Just ( targetX, targetY )
-                                )
-                }
+                                            dx =
+                                                if (targetX == x) then
+                                                    0
+                                                else
+                                                    (d / 10) * (targetX - x) / d
 
-        Messages.NodeMouseDown isPlaceholder path x y ->
-            Model
-                { model
-                    | drag =
-                        (if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                            MultiDrag.init
-                         else
-                            MultiDrag.start (Just path) x y
-                        )
-                    , active =
-                        if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                            Just path
-                        else
-                            Nothing
-                }
-
-        Messages.NodeMouseUp x y ->
-            let
-                isPlaceholder =
-                    (activeNode (Model model) |> Maybe.map Tuple.first)
-                        == (Just Nothing)
-
-                active_ =
-                    if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                        model.active
-                    else
-                        MultiDrag.state model.drag
-                            |> Maybe.andThen
-                                (\( path, ( offsetX, offsetY ) ) ->
-                                    case path of
-                                        Just path ->
-                                            -- If the node was dragged far enough already, it is not activated
-                                            -- This case also protects from reading a slightly sloppy click as a drag
-                                            if (abs offsetX + abs offsetY > 20) then
+                                            dy =
+                                                if (targetY == y) then
+                                                    0
+                                                else
+                                                    (d / 10) * (targetY - y) / d
+                                        in
+                                            ( x + dx, y + dy )
+                                    )
+                                |> Maybe.withDefault model.panOffset
+                        , targetPanOffset =
+                            model.targetPanOffset
+                                |> Maybe.andThen
+                                    (\( targetX, targetY ) ->
+                                        let
+                                            ( x, y ) =
+                                                model.panOffset
+                                        in
+                                            if abs (targetX - x) + abs (targetY - y) < 5 then
                                                 Nothing
                                             else
-                                                Just path
+                                                Just ( targetX, targetY )
+                                    )
+                    }
 
-                                        Nothing ->
-                                            Nothing
-                                )
-
-                flat =
-                    ComputedTree.flat model.computedTree
-
-                layout =
-                    ComputedTree.layout model.computedTree
-
-                tree =
-                    ComputedTree.tree model.computedTree
-
-                newPanOffset =
-                    active_
-                        |> Maybe.andThen
-                            (\active_ ->
-                                nodeGeometry model.settings active_ layout
-                                    |> Maybe.map .center
-                                    |> Maybe.map
-                                        (\( cx, cy ) ->
-                                            [ model.settings.centerOffset
-                                            , ( model.settings.canvasWidth / 2
-                                              , model.settings.canvasHeight / 2
-                                              )
-                                            , ( -cx, -model.settings.nodeHeight / 2 - cy )
-                                            ]
-                                                |> List.foldl Utils.addFloatTuples ( 0, 0 )
-                                        )
-                            )
-
-                newTree =
-                    MultiDrag.state model.drag
-                        |> Maybe.map
-                            (\( path, dragOffset ) ->
-                                path
-                                    |> Maybe.map
-                                        (\path ->
-                                            getDropTarget model.settings path dragOffset model.computedTree
-                                                |> Maybe.map
-                                                    (\dropTargetPath ->
-                                                        flat
-                                                            |> List.filter (\( path, node ) -> path == dropTargetPath)
-                                                            |> List.head
-                                                            |> Maybe.andThen
-                                                                (\( path, node ) ->
-                                                                    case node of
-                                                                        Just node ->
-                                                                            Just ( path, node )
-
-                                                                        Nothing ->
-                                                                            Nothing
-                                                                )
-                                                            |> Maybe.map (\_ -> Tree.swap path dropTargetPath tree)
-                                                            |> Maybe.withDefault
-                                                                -- If the drop target is a placeholder, first add an Empty node in the original tree
-                                                                -- so the swap method actually finds a node.
-                                                                (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
-                                                                    |> Tree.swap path dropTargetPath
-                                                                    |> Tree.removeEmpties
-                                                                )
-                                                    )
-                                                |> Maybe.withDefault tree
-                                        )
-                                    |> Maybe.withDefault tree
-                            )
-                        |> Maybe.withDefault tree
-            in
+            Messages.NodeMouseDown isPlaceholder path x y ->
                 Model
                     { model
                         | drag =
-                            MultiDrag.init
-                        , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
-                        , prevComputedTree = model.computedTree
-
-                        -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
-                        , targetPanOffset =
-                            if model.isReceivingAnimationFrames then
-                                newPanOffset
+                            (if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                                MultiDrag.init
+                             else
+                                MultiDrag.start (Just path) x y
+                            )
+                        , active =
+                            if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                                Just path
                             else
                                 Nothing
-
-                        -- Otherwise, center the view directly
-                        , panOffset =
-                            if model.isReceivingAnimationFrames then
-                                model.panOffset
-                            else
-                                newPanOffset |> Maybe.withDefault model.panOffset
-                        , active = active_
-                        , isDragging = False
                     }
 
-        Messages.NodeMouseEnter path ->
-            Model { model | hovered = Just path }
+            Messages.NodeMouseUp x y ->
+                let
+                    isPlaceholder =
+                        (activeNode (Model model) |> Maybe.map Tuple.first)
+                            == (Just Nothing)
 
-        Messages.NodeMouseLeave path ->
-            Model
-                { model
-                    | hovered =
-                        if model.hovered == Just path then
-                            Nothing
+                    active_ =
+                        if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                            model.active
                         else
-                            model.hovered
-                }
+                            MultiDrag.state model.drag
+                                |> Maybe.andThen
+                                    (\( path, ( offsetX, offsetY ) ) ->
+                                        case path of
+                                            Just path ->
+                                                -- If the node was dragged far enough already, it is not activated
+                                                -- This case also protects from reading a slightly sloppy click as a drag
+                                                if (abs offsetX + abs offsetY > 20) then
+                                                    Nothing
+                                                else
+                                                    Just path
 
-        Messages.CanvasMouseMove xm ym ->
-            Model
-                { model
-                    | drag =
-                        MultiDrag.move xm ym model.drag
-                    , isDragging =
-                        if MultiDrag.state model.drag /= Nothing then
-                            True
-                        else
-                            False
-                }
+                                            Nothing ->
+                                                Nothing
+                                    )
 
-        Messages.CanvasMouseDown x y ->
-            Model
-                { model
-                    | drag = MultiDrag.start Nothing x y
-                }
+                    flat =
+                        ComputedTree.flat model.computedTree
 
-        Messages.CanvasMouseUp x y ->
-            Model
-                { model
-                    | drag = MultiDrag.init
-                    , panOffset =
+                    layout =
+                        ComputedTree.layout model.computedTree
+
+                    tree =
+                        ComputedTree.tree model.computedTree
+
+                    newPanOffset =
+                        active_
+                            |> Maybe.andThen
+                                (\active_ ->
+                                    nodeGeometry model.settings active_ layout
+                                        |> Maybe.map .center
+                                        |> Maybe.map
+                                            (\( cx, cy ) ->
+                                                [ model.settings.centerOffset
+                                                , ( model.settings.canvasWidth / 2
+                                                  , model.settings.canvasHeight / 2
+                                                  )
+                                                , ( -cx, -model.settings.nodeHeight / 2 - cy )
+                                                ]
+                                                    |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                            )
+                                )
+
+                    newTree =
                         MultiDrag.state model.drag
                             |> Maybe.map
-                                (\( draggedNode, offset ) ->
-                                    let
-                                        ( panOffsetX, panOffsetY ) =
-                                            model.panOffset
+                                (\( path, dragOffset ) ->
+                                    path
+                                        |> Maybe.map
+                                            (\path ->
+                                                getDropTarget model.settings path dragOffset model.computedTree
+                                                    |> Maybe.map
+                                                        (\dropTargetPath ->
+                                                            flat
+                                                                |> List.filter (\( path, node ) -> path == dropTargetPath)
+                                                                |> List.head
+                                                                |> Maybe.andThen
+                                                                    (\( path, node ) ->
+                                                                        case node of
+                                                                            Just node ->
+                                                                                Just ( path, node )
 
-                                        ( offsetX, offsetY ) =
-                                            if draggedNode == Nothing then
-                                                offset
-                                            else
-                                                ( 0, 0 )
-                                    in
-                                        ( panOffsetX + offsetX, panOffsetY + offsetY )
+                                                                            Nothing ->
+                                                                                Nothing
+                                                                    )
+                                                                |> Maybe.map (\_ -> Tree.swap path dropTargetPath tree)
+                                                                |> Maybe.withDefault
+                                                                    -- If the drop target is a placeholder, first add an Empty node in the original tree
+                                                                    -- so the swap method actually finds a node.
+                                                                    (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
+                                                                        |> Tree.swap path dropTargetPath
+                                                                        |> Tree.removeEmpties
+                                                                    )
+                                                        )
+                                                    |> Maybe.withDefault tree
+                                            )
+                                        |> Maybe.withDefault tree
                                 )
-                            |> Maybe.withDefault model.panOffset
-                    , active =
-                        MultiDrag.state model.drag
-                            |> Maybe.map
-                                (\( path, ( x, y ) ) ->
-                                    if (abs x + abs y) < 20 then
-                                        Nothing
-                                    else
-                                        model.active
-                                )
-                            |> Maybe.withDefault Nothing
-                    , isDragging = False
-                }
+                            |> Maybe.withDefault tree
+                in
+                    Model
+                        { model
+                            | drag =
+                                MultiDrag.init
+                            , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
+                            , prevComputedTree = model.computedTree
 
-        Messages.CanvasMouseLeave ->
-            Model { model | drag = MultiDrag.init }
+                            -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
+                            , targetPanOffset =
+                                if model.isReceivingAnimationFrames then
+                                    newPanOffset
+                                else
+                                    Nothing
 
-        Messages.NoOp ->
-            Model model
+                            -- Otherwise, center the view directly
+                            , panOffset =
+                                if model.isReceivingAnimationFrames then
+                                    model.panOffset
+                                else
+                                    newPanOffset |> Maybe.withDefault model.panOffset
+                            , active = active_
+                            , isDragging = False
+                        }
+
+            Messages.NodeMouseEnter path ->
+                Model { model | hovered = Just path }
+
+            Messages.NodeMouseLeave path ->
+                Model
+                    { model
+                        | hovered =
+                            if model.hovered == Just path then
+                                Nothing
+                            else
+                                model.hovered
+                    }
+
+            Messages.CanvasMouseMove xm ym ->
+                Model
+                    { model
+                        | drag =
+                            MultiDrag.move xm ym model.drag
+                        , isDragging =
+                            if MultiDrag.state model.drag /= Nothing then
+                                True
+                            else
+                                False
+                    }
+
+            Messages.CanvasMouseDown x y ->
+                Model
+                    { model
+                        | drag = MultiDrag.start Nothing x y
+                    }
+
+            Messages.CanvasMouseUp x y ->
+                Model
+                    { model
+                        | drag = MultiDrag.init
+                        , panOffset =
+                            MultiDrag.state model.drag
+                                |> Maybe.map
+                                    (\( draggedNode, offset ) ->
+                                        let
+                                            ( panOffsetX, panOffsetY ) =
+                                                model.panOffset
+
+                                            ( offsetX, offsetY ) =
+                                                if draggedNode == Nothing then
+                                                    offset
+                                                else
+                                                    ( 0, 0 )
+                                        in
+                                            ( panOffsetX + offsetX, panOffsetY + offsetY )
+                                    )
+                                |> Maybe.withDefault model.panOffset
+                        , active =
+                            MultiDrag.state model.drag
+                                |> Maybe.map
+                                    (\( path, ( x, y ) ) ->
+                                        if (abs x + abs y) < 20 then
+                                            Nothing
+                                        else
+                                            model.active
+                                    )
+                                |> Maybe.withDefault Nothing
+                    }
+
+            Messages.CanvasMouseLeave ->
+                Model { model | drag = MultiDrag.init }
+
+            Messages.NoOp ->
+                Model model
 
 
 getDropTarget : Settings.Settings -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree node -> Maybe TreeNodePath

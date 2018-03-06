@@ -1,4 +1,4 @@
-module Conversation exposing (..)
+module Simple.Main exposing (..)
 
 {-| A simple Arborist app modeling a conversation flow.
 -}
@@ -14,7 +14,7 @@ import Arborist
 import Arborist.Tree as Tree
 import Arborist.Settings as Settings
 import Arborist.Context exposing (NodeState(..))
-import Styles
+import Simple.Styles as Styles
 import Window exposing (size, resizes)
 
 
