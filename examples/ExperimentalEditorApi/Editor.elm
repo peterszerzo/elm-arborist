@@ -21,7 +21,13 @@ type alias State =
 
 init : Tree.Tree Node.Node -> State
 init startTree =
-    { arborist = Arborist.initWith [ Settings.nodeWidth 80, Settings.nodeHeight 40 ] startTree
+    { arborist =
+        Arborist.initWith
+            [ Settings.nodeWidth 80
+            , Settings.nodeHeight 40
+            , Settings.dragAndDrop False
+            ]
+            startTree
     , newNode = Node.placeholder
     }
 

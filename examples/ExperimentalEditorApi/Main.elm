@@ -49,14 +49,18 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    Sub.none
+
+
+{-|
+
     Editor.subscriptions
         { state = model.editorState
         , data = model.editorData
         , windowSize = { width = 1000, height = 500 }
         , toMsg = EditorMsg
         }
-
-
+-}
 main : Program Never Model Msg
 main =
     program

@@ -1,4 +1,4 @@
-module MultiDrag
+module Drag
     exposing
         ( Drag
         , init

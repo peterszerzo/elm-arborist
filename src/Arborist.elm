@@ -50,7 +50,7 @@ import Arborist.Tree
 import Data.ComputedTree as ComputedTree
 import Data.Settings as Settings exposing (Setting)
 import Messages
-import MultiDrag as MultiDrag
+import Drag exposing (Drag)
 import Utils
 import Utils.Tree as Tree exposing (TreeNodePath)
 import Views.NodeConnectors
@@ -81,7 +81,7 @@ type Model node
         , isDragging : Bool
         , isReceivingAnimationFrames : Bool
         , focus : Maybe TreeNodePath
-        , drag : MultiDrag.Drag (Maybe TreeNodePath)
+        , drag : Drag (Maybe TreeNodePath)
         , displayRoot : Maybe TreeNodePath
         , panOffset : ( Float, Float )
         , targetPanOffset : Maybe ( Float, Float )
@@ -130,7 +130,7 @@ initWith settings tree =
             , isDragging = False
             , isReceivingAnimationFrames = False
             , focus = Nothing
-            , drag = (MultiDrag.init)
+            , drag = Drag.init
             , displayRoot = Nothing
             , panOffset = ( 0, 0 )
             , targetPanOffset = Nothing
@@ -189,7 +189,7 @@ activeNodeWithContext (Model model) =
                             |> Maybe.withDefault ( 0, 0 )
 
                     dragOffset =
-                        MultiDrag.state model.drag
+                        Drag.state model.drag
                             |> Maybe.map Tuple.second
                             |> Maybe.withDefault ( 0, 0 )
                 in
@@ -290,16 +290,34 @@ type alias Msg =
     Messages.Msg
 
 
+{-| Logger function added to `update` in let block to log mouse events.
+-}
+logForDragDebug : Msg -> Model node -> String
+logForDragDebug msg (Model model) =
+    case msg of
+        Messages.NodeMouseDown _ _ _ _ ->
+            Debug.log "node-mouse-down" ""
+
+        Messages.NodeMouseUp _ _ ->
+            Debug.log "node-mouse-up" ""
+
+        Messages.CanvasMouseDown _ _ ->
+            Debug.log "canvas-mouse-down" ""
+
+        Messages.CanvasMouseUp _ _ ->
+            Debug.log "canvas-mouse-up" ""
+
+        _ ->
+            ""
+
+
 {-| Update function handling changes in the model.
 -}
 update : Msg -> Model node -> Model node
 update msg (Model model) =
     let
         _ =
-            Debug.log "msg" (toString msg)
-
-        a_ =
-            Debug.log "active-before-update" (toString model.active)
+            logForDragDebug msg (Model model)
     in
         case msg of
             Messages.AnimationFrameTick time ->
@@ -352,9 +370,9 @@ update msg (Model model) =
                     { model
                         | drag =
                             (if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                                MultiDrag.init
+                                Drag.init
                              else
-                                MultiDrag.start (Just path) x y
+                                Drag.start (Just path) x y
                             )
                         , active =
                             if isPlaceholder || not model.settings.isDragAndDropEnabled then
@@ -373,7 +391,7 @@ update msg (Model model) =
                         if isPlaceholder || not model.settings.isDragAndDropEnabled then
                             model.active
                         else
-                            MultiDrag.state model.drag
+                            Drag.state model.drag
                                 |> Maybe.andThen
                                     (\( path, ( offsetX, offsetY ) ) ->
                                         case path of
@@ -417,7 +435,7 @@ update msg (Model model) =
                                 )
 
                     newTree =
-                        MultiDrag.state model.drag
+                        Drag.state model.drag
                             |> Maybe.map
                                 (\( path, dragOffset ) ->
                                     path
@@ -456,7 +474,7 @@ update msg (Model model) =
                     Model
                         { model
                             | drag =
-                                MultiDrag.init
+                                Drag.init
                             , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
                             , prevComputedTree = model.computedTree
 
@@ -494,9 +512,9 @@ update msg (Model model) =
                 Model
                     { model
                         | drag =
-                            MultiDrag.move xm ym model.drag
+                            Drag.move xm ym model.drag
                         , isDragging =
-                            if MultiDrag.state model.drag /= Nothing then
+                            if Drag.state model.drag /= Nothing then
                                 True
                             else
                                 False
@@ -505,15 +523,15 @@ update msg (Model model) =
             Messages.CanvasMouseDown x y ->
                 Model
                     { model
-                        | drag = MultiDrag.start Nothing x y
+                        | drag = Drag.start Nothing x y
                     }
 
             Messages.CanvasMouseUp x y ->
                 Model
                     { model
-                        | drag = MultiDrag.init
+                        | drag = Drag.init
                         , panOffset =
-                            MultiDrag.state model.drag
+                            Drag.state model.drag
                                 |> Maybe.map
                                     (\( draggedNode, offset ) ->
                                         let
@@ -530,7 +548,7 @@ update msg (Model model) =
                                     )
                                 |> Maybe.withDefault model.panOffset
                         , active =
-                            MultiDrag.state model.drag
+                            Drag.state model.drag
                                 |> Maybe.map
                                     (\( path, ( x, y ) ) ->
                                         if (abs x + abs y) < 20 then
@@ -542,7 +560,7 @@ update msg (Model model) =
                     }
 
             Messages.CanvasMouseLeave ->
-                Model { model | drag = MultiDrag.init }
+                Model { model | drag = Drag.init }
 
             Messages.NoOp ->
                 Model model
@@ -651,7 +669,7 @@ viewContext (Model model) path =
 
         isDropTarget =
             if modelIsDragging then
-                MultiDrag.state model.drag
+                Drag.state model.drag
                     |> Maybe.map
                         (\( draggedPath, offset ) ->
                             case draggedPath of
@@ -741,7 +759,7 @@ view viewNode attrs (Model model) =
             Styles.coordinate model.settings
 
         dragState =
-            MultiDrag.state model.drag
+            Drag.state model.drag
 
         isNodeDragging =
             dragState
