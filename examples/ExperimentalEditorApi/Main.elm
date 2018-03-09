@@ -1,6 +1,7 @@
 module ExperimentalEditorApi.Main exposing (..)
 
 import Html exposing (Html, div, h1, program)
+import Html.Lazy exposing (lazy)
 import ExperimentalEditorApi.Editor as Editor
 import ExperimentalEditorApi.Node as Node
 import Arborist
@@ -21,12 +22,19 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         EditorMsg editorState editorData ->
-            ( { model
-                | editorData = editorData
-                , editorState = editorState
-              }
-            , Cmd.none
-            )
+            let
+                (Arborist.Model arborist) =
+                    editorState.arborist
+
+                _ =
+                    Debug.log "+UPDATE" (toString arborist.hovered)
+            in
+                ( { model
+                    | editorData = editorData
+                    , editorState = editorState
+                  }
+                , Cmd.none
+                )
 
 
 init : ( Model, Cmd Msg )

@@ -72,11 +72,20 @@ view config =
             |> Html.map
                 (\msg ->
                     let
+                        (Arborist.Model model) =
+                            config.state.arborist
+
                         state =
                             config.state
 
                         newArborist =
                             Arborist.update msg state.arborist
+
+                        (Arborist.Model newModel) =
+                            newArborist
+
+                        _ =
+                            ( toString model.hovered, msg, toString newModel.hovered ) |> Debug.log "-update"
                     in
                         config.toMsg { state | arborist = newArborist } config.data
                 )

@@ -1,6 +1,6 @@
 module Arborist
     exposing
-        ( Model
+        ( Model(..)
         , Msg
         , subscriptions
         , init
@@ -85,6 +85,7 @@ type Model node
         , displayRoot : Maybe TreeNodePath
         , panOffset : ( Float, Float )
         , targetPanOffset : Maybe ( Float, Float )
+        , skipNextMouseMoves : Int
         }
 
 
@@ -133,6 +134,7 @@ initWith settings tree =
             , displayRoot = Nothing
             , panOffset = ( 0, 0 )
             , targetPanOffset = Nothing
+            , skipNextMouseMoves = 0
             }
 
 
@@ -300,10 +302,10 @@ logForDragDebug msg (Model model) =
         Messages.NodeMouseUp _ _ ->
             Debug.log "node-mouse-up" ""
 
-        Messages.NodeMouseEnter _ ->
+        Messages.NodeMouseEnter pth ->
             Debug.log "node-mouse-enter" ""
 
-        Messages.NodeMouseLeave _ ->
+        Messages.NodeMouseLeave pth ->
             Debug.log "node-mouse-leave" ""
 
         Messages.CanvasMouseDown _ _ ->
