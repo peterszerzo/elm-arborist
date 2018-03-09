@@ -2,6 +2,7 @@ module ExperimentalEditorApi.Main exposing (..)
 
 import Html exposing (Html, div, h1, program)
 import ExperimentalEditorApi.Editor as Editor
+import ExperimentalEditorApi.Node as Node
 import Arborist
 import Arborist.Tree as Tree
 
@@ -30,7 +31,7 @@ update msg model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { editorData = Tree.Empty
+    ( { editorData = Tree.Node Node.placeholder []
       , editorState = Editor.init Tree.Empty
       }
     , Cmd.none
@@ -41,7 +42,6 @@ view : Model -> Html Msg
 view model =
     Editor.view
         { state = model.editorState
-        , windowSize = { width = 1000, height = 500 }
         , data = model.editorData
         , toMsg = EditorMsg
         }
@@ -57,7 +57,6 @@ subscriptions model =
     Editor.subscriptions
         { state = model.editorState
         , data = model.editorData
-        , windowSize = { width = 1000, height = 500 }
         , toMsg = EditorMsg
         }
 -}

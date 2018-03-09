@@ -7,7 +7,7 @@ module Drag
         , state
         )
 
-{-| This module holds on to the drag state.
+{-| This module holds the drag state.
 
 
 # Types

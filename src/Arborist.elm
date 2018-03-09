@@ -40,6 +40,7 @@ import AnimationFrame
 import Arborist.Context as Context
 import Dict
 import Html exposing (Html, Attribute, node, div, text, p, h1, h3, label, input, button)
+import Html.Keyed
 import Html.Attributes exposing (style, value)
 import Html.Events exposing (onClick)
 import Html.Events exposing (onInput, on, onWithOptions)
@@ -299,6 +300,12 @@ logForDragDebug msg (Model model) =
         Messages.NodeMouseUp _ _ ->
             Debug.log "node-mouse-up" ""
 
+        Messages.NodeMouseEnter _ ->
+            Debug.log "node-mouse-enter" ""
+
+        Messages.NodeMouseLeave _ ->
+            Debug.log "node-mouse-leave" ""
+
         Messages.CanvasMouseDown _ _ ->
             Debug.log "canvas-mouse-down" ""
 
@@ -313,249 +320,249 @@ logForDragDebug msg (Model model) =
 -}
 update : Msg -> Model node -> Model node
 update msg (Model model) =
-    let
-        _ =
-            logForDragDebug msg (Model model)
-    in
-        case msg of
-            Messages.AnimationFrameTick time ->
-                Model
-                    { model
-                        | isReceivingAnimationFrames = True
-                        , panOffset =
-                            model.targetPanOffset
-                                |> Maybe.map
-                                    (\( targetX, targetY ) ->
-                                        let
-                                            ( x, y ) =
-                                                model.panOffset
-
-                                            d =
-                                                ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
-
-                                            dx =
-                                                if (targetX == x) then
-                                                    0
-                                                else
-                                                    (d / 10) * (targetX - x) / d
-
-                                            dy =
-                                                if (targetY == y) then
-                                                    0
-                                                else
-                                                    (d / 10) * (targetY - y) / d
-                                        in
-                                            ( x + dx, y + dy )
-                                    )
-                                |> Maybe.withDefault model.panOffset
-                        , targetPanOffset =
-                            model.targetPanOffset
-                                |> Maybe.andThen
-                                    (\( targetX, targetY ) ->
-                                        let
-                                            ( x, y ) =
-                                                model.panOffset
-                                        in
-                                            if abs (targetX - x) + abs (targetY - y) < 5 then
-                                                Nothing
-                                            else
-                                                Just ( targetX, targetY )
-                                    )
-                    }
-
-            Messages.NodeMouseDown isPlaceholder path x y ->
-                Model
-                    { model
-                        | drag =
-                            (if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                                Drag.init
-                             else
-                                Drag.start (Just path) x y
-                            )
-                        , active =
-                            if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                                Just path
-                            else
-                                Nothing
-                    }
-
-            Messages.NodeMouseUp x y ->
-                let
-                    isPlaceholder =
-                        (activeNode (Model model) |> Maybe.map Tuple.first)
-                            == (Just Nothing)
-
-                    active_ =
-                        if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                            model.active
-                        else
-                            Drag.state model.drag
-                                |> Maybe.andThen
-                                    (\( path, ( offsetX, offsetY ) ) ->
-                                        case path of
-                                            Just path ->
-                                                -- If the node was dragged far enough already, it is not activated
-                                                -- This case also protects from reading a slightly sloppy click as a drag
-                                                if (abs offsetX + abs offsetY > 20) then
-                                                    Nothing
-                                                else
-                                                    Just path
-
-                                            Nothing ->
-                                                Nothing
-                                    )
-
-                    flat =
-                        ComputedTree.flat model.computedTree
-
-                    layout =
-                        ComputedTree.layout model.computedTree
-
-                    tree =
-                        ComputedTree.tree model.computedTree
-
-                    newPanOffset =
-                        active_
-                            |> Maybe.andThen
-                                (\active_ ->
-                                    nodeGeometry model.settings active_ layout
-                                        |> Maybe.map .center
-                                        |> Maybe.map
-                                            (\( cx, cy ) ->
-                                                [ model.settings.centerOffset
-                                                , ( model.settings.canvasWidth / 2
-                                                  , model.settings.canvasHeight / 2
-                                                  )
-                                                , ( -cx, -model.settings.nodeHeight / 2 - cy )
-                                                ]
-                                                    |> List.foldl Utils.addFloatTuples ( 0, 0 )
-                                            )
-                                )
-
-                    newTree =
-                        Drag.state model.drag
+    case msg of
+        Messages.AnimationFrameTick time ->
+            Model
+                { model
+                    | isReceivingAnimationFrames = True
+                    , panOffset =
+                        model.targetPanOffset
                             |> Maybe.map
-                                (\( path, dragOffset ) ->
-                                    path
-                                        |> Maybe.map
-                                            (\path ->
-                                                getDropTarget model.settings path dragOffset model.computedTree
-                                                    |> Maybe.map
-                                                        (\dropTargetPath ->
-                                                            flat
-                                                                |> List.filter (\( path, node ) -> path == dropTargetPath)
-                                                                |> List.head
-                                                                |> Maybe.andThen
-                                                                    (\( path, node ) ->
-                                                                        case node of
-                                                                            Just node ->
-                                                                                Just ( path, node )
+                                (\( targetX, targetY ) ->
+                                    let
+                                        ( x, y ) =
+                                            model.panOffset
 
-                                                                            Nothing ->
-                                                                                Nothing
-                                                                    )
-                                                                |> Maybe.map (\_ -> Tree.swap path dropTargetPath tree)
-                                                                |> Maybe.withDefault
-                                                                    -- If the drop target is a placeholder, first add an Empty node in the original tree
-                                                                    -- so the swap method actually finds a node.
-                                                                    (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
-                                                                        |> Tree.swap path dropTargetPath
-                                                                        |> Tree.removeEmpties
-                                                                    )
-                                                        )
-                                                    |> Maybe.withDefault tree
-                                            )
-                                        |> Maybe.withDefault tree
+                                        d =
+                                            ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
+
+                                        dx =
+                                            if (targetX == x) then
+                                                0
+                                            else
+                                                (d / 10) * (targetX - x) / d
+
+                                        dy =
+                                            if (targetY == y) then
+                                                0
+                                            else
+                                                (d / 10) * (targetY - y) / d
+                                    in
+                                        ( x + dx, y + dy )
                                 )
-                            |> Maybe.withDefault tree
-                in
-                    Model
-                        { model
-                            | drag =
-                                Drag.init
-                            , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
-                            , prevComputedTree = model.computedTree
-
-                            -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
-                            , targetPanOffset =
-                                if model.isReceivingAnimationFrames then
-                                    newPanOffset
-                                else
-                                    Nothing
-
-                            -- Otherwise, center the view directly
-                            , panOffset =
-                                if model.isReceivingAnimationFrames then
-                                    model.panOffset
-                                else
-                                    newPanOffset |> Maybe.withDefault model.panOffset
-                            , active = active_
-                        }
-
-            Messages.NodeMouseEnter path ->
-                Model { model | hovered = Just path }
-
-            Messages.NodeMouseLeave path ->
-                Model
-                    { model
-                        | hovered =
-                            if model.hovered == Just path then
-                                Nothing
-                            else
-                                model.hovered
-                    }
-
-            Messages.CanvasMouseMove xm ym ->
-                Model
-                    { model
-                        | drag =
-                            Drag.move xm ym model.drag
-                    }
-
-            Messages.CanvasMouseDown x y ->
-                Model
-                    { model
-                        | drag = Drag.start Nothing x y
-                    }
-
-            Messages.CanvasMouseUp x y ->
-                Model
-                    { model
-                        | drag = Drag.init
-                        , panOffset =
-                            Drag.state model.drag
-                                |> Maybe.map
-                                    (\( draggedNode, offset ) ->
-                                        let
-                                            ( panOffsetX, panOffsetY ) =
-                                                model.panOffset
-
-                                            ( offsetX, offsetY ) =
-                                                if draggedNode == Nothing then
-                                                    offset
-                                                else
-                                                    ( 0, 0 )
-                                        in
-                                            ( panOffsetX + offsetX, panOffsetY + offsetY )
-                                    )
-                                |> Maybe.withDefault model.panOffset
-                        , active =
-                            Drag.state model.drag
-                                |> Maybe.map
-                                    (\( path, ( x, y ) ) ->
-                                        if (abs x + abs y) < 20 then
+                            |> Maybe.withDefault model.panOffset
+                    , targetPanOffset =
+                        model.targetPanOffset
+                            |> Maybe.andThen
+                                (\( targetX, targetY ) ->
+                                    let
+                                        ( x, y ) =
+                                            model.panOffset
+                                    in
+                                        if abs (targetX - x) + abs (targetY - y) < 5 then
                                             Nothing
                                         else
-                                            model.active
-                                    )
-                                |> Maybe.withDefault Nothing
+                                            Just ( targetX, targetY )
+                                )
+                }
+
+        Messages.NodeMouseDown isPlaceholder path x y ->
+            Model
+                { model
+                    | drag =
+                        (if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                            Drag.init
+                         else
+                            Drag.start (Just path) x y
+                        )
+                    , active =
+                        if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                            Just path
+                        else
+                            Nothing
+                }
+
+        Messages.NodeMouseUp x y ->
+            let
+                isPlaceholder =
+                    (activeNode (Model model) |> Maybe.map Tuple.first)
+                        == (Just Nothing)
+
+                active_ =
+                    if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                        model.active
+                    else
+                        Drag.state model.drag
+                            |> Maybe.andThen
+                                (\( path, ( offsetX, offsetY ) ) ->
+                                    case path of
+                                        Just path ->
+                                            -- If the node was dragged far enough already, it is not activated
+                                            -- This case also protects from reading a slightly sloppy click as a drag
+                                            if (abs offsetX + abs offsetY > 20) then
+                                                Nothing
+                                            else
+                                                Just path
+
+                                        Nothing ->
+                                            Nothing
+                                )
+
+                flat =
+                    ComputedTree.flat model.computedTree
+
+                layout =
+                    ComputedTree.layout model.computedTree
+
+                tree =
+                    ComputedTree.tree model.computedTree
+
+                newPanOffset =
+                    active_
+                        |> Maybe.andThen
+                            (\active_ ->
+                                nodeGeometry model.settings active_ layout
+                                    |> Maybe.map .center
+                                    |> Maybe.map
+                                        (\( cx, cy ) ->
+                                            [ model.settings.centerOffset
+                                            , ( model.settings.canvasWidth / 2
+                                              , model.settings.canvasHeight / 2
+                                              )
+                                            , ( -cx, -model.settings.nodeHeight / 2 - cy )
+                                            ]
+                                                |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                        )
+                            )
+
+                newTree =
+                    Drag.state model.drag
+                        |> Maybe.map
+                            (\( path, dragOffset ) ->
+                                path
+                                    |> Maybe.map
+                                        (\path ->
+                                            getDropTarget model.settings path dragOffset model.computedTree
+                                                |> Maybe.map
+                                                    (\dropTargetPath ->
+                                                        flat
+                                                            |> List.filter (\( path, node ) -> path == dropTargetPath)
+                                                            |> List.head
+                                                            |> Maybe.andThen
+                                                                (\( path, node ) ->
+                                                                    case node of
+                                                                        Just node ->
+                                                                            Just ( path, node )
+
+                                                                        Nothing ->
+                                                                            Nothing
+                                                                )
+                                                            |> Maybe.map (\_ -> Tree.swap path dropTargetPath tree)
+                                                            |> Maybe.withDefault
+                                                                -- If the drop target is a placeholder, first add an Empty node in the original tree
+                                                                -- so the swap method actually finds a node.
+                                                                (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
+                                                                    |> Tree.swap path dropTargetPath
+                                                                    |> Tree.removeEmpties
+                                                                )
+                                                    )
+                                                |> Maybe.withDefault tree
+                                        )
+                                    |> Maybe.withDefault tree
+                            )
+                        |> Maybe.withDefault tree
+            in
+                Model
+                    { model
+                        | drag =
+                            Drag.init
+                        , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
+                        , prevComputedTree = model.computedTree
+
+                        -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
+                        , targetPanOffset =
+                            if model.isReceivingAnimationFrames then
+                                newPanOffset
+                            else
+                                Nothing
+
+                        -- Otherwise, center the view directly
+                        , panOffset =
+                            if model.isReceivingAnimationFrames then
+                                model.panOffset
+                            else
+                                newPanOffset |> Maybe.withDefault model.panOffset
+                        , active = active_
                     }
 
-            Messages.CanvasMouseLeave ->
-                Model { model | drag = Drag.init }
+        Messages.NodeMouseEnter path ->
+            Model
+                { model
+                    | hovered =
+                        Just path
+                }
 
-            Messages.NoOp ->
-                Model model
+        Messages.NodeMouseLeave path ->
+            Model
+                { model
+                    | hovered =
+                        if model.hovered == Just path then
+                            Nothing
+                        else
+                            model.hovered
+                }
+
+        Messages.CanvasMouseMove xm ym ->
+            Model
+                { model
+                    | drag =
+                        Drag.move xm ym model.drag
+                }
+
+        Messages.CanvasMouseDown x y ->
+            Model
+                { model
+                    | drag = Drag.start Nothing x y
+                }
+
+        Messages.CanvasMouseUp x y ->
+            Model
+                { model
+                    | drag = Drag.init
+                    , panOffset =
+                        Drag.state model.drag
+                            |> Maybe.map
+                                (\( draggedNode, offset ) ->
+                                    let
+                                        ( panOffsetX, panOffsetY ) =
+                                            model.panOffset
+
+                                        ( offsetX, offsetY ) =
+                                            if draggedNode == Nothing then
+                                                offset
+                                            else
+                                                ( 0, 0 )
+                                    in
+                                        ( panOffsetX + offsetX, panOffsetY + offsetY )
+                                )
+                            |> Maybe.withDefault model.panOffset
+                    , active =
+                        Drag.state model.drag
+                            |> Maybe.map
+                                (\( path, ( x, y ) ) ->
+                                    if (abs x + abs y) < 20 then
+                                        Nothing
+                                    else
+                                        model.active
+                                )
+                            |> Maybe.withDefault Nothing
+                }
+
+        Messages.CanvasMouseLeave ->
+            Model { model | drag = Drag.init }
+
+        Messages.NoOp ->
+            Model model
 
 
 getDropTarget : Settings.Settings -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree node -> Maybe TreeNodePath
@@ -806,7 +813,7 @@ view viewNode attrs (Model model) =
              ]
                 ++ attrs
             )
-            [ div
+            [ Html.Keyed.node "div"
                 [ style
                     [ ( "width", "100%" )
                     , ( "height", "100%" )
@@ -823,6 +830,10 @@ view viewNode attrs (Model model) =
                                     let
                                         ( x, y ) =
                                             center
+
+                                        key =
+                                            List.map toString path
+                                                |> String.join "-"
 
                                         modelIsDragging =
                                             Drag.state model.drag /= Nothing
@@ -861,53 +872,57 @@ view viewNode attrs (Model model) =
                                         nodeViewContext =
                                             viewContext (Model model) path
                                     in
-                                        [ div
-                                            [ style <|
-                                                nodeBaseStyle
-                                                    ++ (coordStyle ( xWithDrag, yWithDrag ))
-                                                    ++ (if isDragged then
-                                                            [ ( "z-index", "100" )
-                                                            , ( "cursor", "move" )
-                                                            ]
-                                                        else
-                                                            []
-                                                       )
-                                            , Utils.onClickStopPropagation Messages.NoOp
-                                            , onWithOptions "mousedown"
-                                                { stopPropagation = True
-                                                , preventDefault = False
-                                                }
-                                                (Decode.map2 (Messages.NodeMouseDown (node == Nothing) path)
-                                                    (Decode.field "screenX" Decode.float)
-                                                    (Decode.field "screenY" Decode.float)
-                                                )
-                                            , onWithOptions "mouseup"
-                                                { stopPropagation = True
-                                                , preventDefault = False
-                                                }
-                                                (Decode.map2 Messages.NodeMouseUp
-                                                    (Decode.field "screenX" Decode.float)
-                                                    (Decode.field "screenY" Decode.float)
-                                                )
-                                            , on "mouseenter" (Decode.succeed (Messages.NodeMouseEnter path))
-                                            , on "mouseleave" (Decode.succeed (Messages.NodeMouseLeave path))
-                                            ]
-                                            [ viewNode nodeViewContext node
-                                            ]
+                                        [ ( key
+                                          , div
+                                                [ style <|
+                                                    nodeBaseStyle
+                                                        ++ (coordStyle ( xWithDrag, yWithDrag ))
+                                                        ++ (if isDragged then
+                                                                [ ( "z-index", "100" )
+                                                                , ( "cursor", "move" )
+                                                                ]
+                                                            else
+                                                                []
+                                                           )
+                                                , Utils.onClickStopPropagation Messages.NoOp
+                                                , onWithOptions "mousedown"
+                                                    { stopPropagation = True
+                                                    , preventDefault = False
+                                                    }
+                                                    (Decode.map2 (Messages.NodeMouseDown (node == Nothing) path)
+                                                        (Decode.field "screenX" Decode.float)
+                                                        (Decode.field "screenY" Decode.float)
+                                                    )
+                                                , onWithOptions "mouseup"
+                                                    { stopPropagation = True
+                                                    , preventDefault = False
+                                                    }
+                                                    (Decode.map2 Messages.NodeMouseUp
+                                                        (Decode.field "screenX" Decode.float)
+                                                        (Decode.field "screenY" Decode.float)
+                                                    )
+                                                , on "mouseenter" (Decode.succeed (Messages.NodeMouseEnter path))
+                                                , on "mouseleave" (Decode.succeed (Messages.NodeMouseLeave path))
+                                                ]
+                                                [ viewNode nodeViewContext node
+                                                ]
+                                          )
                                         ]
                                             ++ (if isDragged then
-                                                    [ div
-                                                        [ style <|
-                                                            nodeBaseStyle
-                                                                ++ Styles.dragShadowNode
-                                                                ++ (coordStyle ( x, y ))
-                                                        ]
-                                                        []
+                                                    [ ( key ++ "shadow"
+                                                      , div
+                                                            [ style <|
+                                                                nodeBaseStyle
+                                                                    ++ Styles.dragShadowNode
+                                                                    ++ (coordStyle ( x, y ))
+                                                            ]
+                                                            []
+                                                      )
                                                     ]
                                                         ++ (if node == Nothing then
                                                                 []
                                                             else
-                                                                [ Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters ]
+                                                                [ ( key ++ "connector1", Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters ) ]
                                                            )
                                                 else
                                                     []
@@ -915,7 +930,7 @@ view viewNode attrs (Model model) =
                                             ++ (if node == Nothing then
                                                     []
                                                 else
-                                                    [ Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters
+                                                    [ ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters )
                                                     ]
                                                )
                                 )

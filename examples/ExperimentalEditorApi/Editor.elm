@@ -6,7 +6,6 @@ import Arborist
 import Arborist.Settings as Settings
 import Arborist.Tree as Tree
 import ExperimentalEditorApi.Node as Node
-import Window
 
 
 type alias Data =
@@ -25,7 +24,7 @@ init startTree =
         Arborist.initWith
             [ Settings.nodeWidth 80
             , Settings.nodeHeight 40
-            , Settings.dragAndDrop False
+            , Settings.dragAndDrop True
             ]
             startTree
     , newNode = Node.placeholder
@@ -49,7 +48,6 @@ subscriptions config =
 
 type alias Config msg =
     { data : Data
-    , windowSize : Window.Size
     , state : State
     , toMsg : State -> Data -> msg
     }
@@ -69,7 +67,7 @@ view config =
                     ]
                     [ Html.text "a" ]
             )
-            []
+            [ style [ ( "border", "1px solid black" ) ] ]
             config.state.arborist
             |> Html.map
                 (\msg ->
@@ -78,7 +76,7 @@ view config =
                             config.state
 
                         newArborist =
-                            Arborist.update msg config.state.arborist
+                            Arborist.update msg state.arborist
                     in
                         config.toMsg { state | arborist = newArborist } config.data
                 )
