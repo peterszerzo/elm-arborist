@@ -78,7 +78,6 @@ type Model node
         , prevComputedTree : ComputedTree.ComputedTree node
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
-        , isDragging : Bool
         , isReceivingAnimationFrames : Bool
         , focus : Maybe TreeNodePath
         , drag : Drag (Maybe TreeNodePath)
@@ -127,7 +126,6 @@ initWith settings tree =
             , prevComputedTree = computedTree
             , active = Nothing
             , hovered = Nothing
-            , isDragging = False
             , isReceivingAnimationFrames = False
             , focus = Nothing
             , drag = Drag.init
@@ -492,7 +490,6 @@ update msg (Model model) =
                                 else
                                     newPanOffset |> Maybe.withDefault model.panOffset
                             , active = active_
-                            , isDragging = False
                         }
 
             Messages.NodeMouseEnter path ->
@@ -513,11 +510,6 @@ update msg (Model model) =
                     { model
                         | drag =
                             Drag.move xm ym model.drag
-                        , isDragging =
-                            if Drag.state model.drag /= Nothing then
-                                True
-                            else
-                                False
                     }
 
             Messages.CanvasMouseDown x y ->
@@ -665,7 +657,7 @@ viewContext (Model model) path =
             ComputedTree.flat model.computedTree
 
         modelIsDragging =
-            model.isDragging
+            Drag.state model.drag /= Nothing
 
         isDropTarget =
             if modelIsDragging then
@@ -833,7 +825,7 @@ view viewNode attrs (Model model) =
                                             center
 
                                         modelIsDragging =
-                                            model.isDragging
+                                            Drag.state model.drag /= Nothing
 
                                         ( isDragged, ( xDrag, yDrag ), draggedPath, isDropTarget ) =
                                             if modelIsDragging then
