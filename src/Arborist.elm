@@ -1,6 +1,6 @@
 module Arborist
     exposing
-        ( Model(..)
+        ( Model
         , Msg
         , subscriptions
         , init
@@ -48,9 +48,9 @@ import Json.Decode as Decode
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Arborist.Tree
+import Time
 import Data.ComputedTree as ComputedTree
 import Data.Settings as Settings exposing (Setting)
-import Messages
 import Drag exposing (Drag)
 import Utils
 import Utils.Tree as Tree exposing (TreeNodePath)
@@ -275,7 +275,7 @@ subscriptions (Model model) =
     if model.isReceivingAnimationFrames && model.targetPanOffset == Nothing then
         Sub.none
     else
-        AnimationFrame.times Messages.AnimationFrameTick
+        AnimationFrame.times AnimationFrameTick
 
 
 {-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
@@ -287,8 +287,17 @@ tree (Model { computedTree }) =
 
 {-| Message type annotation for the program. When wiring up the editor within a larger program, you will define a `ArboristMsg Arborist.Msg` message type, one that will trigger this package's [update](#update) function.
 -}
-type alias Msg =
-    Messages.Msg
+type Msg
+    = AnimationFrameTick Time.Time
+    | NodeMouseDown Bool TreeNodePath Float Float
+    | NodeMouseUp Float Float
+    | NodeMouseEnter TreeNodePath
+    | NodeMouseLeave TreeNodePath
+    | CanvasMouseMove Float Float
+    | CanvasMouseDown Float Float
+    | CanvasMouseUp Float Float
+    | CanvasMouseLeave
+    | NoOp
 
 
 {-| Logger function added to `update` in let block to log mouse events.
@@ -296,22 +305,22 @@ type alias Msg =
 logForDragDebug : Msg -> Model node -> String
 logForDragDebug msg (Model model) =
     case msg of
-        Messages.NodeMouseDown _ _ _ _ ->
+        NodeMouseDown _ _ _ _ ->
             Debug.log "node-mouse-down" ""
 
-        Messages.NodeMouseUp _ _ ->
+        NodeMouseUp _ _ ->
             Debug.log "node-mouse-up" ""
 
-        Messages.NodeMouseEnter pth ->
+        NodeMouseEnter pth ->
             Debug.log "node-mouse-enter" ""
 
-        Messages.NodeMouseLeave pth ->
+        NodeMouseLeave pth ->
             Debug.log "node-mouse-leave" ""
 
-        Messages.CanvasMouseDown _ _ ->
+        CanvasMouseDown _ _ ->
             Debug.log "canvas-mouse-down" ""
 
-        Messages.CanvasMouseUp _ _ ->
+        CanvasMouseUp _ _ ->
             Debug.log "canvas-mouse-up" ""
 
         _ ->
@@ -323,7 +332,7 @@ logForDragDebug msg (Model model) =
 update : Msg -> Model node -> Model node
 update msg (Model model) =
     case msg of
-        Messages.AnimationFrameTick time ->
+        AnimationFrameTick time ->
             Model
                 { model
                     | isReceivingAnimationFrames = True
@@ -368,7 +377,7 @@ update msg (Model model) =
                                 )
                 }
 
-        Messages.NodeMouseDown isPlaceholder path x y ->
+        NodeMouseDown isPlaceholder path x y ->
             Model
                 { model
                     | drag =
@@ -384,7 +393,7 @@ update msg (Model model) =
                             Nothing
                 }
 
-        Messages.NodeMouseUp x y ->
+        NodeMouseUp x y ->
             let
                 isPlaceholder =
                     (activeNode (Model model) |> Maybe.map Tuple.first)
@@ -497,14 +506,14 @@ update msg (Model model) =
                         , active = active_
                     }
 
-        Messages.NodeMouseEnter path ->
+        NodeMouseEnter path ->
             Model
                 { model
                     | hovered =
                         Just path
                 }
 
-        Messages.NodeMouseLeave path ->
+        NodeMouseLeave path ->
             Model
                 { model
                     | hovered =
@@ -514,20 +523,20 @@ update msg (Model model) =
                             model.hovered
                 }
 
-        Messages.CanvasMouseMove xm ym ->
+        CanvasMouseMove xm ym ->
             Model
                 { model
                     | drag =
                         Drag.move xm ym model.drag
                 }
 
-        Messages.CanvasMouseDown x y ->
+        CanvasMouseDown x y ->
             Model
                 { model
                     | drag = Drag.start Nothing x y
                 }
 
-        Messages.CanvasMouseUp x y ->
+        CanvasMouseUp x y ->
             Model
                 { model
                     | drag = Drag.init
@@ -560,10 +569,10 @@ update msg (Model model) =
                             |> Maybe.withDefault Nothing
                 }
 
-        Messages.CanvasMouseLeave ->
+        CanvasMouseLeave ->
             Model { model | drag = Drag.init }
 
-        Messages.NoOp ->
+        NoOp ->
             Model model
 
 
@@ -784,21 +793,21 @@ view viewNode attrs (Model model) =
     in
         div
             ([ on "mousemove"
-                (Decode.map2 Messages.CanvasMouseMove
+                (Decode.map2 CanvasMouseMove
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
              , on "mousedown"
-                (Decode.map2 Messages.CanvasMouseDown
+                (Decode.map2 CanvasMouseDown
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
              , on "mouseup"
-                (Decode.map2 Messages.CanvasMouseUp
+                (Decode.map2 CanvasMouseUp
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
                 )
-             , on "mouseleave" (Decode.succeed Messages.CanvasMouseLeave)
+             , on "mouseleave" (Decode.succeed CanvasMouseLeave)
              , style
                 [ ( "overflow", "hidden" )
                 , ( "width", Utils.floatToPxString model.settings.canvasWidth )
@@ -886,12 +895,11 @@ view viewNode attrs (Model model) =
                                                             else
                                                                 []
                                                            )
-                                                , Utils.onClickStopPropagation Messages.NoOp
                                                 , onWithOptions "mousedown"
                                                     { stopPropagation = True
                                                     , preventDefault = False
                                                     }
-                                                    (Decode.map2 (Messages.NodeMouseDown (node == Nothing) path)
+                                                    (Decode.map2 (NodeMouseDown (node == Nothing) path)
                                                         (Decode.field "screenX" Decode.float)
                                                         (Decode.field "screenY" Decode.float)
                                                     )
@@ -899,12 +907,12 @@ view viewNode attrs (Model model) =
                                                     { stopPropagation = True
                                                     , preventDefault = False
                                                     }
-                                                    (Decode.map2 Messages.NodeMouseUp
+                                                    (Decode.map2 NodeMouseUp
                                                         (Decode.field "screenX" Decode.float)
                                                         (Decode.field "screenY" Decode.float)
                                                     )
-                                                , on "mouseenter" (Decode.succeed (Messages.NodeMouseEnter path))
-                                                , on "mouseleave" (Decode.succeed (Messages.NodeMouseLeave path))
+                                                , on "mouseenter" (Decode.succeed (NodeMouseEnter path))
+                                                , on "mouseleave" (Decode.succeed (NodeMouseLeave path))
                                                 ]
                                                 [ viewNode nodeViewContext node
                                                 ]
@@ -924,7 +932,7 @@ view viewNode attrs (Model model) =
                                                         ++ (if node == Nothing then
                                                                 []
                                                             else
-                                                                [ ( key ++ "connector1", Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters ) ]
+                                                                [ ( key ++ "connector1", Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters |> Html.map (always NoOp) ) ]
                                                            )
                                                 else
                                                     []
@@ -932,7 +940,7 @@ view viewNode attrs (Model model) =
                                             ++ (if node == Nothing then
                                                     []
                                                 else
-                                                    [ ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters )
+                                                    [ ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.map (always NoOp) )
                                                     ]
                                                )
                                 )

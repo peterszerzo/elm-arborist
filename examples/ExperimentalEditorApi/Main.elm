@@ -23,11 +23,13 @@ update msg model =
     case msg of
         EditorMsg editorState editorData ->
             let
-                (Arborist.Model arborist) =
-                    editorState.arborist
+                a =
+                    1
 
-                _ =
-                    Debug.log "+UPDATE" (toString arborist.hovered)
+                -- (Arborist.Model arborist) =
+                --    editorState.arborist
+                -- _ =
+                --     Debug.log "+UPDATE" (toString arborist.hovered)
             in
                 ( { model
                     | editorData = editorData
