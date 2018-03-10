@@ -1,5 +1,19 @@
 module Messages exposing (..)
 
+import Utils.Tree as Tree exposing (TreeNodePath)
+import Time
 
-a =
-    42
+
+{-| TODO: move into main Arborist module on upcoming major release.
+-}
+type Msg
+    = AnimationFrameTick Time.Time
+    | NodeMouseDown Bool TreeNodePath Float Float
+    | NodeMouseUp Float Float
+    | NodeMouseEnter TreeNodePath
+    | NodeMouseLeave TreeNodePath
+    | CanvasMouseMove Float Float
+    | CanvasMouseDown Float Float
+    | CanvasMouseUp Float Float
+    | CanvasMouseLeave
+    | NoOp

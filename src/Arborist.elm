@@ -49,6 +49,7 @@ import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Arborist.Tree
 import Time
+import Messages exposing (Msg(..))
 import Data.ComputedTree as ComputedTree
 import Data.Settings as Settings exposing (Setting)
 import Drag exposing (Drag)
@@ -287,20 +288,14 @@ tree (Model { computedTree }) =
 
 {-| Message type annotation for the program. When wiring up the editor within a larger program, you will define a `ArboristMsg Arborist.Msg` message type, one that will trigger this package's [update](#update) function.
 -}
-type Msg
-    = AnimationFrameTick Time.Time
-    | NodeMouseDown Bool TreeNodePath Float Float
-    | NodeMouseUp Float Float
-    | NodeMouseEnter TreeNodePath
-    | NodeMouseLeave TreeNodePath
-    | CanvasMouseMove Float Float
-    | CanvasMouseDown Float Float
-    | CanvasMouseUp Float Float
-    | CanvasMouseLeave
-    | NoOp
+type alias Msg =
+    Messages.Msg
 
 
 {-| Logger function added to `update` in let block to log mouse events.
+
+IMPORTANT: do not call this in production!
+
 -}
 logForDragDebug : Msg -> Model node -> String
 logForDragDebug msg (Model model) =
