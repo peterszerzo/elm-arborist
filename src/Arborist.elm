@@ -38,6 +38,7 @@ module Arborist
 
 import AnimationFrame
 import Arborist.Context as Context
+import Time
 import Dict
 import Html exposing (Html, Attribute, node, div, text, p, h1, h3, label, input, button)
 import Html.Keyed
@@ -80,13 +81,13 @@ type Model node
         , prevComputedTree : ComputedTree.ComputedTree node
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
-        , isReceivingAnimationFrames : Bool
+        , isReceivingSubscriptions : Bool
         , focus : Maybe TreeNodePath
         , drag : Drag (Maybe TreeNodePath)
         , displayRoot : Maybe TreeNodePath
         , panOffset : ( Float, Float )
         , targetPanOffset : Maybe ( Float, Float )
-        , skipNextMouseMoves : Int
+        , isCanvasMouseMoveThrottled : Bool
         }
 
 
@@ -129,13 +130,13 @@ initWith settings tree =
             , prevComputedTree = computedTree
             , active = Nothing
             , hovered = Nothing
-            , isReceivingAnimationFrames = False
+            , isReceivingSubscriptions = False
             , focus = Nothing
             , drag = Drag.init
             , displayRoot = Nothing
             , panOffset = ( 0, 0 )
             , targetPanOffset = Nothing
-            , skipNextMouseMoves = 0
+            , isCanvasMouseMoveThrottled = False
             }
 
 
@@ -273,10 +274,13 @@ deleteActiveNode (Model model) =
 -}
 subscriptions : Model node -> Sub Msg
 subscriptions (Model model) =
-    if model.isReceivingAnimationFrames && model.targetPanOffset == Nothing then
-        Sub.none
-    else
-        AnimationFrame.times AnimationFrameTick
+    Sub.batch
+        [ if model.isReceivingSubscriptions && model.targetPanOffset == Nothing then
+            Sub.none
+          else
+            AnimationFrame.times AnimationFrameTick
+        , Time.every (50 * Time.millisecond) Tick
+        ]
 
 
 {-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
@@ -327,10 +331,13 @@ logForDragDebug msg (Model model) =
 update : Msg -> Model node -> Model node
 update msg (Model model) =
     case msg of
+        Tick time ->
+            Model { model | isCanvasMouseMoveThrottled = False }
+
         AnimationFrameTick time ->
             Model
                 { model
-                    | isReceivingAnimationFrames = True
+                    | isReceivingSubscriptions = True
                     , panOffset =
                         model.targetPanOffset
                             |> Maybe.map
@@ -487,14 +494,14 @@ update msg (Model model) =
 
                         -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
                         , targetPanOffset =
-                            if model.isReceivingAnimationFrames then
+                            if model.isReceivingSubscriptions then
                                 newPanOffset
                             else
                                 Nothing
 
                         -- Otherwise, center the view directly
                         , panOffset =
-                            if model.isReceivingAnimationFrames then
+                            if model.isReceivingSubscriptions then
                                 model.panOffset
                             else
                                 newPanOffset |> Maybe.withDefault model.panOffset
@@ -523,6 +530,11 @@ update msg (Model model) =
                 { model
                     | drag =
                         Drag.move xm ym model.drag
+                    , isCanvasMouseMoveThrottled =
+                        if model.isReceivingSubscriptions then
+                            True
+                        else
+                            False
                 }
 
         CanvasMouseDown x y ->
@@ -787,36 +799,41 @@ view viewNode attrs (Model model) =
             Utils.addFloatTuples canvasDragOffset model.panOffset
     in
         div
-            ([ on "mousemove"
-                (Decode.map2 CanvasMouseMove
-                    (Decode.field "screenX" Decode.float)
-                    (Decode.field "screenY" Decode.float)
-                )
-             , on "mousedown"
-                (Decode.map2 CanvasMouseDown
-                    (Decode.field "screenX" Decode.float)
-                    (Decode.field "screenY" Decode.float)
-                )
-             , on "mouseup"
-                (Decode.map2 CanvasMouseUp
-                    (Decode.field "screenX" Decode.float)
-                    (Decode.field "screenY" Decode.float)
-                )
-             , on "mouseleave" (Decode.succeed CanvasMouseLeave)
-             , style
-                [ ( "overflow", "hidden" )
-                , ( "width", Utils.floatToPxString model.settings.canvasWidth )
-                , ( "height", Utils.floatToPxString model.settings.canvasHeight )
-                , ( "box-sizing", "border-box" )
-                , ( "position", "relative" )
-                , ( "cursor"
-                  , if isCanvasDragging then
-                        "move"
-                    else
-                        "auto"
-                  )
+            ((if model.isCanvasMouseMoveThrottled then
+                []
+              else
+                [ on "mousemove"
+                    (Decode.map2 CanvasMouseMove
+                        (Decode.field "screenX" Decode.float)
+                        (Decode.field "screenY" Decode.float)
+                    )
                 ]
-             ]
+             )
+                ++ [ on "mousedown"
+                        (Decode.map2 CanvasMouseDown
+                            (Decode.field "screenX" Decode.float)
+                            (Decode.field "screenY" Decode.float)
+                        )
+                   , on "mouseup"
+                        (Decode.map2 CanvasMouseUp
+                            (Decode.field "screenX" Decode.float)
+                            (Decode.field "screenY" Decode.float)
+                        )
+                   , on "mouseleave" (Decode.succeed CanvasMouseLeave)
+                   , style
+                        [ ( "overflow", "hidden" )
+                        , ( "width", Utils.floatToPxString model.settings.canvasWidth )
+                        , ( "height", Utils.floatToPxString model.settings.canvasHeight )
+                        , ( "box-sizing", "border-box" )
+                        , ( "position", "relative" )
+                        , ( "cursor"
+                          , if isCanvasDragging then
+                                "move"
+                            else
+                                "auto"
+                          )
+                        ]
+                   ]
                 ++ attrs
             )
             [ Html.Keyed.node "div"
