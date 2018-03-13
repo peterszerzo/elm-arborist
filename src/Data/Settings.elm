@@ -1,6 +1,7 @@
 module Data.Settings exposing (..)
 
 import Svg
+import Time
 
 
 type alias Settings =
@@ -14,6 +15,7 @@ type alias Settings =
     , connectorStrokeAttributes : List (Svg.Attribute Never)
     , isDragAndDropEnabled : Bool
     , showPlaceholderLeaves : Bool
+    , throttleMouseMoves : Maybe Time.Time
     }
 
 
@@ -28,6 +30,7 @@ type Setting
     | ConnectorStrokeAttributes (List (Svg.Attribute Never))
     | DragAndDrop Bool
     | PlaceholderLeaves Bool
+    | ThrottleMouseMoves Time.Time
 
 
 apply : List Setting -> Settings -> Settings
@@ -68,4 +71,7 @@ apply newSettings settings =
 
                     PlaceholderLeaves show ->
                         { settings | showPlaceholderLeaves = show }
+
+                    ThrottleMouseMoves time ->
+                        { settings | throttleMouseMoves = Just time }
                 )

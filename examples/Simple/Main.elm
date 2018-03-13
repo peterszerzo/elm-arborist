@@ -16,6 +16,7 @@ import Arborist.Settings as Settings
 import Arborist.Context exposing (NodeState(..))
 import Simple.Styles as Styles
 import Window exposing (size, resizes)
+import Time
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -69,6 +70,7 @@ init =
                 , Settings.nodeHeight 45
                 , Settings.level 100
                 , Settings.nodeWidth 160
+                , Settings.throttleMouseMoves (50 * Time.millisecond)
                 , Settings.connectorStrokeAttributes
                     [ stroke "#E2E2E2"
                     ]

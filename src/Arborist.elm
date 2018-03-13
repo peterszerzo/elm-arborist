@@ -103,6 +103,7 @@ defaultSettings =
     , connectorStrokeAttributes = []
     , isDragAndDropEnabled = True
     , showPlaceholderLeaves = True
+    , throttleMouseMoves = Nothing
     }
 
 
@@ -279,7 +280,12 @@ subscriptions (Model model) =
             Sub.none
           else
             AnimationFrame.times AnimationFrameTick
-        , Time.every (50 * Time.millisecond) Tick
+        , case model.settings.throttleMouseMoves of
+            Just interval ->
+                Time.every interval MouseMoveThrottleTick
+
+            Nothing ->
+                Sub.none
         ]
 
 
@@ -331,7 +337,7 @@ logForDragDebug msg (Model model) =
 update : Msg -> Model node -> Model node
 update msg (Model model) =
     case msg of
-        Tick time ->
+        MouseMoveThrottleTick time ->
             Model { model | isCanvasMouseMoveThrottled = False }
 
         AnimationFrameTick time ->
@@ -531,7 +537,7 @@ update msg (Model model) =
                     | drag =
                         Drag.move xm ym model.drag
                     , isCanvasMouseMoveThrottled =
-                        if model.isReceivingSubscriptions then
+                        if model.isReceivingSubscriptions && model.settings.throttleMouseMoves /= Nothing then
                             True
                         else
                             False

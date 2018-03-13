@@ -8,7 +8,7 @@ import Time
 -}
 type Msg
     = AnimationFrameTick Time.Time
-    | Tick Time.Time
+    | MouseMoveThrottleTick Time.Time
     | NodeMouseDown Bool TreeNodePath Float Float
     | NodeMouseUp Float Float
     | NodeMouseEnter TreeNodePath
