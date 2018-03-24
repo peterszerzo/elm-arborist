@@ -7,6 +7,7 @@ module Arborist
         , initWith
         , applySettings
         , resize
+        , reposition
         , update
         , NodeView
         , view
@@ -33,6 +34,11 @@ module Arborist
 # Tree getters and modifiers
 
 @docs tree, activeNode, activeNodeWithContext, setActiveNode, deleteActiveNode
+
+
+# Display modifiers
+
+@docs reposition
 
 -}
 
@@ -161,6 +167,17 @@ resize width height =
         [ Settings.CanvasWidth width
         , Settings.CanvasHeight height
         ]
+
+
+{-| Restores the original pan position of the tree.
+-}
+reposition : Model node -> Model node
+reposition (Model model) =
+    Model
+        { model
+            | panOffset = ( 0, 0 )
+            , targetPanOffset = Nothing
+        }
 
 
 {-| DEPRECATED, see [activeNodeWithContext](#activeNodeWithContext). Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its position on the screen. This is the older, less detailed version of [activeNodeWithContext](#activeNodeWithContext).

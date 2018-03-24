@@ -91,6 +91,7 @@ type Msg
     | EditNewNodeAnswer String
     | SetActive Node
     | DeleteActive
+    | Reposition
     | Resize Window.Size
 
 
@@ -131,7 +132,12 @@ update msg model =
             )
 
         Resize { width, height } ->
-            ( { model | arborist = Arborist.resize width height model.arborist }
+            ( { model | arborist = Arborist.resize width height model.arborist, windowSize = { width = width, height = height } }
+            , Cmd.none
+            )
+
+        Reposition ->
+            ( { model | arborist = Arborist.reposition model.arborist }
             , Cmd.none
             )
 
@@ -150,14 +156,25 @@ view model =
                     [ style
                         [ ( "margin", "auto" )
                         , ( "position", "absolute" )
-                        , ( "top", "0" )
-                        , ( "left", "0" )
+                        , ( "top", "0px" )
+                        , ( "left", "0px" )
                         , ( "width", (toString model.windowSize.width) ++ "px" )
                         , ( "height", (toString model.windowSize.height) ++ "px" )
                         ]
                     ]
                  <|
-                    [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
+                    [ button
+                        [ style
+                            [ ( "position", "absolute" )
+                            , ( "bottom", "30px" )
+                            , ( "right", "30px" )
+                            , ( "z-index", "10000" )
+                            ]
+                        , onClick Reposition
+                        ]
+                        [ text "Reposition" ]
+                    , Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg
+                    ]
                         ++ (Arborist.activeNodeWithContext model.arborist
                                 |> Maybe.map
                                     (\( item, { position } ) ->
