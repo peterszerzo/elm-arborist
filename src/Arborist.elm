@@ -40,7 +40,7 @@ import AnimationFrame
 import Arborist.Context as Context
 import Time
 import Dict
-import Html exposing (Html, Attribute, node, div, text, p, h1, h3, label, input, button)
+import Html exposing (Html, Attribute, node, div)
 import Html.Keyed
 import Html.Attributes exposing (style, value)
 import Html.Events exposing (onClick)
@@ -49,7 +49,6 @@ import Json.Decode as Decode
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Arborist.Tree
-import Time
 import Messages exposing (Msg(..))
 import Data.ComputedTree as ComputedTree
 import Data.Settings as Settings exposing (Setting)
@@ -337,7 +336,7 @@ logForDragDebug msg (Model model) =
 update : Msg -> Model node -> Model node
 update msg (Model model) =
     case msg of
-        MouseMoveThrottleTick time ->
+        MouseMoveThrottleTick _ ->
             Model { model | isCanvasMouseMoveThrottled = False }
 
         AnimationFrameTick time ->
@@ -356,13 +355,13 @@ update msg (Model model) =
                                             ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
 
                                         dx =
-                                            if (targetX == x) then
+                                            if targetX == x then
                                                 0
                                             else
                                                 (d / 10) * (targetX - x) / d
 
                                         dy =
-                                            if (targetY == y) then
+                                            if targetY == y then
                                                 0
                                             else
                                                 (d / 10) * (targetY - y) / d
