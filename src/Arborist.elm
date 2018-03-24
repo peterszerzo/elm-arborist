@@ -712,7 +712,8 @@ viewContext (Model model) path =
                 flatTree
                     |> List.filterMap
                         (\( path_, node ) ->
-                            if path_ == List.take (List.length path - 1) path then
+                            -- List.take -1 path == List.take 0 path, hence the additional path /= [] condition
+                            if path /= [] && path_ == List.take (List.length path - 1) path then
                                 node
                             else
                                 Nothing
