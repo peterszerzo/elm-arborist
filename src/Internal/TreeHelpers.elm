@@ -1,4 +1,4 @@
-module Utils.Tree exposing (..)
+module Internal.TreeHelpers exposing (..)
 
 import Dict
 import Json.Decode as Decode

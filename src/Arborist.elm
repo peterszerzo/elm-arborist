@@ -55,12 +55,11 @@ import Json.Decode as Decode
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Arborist.Tree
-import Messages exposing (Msg(..))
-import Data.ComputedTree as ComputedTree
-import Data.Settings as Settings exposing (Setting)
+import Internal.ComputedTree as ComputedTree
+import Internal.Settings as Settings exposing (Setting)
 import Drag exposing (Drag)
 import Utils
-import Utils.Tree as Tree exposing (TreeNodePath)
+import Internal.TreeHelpers as TreeHelpers exposing (TreeNodePath)
 import Views.NodeConnectors
 import Views.Styles as Styles
 
@@ -109,6 +108,7 @@ defaultSettings =
     , isDragAndDropEnabled = True
     , showPlaceholderLeaves = True
     , throttleMouseMoves = Nothing
+    , canDeactivate = True
     }
 
 
@@ -255,10 +255,10 @@ setActiveNode newNode (Model model) =
                             in
                                 case node of
                                     Just (Just node) ->
-                                        Tree.update active newNode tree
+                                        TreeHelpers.update active newNode tree
 
                                     Just Nothing ->
-                                        Tree.insert (List.take (List.length active - 1) active) (Just newNode) tree
+                                        TreeHelpers.insert (List.take (List.length active - 1) active) (Just newNode) tree
 
                                     _ ->
                                         -- Impossible state
@@ -281,7 +281,12 @@ deleteActiveNode (Model model) =
         { model
             | computedTree =
                 model.active
-                    |> Maybe.map (\active -> Tree.delete active (ComputedTree.tree model.computedTree) |> ComputedTree.init model.settings.showPlaceholderLeaves)
+                    |> Maybe.map
+                        (\active ->
+                            TreeHelpers.delete active
+                                (ComputedTree.tree model.computedTree)
+                                |> ComputedTree.init model.settings.showPlaceholderLeaves
+                        )
                     |> Maybe.withDefault model.computedTree
             , prevComputedTree = model.computedTree
         }
@@ -312,12 +317,6 @@ tree (Model { computedTree }) =
     ComputedTree.tree computedTree
 
 
-{-| Message type annotation for the program. When wiring up the editor within a larger program, you will define a `ArboristMsg Arborist.Msg` message type, one that will trigger this package's [update](#update) function.
--}
-type alias Msg =
-    Messages.Msg
-
-
 {-| Logger function added to `update` in let block to log mouse events.
 
 IMPORTANT: do not call this in production!
@@ -346,6 +345,22 @@ logForDragDebug msg (Model model) =
 
         _ ->
             ""
+
+
+{-| Module messages
+-}
+type Msg
+    = AnimationFrameTick Time.Time
+    | MouseMoveThrottleTick Time.Time
+    | NodeMouseDown Bool TreeNodePath Float Float
+    | NodeMouseUp Float Float
+    | NodeMouseEnter TreeNodePath
+    | NodeMouseLeave TreeNodePath
+    | CanvasMouseMove Float Float
+    | CanvasMouseDown Float Float
+    | CanvasMouseUp Float Float
+    | CanvasMouseLeave
+    | NoOp
 
 
 {-| Update function handling changes in the model.
@@ -411,10 +426,14 @@ update msg (Model model) =
                             Drag.start (Just path) x y
                         )
                     , active =
-                        if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                            Just path
+                        if model.active /= Nothing && model.settings.canDeactivate == False then
+                            model.active
                         else
-                            Nothing
+                            (if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                                Just path
+                             else
+                                Nothing
+                            )
                 }
 
         NodeMouseUp x y ->
@@ -424,24 +443,28 @@ update msg (Model model) =
                         == (Just Nothing)
 
                 active_ =
-                    if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                    if model.active /= Nothing && model.settings.canDeactivate == False then
                         model.active
                     else
-                        Drag.state model.drag
-                            |> Maybe.andThen
-                                (\( path, ( offsetX, offsetY ) ) ->
-                                    case path of
-                                        Just path ->
-                                            -- If the node was dragged far enough already, it is not activated
-                                            -- This case also protects from reading a slightly sloppy click as a drag
-                                            if (abs offsetX + abs offsetY > 20) then
-                                                Nothing
-                                            else
-                                                Just path
+                        (if isPlaceholder || not model.settings.isDragAndDropEnabled then
+                            model.active
+                         else
+                            Drag.state model.drag
+                                |> Maybe.andThen
+                                    (\( path, ( offsetX, offsetY ) ) ->
+                                        case path of
+                                            Just path ->
+                                                -- If the node was dragged far enough already, it is not activated
+                                                -- This case also protects from reading a slightly sloppy click as a drag
+                                                if (abs offsetX + abs offsetY > 20) then
+                                                    Nothing
+                                                else
+                                                    Just path
 
-                                        Nothing ->
-                                            Nothing
-                                )
+                                            Nothing ->
+                                                Nothing
+                                    )
+                        )
 
                 flat =
                     ComputedTree.flat model.computedTree
@@ -492,13 +515,13 @@ update msg (Model model) =
                                                                         Nothing ->
                                                                             Nothing
                                                                 )
-                                                            |> Maybe.map (\_ -> Tree.swap path dropTargetPath tree)
+                                                            |> Maybe.map (\_ -> TreeHelpers.swap path dropTargetPath tree)
                                                             |> Maybe.withDefault
                                                                 -- If the drop target is a placeholder, first add an Empty node in the original tree
                                                                 -- so the swap method actually finds a node.
-                                                                (Tree.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
-                                                                    |> Tree.swap path dropTargetPath
-                                                                    |> Tree.removeEmpties
+                                                                (TreeHelpers.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
+                                                                    |> TreeHelpers.swap path dropTargetPath
+                                                                    |> TreeHelpers.removeEmpties
                                                                 )
                                                     )
                                                 |> Maybe.withDefault tree
@@ -587,15 +610,18 @@ update msg (Model model) =
                                 )
                             |> Maybe.withDefault model.panOffset
                     , active =
-                        Drag.state model.drag
-                            |> Maybe.map
-                                (\( path, ( x, y ) ) ->
-                                    if (abs x + abs y) < 20 then
-                                        Nothing
-                                    else
-                                        model.active
-                                )
-                            |> Maybe.withDefault Nothing
+                        if model.active /= Nothing && model.settings.canDeactivate == False then
+                            model.active
+                        else
+                            Drag.state model.drag
+                                |> Maybe.map
+                                    (\( path, ( x, y ) ) ->
+                                        if (abs x + abs y) < 20 then
+                                            Nothing
+                                        else
+                                            model.active
+                                    )
+                                |> Maybe.withDefault Nothing
                 }
 
         CanvasMouseLeave ->
@@ -665,7 +691,7 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
             |> Maybe.map Tuple.first
 
 
-nodeGeometry : Settings.Settings -> List Int -> Tree.Layout -> Maybe NodeGeometry
+nodeGeometry : Settings.Settings -> List Int -> TreeHelpers.Layout -> Maybe NodeGeometry
 nodeGeometry settings path layout =
     layout
         |> Dict.get path

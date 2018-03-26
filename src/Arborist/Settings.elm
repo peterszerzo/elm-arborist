@@ -19,7 +19,7 @@ module Arborist.Settings
 
 -}
 
-import Data.Settings exposing (Setting(..))
+import Internal.Settings exposing (Setting(..))
 import Svg
 import Time
 

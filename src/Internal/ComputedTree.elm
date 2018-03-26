@@ -1,9 +1,9 @@
-module Data.ComputedTree exposing (ComputedTree, tree, flat, layout, init, item)
+module Internal.ComputedTree exposing (ComputedTree, tree, flat, layout, init, item)
 
 {-| This module encapsulates computed information on a tree, information typically used for layout. When the tree is updated, there is a guarantee that this data is recalculated, avoiding expensive render-time recalculations or leaving it up to the developer to make sure the cache doesn't go stale.
 -}
 
-import Utils.Tree as Tree exposing (TreeNodePath)
+import Internal.TreeHelpers as TreeHelpers exposing (TreeNodePath)
 import Arborist.Tree
 
 
@@ -11,7 +11,7 @@ type ComputedTree item
     = ComputedTree
         { tree : Arborist.Tree.Tree item
         , flat : List ( TreeNodePath, Maybe item )
-        , layout : Tree.Layout
+        , layout : TreeHelpers.Layout
         }
 
 
@@ -25,7 +25,7 @@ flat (ComputedTree { flat }) =
     flat
 
 
-layout : ComputedTree item -> Tree.Layout
+layout : ComputedTree item -> TreeHelpers.Layout
 layout (ComputedTree computedTree) =
     computedTree.layout
 
@@ -43,17 +43,17 @@ init showPlaceholderLeaves tree =
     let
         withPlaceholders =
             if showPlaceholderLeaves then
-                Tree.addTrailingEmpties tree
+                TreeHelpers.addTrailingEmpties tree
             else
                 tree
 
         flat =
-            Tree.flatten withPlaceholders
+            TreeHelpers.flatten withPlaceholders
 
         layout =
             withPlaceholders
-                |> Tree.analyze
-                |> Tree.layout
+                |> TreeHelpers.analyze
+                |> TreeHelpers.layout
     in
         ComputedTree
             { tree = tree

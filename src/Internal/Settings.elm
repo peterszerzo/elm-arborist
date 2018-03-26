@@ -1,4 +1,4 @@
-module Data.Settings exposing (..)
+module Internal.Settings exposing (..)
 
 import Svg
 import Time
@@ -16,6 +16,7 @@ type alias Settings =
     , isDragAndDropEnabled : Bool
     , showPlaceholderLeaves : Bool
     , throttleMouseMoves : Maybe Time.Time
+    , canDeactivate : Bool
     }
 
 
@@ -31,6 +32,7 @@ type Setting
     | DragAndDrop Bool
     | PlaceholderLeaves Bool
     | ThrottleMouseMoves Time.Time
+    | CanDeactivate Bool
 
 
 apply : List Setting -> Settings -> Settings
@@ -74,4 +76,7 @@ apply newSettings settings =
 
                     ThrottleMouseMoves time ->
                         { settings | throttleMouseMoves = Just time }
+
+                    CanDeactivate canDeactivate ->
+                        { settings | canDeactivate = canDeactivate }
                 )

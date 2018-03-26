@@ -1,6 +1,6 @@
 module Views.Styles exposing (..)
 
-import Data.Settings as Settings
+import Internal.Settings as Settings
 import Utils
 
 

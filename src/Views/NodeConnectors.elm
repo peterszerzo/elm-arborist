@@ -5,12 +5,7 @@ import Html.Attributes exposing (style)
 import Svg exposing (svg, line)
 import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth, strokeLinecap, strokeLinejoin)
 import Views.Styles as Styles
-import Data.Settings as Settings
-
-
-strokeColor : String
-strokeColor =
-    "#E2E2E2"
+import Internal.Settings as Settings
 
 
 pad : Float
@@ -32,7 +27,7 @@ view : Settings.Settings -> Float -> ( Float, Float ) -> ( Float, Float ) -> Lis
 view settings opacity ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
-            [ stroke strokeColor
+            [ stroke "#E2E2E2"
             , strokeWidth (toString strokeWeight)
             , strokeLinecap "round"
             , strokeLinejoin "round"
