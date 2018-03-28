@@ -22,21 +22,12 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         EditorMsg editorState editorData ->
-            let
-                a =
-                    1
-
-                -- (Arborist.Model arborist) =
-                --    editorState.arborist
-                -- _ =
-                --     Debug.log "+UPDATE" (toString arborist.hovered)
-            in
-                ( { model
-                    | editorData = editorData
-                    , editorState = editorState
-                  }
-                , Cmd.none
-                )
+            ( { model
+                | editorData = editorData
+                , editorState = editorState
+              }
+            , Cmd.none
+            )
 
 
 init : ( Model, Cmd Msg )
@@ -59,17 +50,13 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
-
-
-{-|
-
     Editor.subscriptions
         { state = model.editorState
         , data = model.editorData
         , toMsg = EditorMsg
         }
--}
+
+
 main : Program Never Model Msg
 main =
     program

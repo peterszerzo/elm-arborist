@@ -71,6 +71,8 @@ init =
                 , Settings.level 100
                 , Settings.nodeWidth 160
                 , Settings.throttleMouseMoves (50 * Time.millisecond)
+
+                --                , Settings.sturdyModeEXPERIMENTAL True
                 , Settings.connectorStrokeAttributes
                     [ stroke "#E2E2E2"
                     ]
@@ -175,7 +177,7 @@ view model =
                         [ text "Reposition" ]
                     , Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg
                     ]
-                        ++ (Arborist.activeNodeWithContext model.arborist
+                        ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
                                     (\( item, { position } ) ->
                                         let

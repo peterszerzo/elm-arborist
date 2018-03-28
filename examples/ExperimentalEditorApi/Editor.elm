@@ -1,5 +1,6 @@
 module ExperimentalEditorApi.Editor exposing (..)
 
+import Time
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Arborist
@@ -24,6 +25,7 @@ init startTree =
         Arborist.initWith
             [ Settings.nodeWidth 80
             , Settings.nodeHeight 40
+            , Settings.throttleMouseMoves (100 * Time.millisecond)
             , Settings.dragAndDrop True
             ]
             startTree

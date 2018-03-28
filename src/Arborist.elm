@@ -13,7 +13,6 @@ module Arborist
         , view
         , tree
         , activeNode
-        , activeNodeWithContext
         , setActiveNode
         , deleteActiveNode
         )
@@ -33,7 +32,7 @@ module Arborist
 
 # Tree getters and modifiers
 
-@docs tree, activeNode, activeNodeWithContext, setActiveNode, deleteActiveNode
+@docs tree, activeNode, setActiveNode, deleteActiveNode
 
 
 # Display modifiers
@@ -108,7 +107,7 @@ defaultSettings =
     , isDragAndDropEnabled = True
     , showPlaceholderLeaves = True
     , throttleMouseMoves = Nothing
-    , canDeactivate = True
+    , isSturdyMode = False
     }
 
 
@@ -134,7 +133,11 @@ initWith settings tree =
             { settings = settings_
             , computedTree = computedTree
             , prevComputedTree = computedTree
-            , active = Nothing
+            , active =
+                if settings_.isSturdyMode && tree /= Arborist.Tree.Empty then
+                    Just []
+                else
+                    Nothing
             , hovered = Nothing
             , isReceivingSubscriptions = False
             , focus = Nothing
@@ -180,22 +183,14 @@ reposition (Model model) =
         }
 
 
-{-| DEPRECATED, see [activeNodeWithContext](#activeNodeWithContext). Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as its position on the screen. This is the older, less detailed version of [activeNodeWithContext](#activeNodeWithContext).
--}
-activeNode : Model node -> Maybe ( Maybe node, ( Float, Float ) )
-activeNode model =
-    activeNodeWithContext model
-        |> Maybe.map (\( node, { position, context } ) -> ( node, position ))
-
-
 {-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as some contextual information as a two-field record:
 
   - `position : ( Float, Float )`: the node's position on the canvas (useful for rendering an edit pop-up).
   - `context`: view context, identical to the one provided in [NodeView](#NodeView).
 
 -}
-activeNodeWithContext : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
-activeNodeWithContext (Model model) =
+activeNode : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
+activeNode (Model model) =
     model.active
         |> Maybe.map
             (\active ->
@@ -288,6 +283,11 @@ deleteActiveNode (Model model) =
                                 |> ComputedTree.init model.settings.showPlaceholderLeaves
                         )
                     |> Maybe.withDefault model.computedTree
+            , active =
+                if model.settings.isSturdyMode then
+                    Just [ 0 ]
+                else
+                    model.active
             , prevComputedTree = model.computedTree
         }
 
@@ -417,24 +417,27 @@ update msg (Model model) =
                 }
 
         NodeMouseDown isPlaceholder path x y ->
-            Model
-                { model
-                    | drag =
-                        (if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                            Drag.init
-                         else
-                            Drag.start (Just path) x y
-                        )
-                    , active =
-                        if model.active /= Nothing && model.settings.canDeactivate == False then
-                            model.active
-                        else
-                            (if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                                Just path
-                             else
-                                Nothing
-                            )
-                }
+            let
+                active_ =
+                    (if not model.settings.isDragAndDropEnabled then
+                        Just path
+                     else
+                        Nothing
+                    )
+            in
+                Model
+                    { model
+                        | drag =
+                            if not model.settings.isDragAndDropEnabled then
+                                Drag.init
+                            else
+                                Drag.start (Just path) x y
+                        , active =
+                            if active_ == Nothing && model.settings.isSturdyMode == True then
+                                model.active
+                            else
+                                active_
+                    }
 
         NodeMouseUp x y ->
             let
@@ -443,28 +446,21 @@ update msg (Model model) =
                         == (Just Nothing)
 
                 active_ =
-                    if model.active /= Nothing && model.settings.canDeactivate == False then
-                        model.active
-                    else
-                        (if isPlaceholder || not model.settings.isDragAndDropEnabled then
-                            model.active
-                         else
-                            Drag.state model.drag
-                                |> Maybe.andThen
-                                    (\( path, ( offsetX, offsetY ) ) ->
-                                        case path of
-                                            Just path ->
-                                                -- If the node was dragged far enough already, it is not activated
-                                                -- This case also protects from reading a slightly sloppy click as a drag
-                                                if (abs offsetX + abs offsetY > 20) then
-                                                    Nothing
-                                                else
-                                                    Just path
+                    Drag.state model.drag
+                        |> Maybe.andThen
+                            (\( path, ( offsetX, offsetY ) ) ->
+                                case path of
+                                    Just path ->
+                                        -- If the node was dragged far enough already, it is not activated
+                                        -- This case also protects from reading a slightly sloppy click as a drag
+                                        if (abs offsetX + abs offsetY > 20) then
+                                            Nothing
+                                        else
+                                            Just path
 
-                                            Nothing ->
-                                                Nothing
-                                    )
-                        )
+                                    Nothing ->
+                                        Nothing
+                            )
 
                 flat =
                     ComputedTree.flat model.computedTree
@@ -550,7 +546,11 @@ update msg (Model model) =
                                 model.panOffset
                             else
                                 newPanOffset |> Maybe.withDefault model.panOffset
-                        , active = active_
+                        , active =
+                            if active_ == Nothing && model.settings.isSturdyMode == True then
+                                model.active
+                            else
+                                active_
                     }
 
         NodeMouseEnter path ->
@@ -589,40 +589,44 @@ update msg (Model model) =
                 }
 
         CanvasMouseUp x y ->
-            Model
-                { model
-                    | drag = Drag.init
-                    , panOffset =
-                        Drag.state model.drag
-                            |> Maybe.map
-                                (\( draggedNode, offset ) ->
-                                    let
-                                        ( panOffsetX, panOffsetY ) =
-                                            model.panOffset
-
-                                        ( offsetX, offsetY ) =
-                                            if draggedNode == Nothing then
-                                                offset
-                                            else
-                                                ( 0, 0 )
-                                    in
-                                        ( panOffsetX + offsetX, panOffsetY + offsetY )
-                                )
-                            |> Maybe.withDefault model.panOffset
-                    , active =
-                        if model.active /= Nothing && model.settings.canDeactivate == False then
-                            model.active
-                        else
+            let
+                active_ =
+                    Drag.state model.drag
+                        |> Maybe.map
+                            (\( path, ( x, y ) ) ->
+                                if (abs x + abs y) < 20 then
+                                    Nothing
+                                else
+                                    model.active
+                            )
+                        |> Maybe.withDefault Nothing
+            in
+                Model
+                    { model
+                        | drag = Drag.init
+                        , panOffset =
                             Drag.state model.drag
                                 |> Maybe.map
-                                    (\( path, ( x, y ) ) ->
-                                        if (abs x + abs y) < 20 then
-                                            Nothing
-                                        else
-                                            model.active
+                                    (\( draggedNode, offset ) ->
+                                        let
+                                            ( panOffsetX, panOffsetY ) =
+                                                model.panOffset
+
+                                            ( offsetX, offsetY ) =
+                                                if draggedNode == Nothing then
+                                                    offset
+                                                else
+                                                    ( 0, 0 )
+                                        in
+                                            ( panOffsetX + offsetX, panOffsetY + offsetY )
                                     )
-                                |> Maybe.withDefault Nothing
-                }
+                                |> Maybe.withDefault model.panOffset
+                        , active =
+                            if active_ == Nothing && model.settings.isSturdyMode == True then
+                                model.active
+                            else
+                                active_
+                    }
 
         CanvasMouseLeave ->
             Model { model | drag = Drag.init }
@@ -887,11 +891,19 @@ view viewNode attrs (Model model) =
             )
             [ Html.Keyed.node "div"
                 [ style
-                    [ ( "width", "100%" )
-                    , ( "height", "100%" )
-                    , ( "position", "relative" )
-                    , ( "transform", "translate3d(" ++ (Utils.floatToPxString canvasTotalDragOffsetX) ++ ", " ++ (Utils.floatToPxString canvasTotalDragOffsetY) ++ ", 0)" )
-                    ]
+                    ([ ( "width", "100%" )
+                     , ( "height", "100%" )
+                     , ( "position", "relative" )
+                     , ( "transform", "translate3d(" ++ (Utils.floatToPxString canvasTotalDragOffsetX) ++ ", " ++ (Utils.floatToPxString canvasTotalDragOffsetY) ++ ", 0)" )
+                     ]
+                        ++ (case model.settings.throttleMouseMoves of
+                                Nothing ->
+                                    []
+
+                                Just time ->
+                                    [ ( "transition", "transform " ++ (time / 1000 |> toString) ++ "s" ) ]
+                           )
+                    )
                 ]
               <|
                 (List.map

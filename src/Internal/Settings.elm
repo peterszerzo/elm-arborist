@@ -16,7 +16,7 @@ type alias Settings =
     , isDragAndDropEnabled : Bool
     , showPlaceholderLeaves : Bool
     , throttleMouseMoves : Maybe Time.Time
-    , canDeactivate : Bool
+    , isSturdyMode : Bool
     }
 
 
@@ -32,7 +32,7 @@ type Setting
     | DragAndDrop Bool
     | PlaceholderLeaves Bool
     | ThrottleMouseMoves Time.Time
-    | CanDeactivate Bool
+    | SturdyMode Bool
 
 
 apply : List Setting -> Settings -> Settings
@@ -77,6 +77,6 @@ apply newSettings settings =
                     ThrottleMouseMoves time ->
                         { settings | throttleMouseMoves = Just time }
 
-                    CanDeactivate canDeactivate ->
-                        { settings | canDeactivate = canDeactivate }
+                    SturdyMode isSturdyMode ->
+                        { settings | isSturdyMode = isSturdyMode }
                 )
