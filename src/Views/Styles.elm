@@ -1,5 +1,6 @@
 module Views.Styles exposing (..)
 
+import Time
 import Internal.Settings as Settings
 import Utils
 
@@ -27,3 +28,18 @@ dragShadowNode : List ( String, String )
 dragShadowNode =
     [ ( "background-color", "rgba(0, 0, 0, 0.05)" )
     ]
+
+
+throttleTransitionStyles : List String -> Maybe Time.Time -> List ( String, String )
+throttleTransitionStyles styleProperties throttle =
+    case throttle of
+        Nothing ->
+            []
+
+        Just time ->
+            [ ( "transition"
+              , styleProperties
+                    |> List.map (\property -> property ++ " " ++ (time / 1000 |> toString) ++ "s linear")
+                    |> String.join ", "
+              )
+            ]

@@ -1,4 +1,4 @@
-module Utils exposing (..)
+module Utils exposing (floatToPxString, addFloatTuples, startsWith, onClickStopPropagation, compareLists)
 
 import Json.Decode as Decode
 import Html exposing (Attribute)

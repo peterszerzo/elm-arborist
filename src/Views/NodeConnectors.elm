@@ -35,7 +35,7 @@ view settings opacity ( dragX, dragY ) center childCenters =
                 ++ settings.connectorStrokeAttributes
 
         pts =
-            [ center ] ++ childCenters
+            center :: childCenters
 
         minX =
             pts |> List.map Tuple.first |> List.foldl min 100000
@@ -63,7 +63,7 @@ view settings opacity ( dragX, dragY ) center childCenters =
 
         h =
             if h_ < 0 then
-                (settings.level)
+                settings.level
             else
                 h_
 
@@ -78,23 +78,27 @@ view settings opacity ( dragX, dragY ) center childCenters =
             , height (toString h)
             , viewBox <|
                 (if List.length childCenters == 0 then
-                    "-4 0 4 " ++ (toString h)
+                    "-4 0 4 " ++ toString h
                  else
-                    "-2 0 " ++ (toString (w + 4)) ++ " " ++ (toString h)
+                    "-2 0 " ++ toString (w + 4) ++ " " ++ toString h
                 )
             , style <|
-                [ ( "position", "absolute" ), ( "opacity", toString opacity ) ]
-                    ++ (Styles.coordinate settings
-                            ( (minX + (settings.nodeWidth / 2) + dragX)
-                            , (minY + settings.nodeHeight + dragY)
-                            )
-                       )
+                [ ( "position", "absolute" )
+                , ( "opacity", toString opacity )
+                ]
+                    ++ Styles.coordinate settings
+                        ( minX + (settings.nodeWidth / 2) + dragX
+                        , minY + settings.nodeHeight + dragY
+                        )
+                    ++ Styles.throttleTransitionStyles
+                        [ "top", "left" ]
+                        settings.throttleMouseMoves
             ]
         <|
             (if List.length childCenters == 0 then
                 []
              else
-                [ line
+                line
                     ([ x1 <| toCoord (Tuple.first relCenter)
                      , y1 <| toCoord pad
                      , x2 <| toCoord (Tuple.first relCenter)
@@ -103,13 +107,12 @@ view settings opacity ( dragX, dragY ) center childCenters =
                         ++ strokeAttrs
                     )
                     []
-                ]
-                    ++ (List.map
-                            (\( x, y ) ->
+                    :: (List.map
+                            (\( x, _ ) ->
                                 line
-                                    ([ x1 <| toCoord (x)
+                                    ([ x1 <| toCoord x
                                      , y1 <| toCoord (h / 2)
-                                     , x2 <| toCoord (x)
+                                     , x2 <| toCoord x
                                      , y2 <| toCoord (h - pad)
                                      ]
                                         ++ strokeAttrs
@@ -118,18 +121,17 @@ view settings opacity ( dragX, dragY ) center childCenters =
                             )
                             relChildren
                        )
-                    ++ (if List.length childCenters > 1 then
-                            [ line
-                                ([ x1 <| toCoord 1
-                                 , y1 <| toCoord (h / 2)
-                                 , x2 <| toCoord (w - 1)
-                                 , y2 <| toCoord (h / 2)
-                                 ]
-                                    ++ strokeAttrs
-                                )
-                                []
-                            ]
-                        else
+                    ++ if List.length childCenters > 1 then
+                        [ line
+                            ([ x1 <| toCoord 1
+                             , y1 <| toCoord (h / 2)
+                             , x2 <| toCoord (w - 1)
+                             , y2 <| toCoord (h / 2)
+                             ]
+                                ++ strokeAttrs
+                            )
                             []
-                       )
+                        ]
+                       else
+                        []
             )

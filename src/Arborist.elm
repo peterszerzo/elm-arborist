@@ -48,11 +48,8 @@ import Dict
 import Html exposing (Html, Attribute, node, div)
 import Html.Keyed
 import Html.Attributes exposing (style, value)
-import Html.Events exposing (onClick)
-import Html.Events exposing (onInput, on, onWithOptions)
+import Html.Events exposing (on, onWithOptions)
 import Json.Decode as Decode
-import Svg exposing (svg, line)
-import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth)
 import Arborist.Tree
 import Internal.ComputedTree as ComputedTree
 import Internal.Settings as Settings exposing (Setting)
@@ -503,10 +500,10 @@ update msg (Model model) =
                                                             |> List.filter (\( path, node ) -> path == dropTargetPath)
                                                             |> List.head
                                                             |> Maybe.andThen
-                                                                (\( path, node ) ->
-                                                                    case node of
-                                                                        Just node ->
-                                                                            Just ( path, node )
+                                                                (\( path, currentNode ) ->
+                                                                    case currentNode of
+                                                                        Just realNode ->
+                                                                            Just ( path, realNode )
 
                                                                         Nothing ->
                                                                             Nothing
@@ -806,21 +803,6 @@ viewContext (Model model) path =
         nodeViewContext
 
 
-throttleTransitionStyles : List String -> Maybe Time.Time -> List ( String, String )
-throttleTransitionStyles styleProperties throttle =
-    case throttle of
-        Nothing ->
-            []
-
-        Just time ->
-            [ ( "transition"
-              , styleProperties
-                    |> List.map (\property -> property ++ " " ++ (time / 1000 |> toString) ++ "s linear")
-                    |> String.join ", "
-              )
-            ]
-
-
 {-| The editor's view function, taking the following arguments:
 
   - [NodeView](#NodeView): view function for an individual node.
@@ -911,7 +893,7 @@ view viewNode attrs (Model model) =
                      , ( "position", "relative" )
                      , ( "transform", "translate3d(" ++ (Utils.floatToPxString canvasTotalDragOffsetX) ++ ", " ++ (Utils.floatToPxString canvasTotalDragOffsetY) ++ ", 0)" )
                      ]
-                        ++ (throttleTransitionStyles [ "transform" ] model.settings.throttleMouseMoves)
+                        ++ (Styles.throttleTransitionStyles [ "transform" ] model.settings.throttleMouseMoves)
                     )
                 ]
               <|
@@ -970,7 +952,7 @@ view viewNode attrs (Model model) =
                                                 [ style <|
                                                     nodeBaseStyle
                                                         ++ (coordStyle ( xWithDrag, yWithDrag ))
-                                                        ++ (throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
+                                                        ++ (Styles.throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
                                                         ++ (if isDragged then
                                                                 [ ( "z-index", "100" )
                                                                 , ( "cursor", "move" )
@@ -1008,7 +990,7 @@ view viewNode attrs (Model model) =
                                                                 nodeBaseStyle
                                                                     ++ Styles.dragShadowNode
                                                                     ++ (coordStyle ( x, y ))
-                                                                    ++ (throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
+                                                                    ++ (Styles.throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
                                                             ]
                                                             []
                                                       )

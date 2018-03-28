@@ -73,8 +73,8 @@ depthHelper currentDepth tree =
         Empty ->
             currentDepth
 
-        Node node children ->
-            [ currentDepth ] ++ (List.map (depthHelper (currentDepth + 1)) children) |> List.foldl max -1
+        Node _ children ->
+            currentDepth :: List.map (depthHelper (currentDepth + 1)) children |> List.foldl max -1
 
 
 {-| Map over the nodes of the tree.
@@ -106,7 +106,7 @@ flattenTail path tree =
             [ ( path, val ) ]
                 ++ (List.indexedMap
                         (\index child ->
-                            (flattenTail (path ++ [ index ]) child)
+                            flattenTail (path ++ [ index ]) child
                         )
                         children
                         |> List.foldl (++) []

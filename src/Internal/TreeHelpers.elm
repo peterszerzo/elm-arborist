@@ -47,7 +47,7 @@ addTrailingEmpties tree =
             Empty
 
         Tree.Node item children ->
-            Node item <| (List.map addTrailingEmpties children) ++ [ Empty ]
+            Node item <| List.map addTrailingEmpties children ++ [ Empty ]
 
 
 removeEmpties : Tree a -> Tree a
@@ -124,7 +124,7 @@ update path replaceItem tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             Node item <|
-                (List.indexedMap
+                List.indexedMap
                     (\index child ->
                         if index == head then
                             update tail replaceItem child
@@ -132,7 +132,6 @@ update path replaceItem tree =
                             child
                     )
                     children
-                )
 
         ( [], Node item children ) ->
             Node replaceItem children
@@ -204,8 +203,8 @@ flattenTail path tree =
             [ ( path, Nothing ) ]
 
         Node val children ->
-            [ ( path, Just val ) ]
-                ++ (List.indexedMap
+            ( path, Just val )
+                :: (List.indexedMap
                         (\index child ->
                             (flattenTail (path ++ [ index ]) child)
                         )
@@ -252,12 +251,11 @@ analyzeTail { depth, current } tree =
             in
                 { depth = depth
                 , nodeInfo =
-                    [ Dict.singleton current.path
+                    Dict.singleton current.path
                         { siblings = current.siblings
                         , children = List.indexedMap (\index _ -> current.path ++ [ index ]) children
                         }
-                    ]
-                        ++ (List.map .nodeInfo childrenAnalysis)
+                        :: (List.map .nodeInfo childrenAnalysis)
                         |> List.foldl Dict.union Dict.empty
                 , shortNodes = childrenAnalysis |> List.map .shortNodes |> List.foldl (++) []
                 }
@@ -276,7 +274,7 @@ layout analysis =
                 (\path ->
                     let
                         depthDiff =
-                            (analysis.depth - (List.length path) - 1)
+                            analysis.depth - (List.length path) - 1
 
                         extraNodes =
                             List.range 0 (depthDiff - 1)
@@ -289,7 +287,7 @@ layout analysis =
                                             { path = childPath
                                             , siblings = 0
                                             , children =
-                                                if (n == depthDiff - 1) then
+                                                if n == depthDiff - 1 then
                                                     []
                                                 else
                                                     [ childPath ++ [ 0 ] ]
@@ -307,7 +305,7 @@ layout analysis =
             analysis.nodeInfo
                 |> Dict.map
                     (\path info ->
-                        if (List.member path analysis.shortNodes) then
+                        if List.member path analysis.shortNodes then
                             { info | children = [ path ++ [ 0 ] ] }
                         else
                             info
@@ -372,7 +370,7 @@ layoutLevelPass level nodeInfo layout =
                                             List.map (.center >> Tuple.first) list
 
                                         centerX =
-                                            if (List.length centers == 0) then
+                                            if List.length centers == 0 then
                                                 0
                                             else
                                                 (List.foldl (+) 0 centers)
