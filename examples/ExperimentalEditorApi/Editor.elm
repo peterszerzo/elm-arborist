@@ -25,7 +25,7 @@ init startTree =
         Arborist.initWith
             [ Settings.nodeWidth 80
             , Settings.nodeHeight 40
-            , Settings.throttleMouseMoves (100 * Time.millisecond)
+            , Settings.throttleMouseMoves (150 * Time.millisecond)
             , Settings.dragAndDrop True
             ]
             startTree

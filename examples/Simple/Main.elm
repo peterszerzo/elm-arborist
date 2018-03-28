@@ -70,7 +70,7 @@ init =
                 , Settings.nodeHeight 45
                 , Settings.level 100
                 , Settings.nodeWidth 160
-                , Settings.throttleMouseMoves (50 * Time.millisecond)
+                , Settings.throttleMouseMoves (300 * Time.millisecond)
 
                 --                , Settings.sturdyModeEXPERIMENTAL True
                 , Settings.connectorStrokeAttributes

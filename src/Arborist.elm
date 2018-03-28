@@ -806,6 +806,21 @@ viewContext (Model model) path =
         nodeViewContext
 
 
+throttleTransitionStyles : List String -> Maybe Time.Time -> List ( String, String )
+throttleTransitionStyles styleProperties throttle =
+    case throttle of
+        Nothing ->
+            []
+
+        Just time ->
+            [ ( "transition"
+              , styleProperties
+                    |> List.map (\property -> property ++ " " ++ (time / 1000 |> toString) ++ "s linear")
+                    |> String.join ", "
+              )
+            ]
+
+
 {-| The editor's view function, taking the following arguments:
 
   - [NodeView](#NodeView): view function for an individual node.
@@ -896,13 +911,7 @@ view viewNode attrs (Model model) =
                      , ( "position", "relative" )
                      , ( "transform", "translate3d(" ++ (Utils.floatToPxString canvasTotalDragOffsetX) ++ ", " ++ (Utils.floatToPxString canvasTotalDragOffsetY) ++ ", 0)" )
                      ]
-                        ++ (case model.settings.throttleMouseMoves of
-                                Nothing ->
-                                    []
-
-                                Just time ->
-                                    [ ( "transition", "transform " ++ (time / 1000 |> toString) ++ "s" ) ]
-                           )
+                        ++ (throttleTransitionStyles [ "transform" ] model.settings.throttleMouseMoves)
                     )
                 ]
               <|
@@ -961,6 +970,7 @@ view viewNode attrs (Model model) =
                                                 [ style <|
                                                     nodeBaseStyle
                                                         ++ (coordStyle ( xWithDrag, yWithDrag ))
+                                                        ++ (throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
                                                         ++ (if isDragged then
                                                                 [ ( "z-index", "100" )
                                                                 , ( "cursor", "move" )
@@ -998,6 +1008,7 @@ view viewNode attrs (Model model) =
                                                                 nodeBaseStyle
                                                                     ++ Styles.dragShadowNode
                                                                     ++ (coordStyle ( x, y ))
+                                                                    ++ (throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
                                                             ]
                                                             []
                                                       )
