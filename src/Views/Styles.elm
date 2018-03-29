@@ -32,14 +32,18 @@ dragShadowNode =
 
 throttleTransitionStyles : List String -> Maybe Time.Time -> List ( String, String )
 throttleTransitionStyles styleProperties throttle =
-    case throttle of
-        Nothing ->
-            []
+    -- TODO: this is currently disabled for lack of reliability.
+    if True then
+        []
+    else
+        case throttle of
+            Nothing ->
+                []
 
-        Just time ->
-            [ ( "transition"
-              , styleProperties
-                    |> List.map (\property -> property ++ " " ++ (time / 1000 |> toString) ++ "s linear")
-                    |> String.join ", "
-              )
-            ]
+            Just time ->
+                [ ( "transition"
+                  , styleProperties
+                        |> List.map (\property -> property ++ " " ++ (time / 1000 |> toString) ++ "s linear")
+                        |> String.join ", "
+                  )
+                ]
