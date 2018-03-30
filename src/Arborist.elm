@@ -41,7 +41,7 @@ module Arborist
 
 # Creating and modifying raw trees
 
-@docs node, empty, flatten, decoder, encoder
+@docs Tree, node, empty, flatten, decoder, encoder
 
 
 # Tree getters and modifiers
@@ -51,7 +51,7 @@ module Arborist
 
 # Display modifiers
 
-@docs reposition
+@docs reposition, deactivate
 
 
 # Context
