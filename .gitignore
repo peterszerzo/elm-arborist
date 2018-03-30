@@ -1,0 +1,4 @@
+build
+elm-stuff
+*.log
+.DS_Store
