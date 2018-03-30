@@ -3,7 +3,7 @@ module Internal.TreeHelpers exposing (..)
 import Dict
 import Json.Decode as Decode
 import Utils
-import Arborist.Tree as Tree exposing (..)
+import Internal.Tree as Tree exposing (..)
 
 
 -- Data structure

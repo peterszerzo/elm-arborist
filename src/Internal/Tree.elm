@@ -1,4 +1,4 @@
-module Arborist.Tree exposing (Tree(..), decoder, encoder, flatten, depth, map)
+module Internal.Tree exposing (Tree(..), decoder, encoder, flatten, depth, map)
 
 {-| A tiny tiny tree module. Only a few utility methods are provided here - after all, if you want to manupilate the tree, you should probably do so using the interface 🤓.
 
@@ -24,17 +24,12 @@ import Json.Encode as Encode
 
 
 {-| Recursive tree structure, holding any data type `node`, and any number of child nodes. Creating a tree of strings, for instance, would look like this:
-
-    Tree.Node "Parent" [ Tree.Node "Child1" [], Tree.Node "Child2" [] ]
-
 -}
 type Tree node
     = Empty
     | Node node (List (Tree node))
 
 
-{-| Tree decoder as a function of the node's decoder. Assumes a `value` and `children` fields, holding the current node contents and an array of children, respectively.
--}
 decoder : Decode.Decoder node -> Decode.Decoder (Tree node)
 decoder nodeDecoder =
     Decode.oneOf
@@ -45,8 +40,6 @@ decoder nodeDecoder =
         ]
 
 
-{-| Encodes a tree into JSON, given its node encoder.
--}
 encoder : (node -> Encode.Value) -> Tree node -> Encode.Value
 encoder nodeEncoder tree =
     case tree of

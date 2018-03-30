@@ -11,9 +11,7 @@ import Html.Events exposing (onInput, onClick)
 import Svg exposing (svg, path)
 import Svg.Attributes exposing (viewBox, d, stroke)
 import Arborist
-import Arborist.Tree as Tree
 import Arborist.Settings as Settings
-import Arborist.Context exposing (NodeState(..))
 import Simple.Styles as Styles
 import Window exposing (size, resizes)
 import Time
@@ -50,14 +48,14 @@ type alias Model =
 
 {-| The starting tree.
 -}
-tree : Tree.Tree Node
+tree : Arborist.Tree Node
 tree =
-    Tree.Node { answer = "", question = "Do you like trees?" }
-        [ Tree.Node { answer = "yes", question = "How much?" }
-            [ Tree.Node { answer = "A lot!", question = "Where were you all my life?" } []
+    Arborist.node { answer = "", question = "Do you like trees?" }
+        [ Arborist.node { answer = "yes", question = "How much?" }
+            [ Arborist.node { answer = "A lot!", question = "Where were you all my life?" } []
             ]
-        , Tree.Node { answer = "No.", question = "Seriously?" }
-            [ Tree.Node { answer = "Yes", question = "How about rollercoasters?" } []
+        , Arborist.node { answer = "No.", question = "Seriously?" }
+            [ Arborist.node { answer = "Yes", question = "How about rollercoasters?" } []
             ]
         ]
 
@@ -72,7 +70,7 @@ init =
                 , Settings.nodeWidth 160
                 , Settings.throttleMouseMoves (100 * Time.millisecond)
 
-                --                , Settings.sturdyModeEXPERIMENTAL True
+                --, Settings.sturdyMode True
                 , Settings.connectorStrokeAttributes
                     [ stroke "#E2E2E2"
                     ]
@@ -94,6 +92,7 @@ type Msg
     | SetActive Node
     | DeleteActive
     | Reposition
+    | Deactivate
     | Resize Window.Size
 
 
@@ -143,6 +142,11 @@ update msg model =
             , Cmd.none
             )
 
+        Deactivate ->
+            ( { model | arborist = Arborist.deactivate model.arborist }
+            , Cmd.none
+            )
+
 
 
 -- View
@@ -172,9 +176,9 @@ view model =
                             , ( "right", "30px" )
                             , ( "z-index", "10000" )
                             ]
-                        , onClick Reposition
+                        , onClick Deactivate
                         ]
-                        [ text "Reposition" ]
+                        [ text "Deactivate" ]
                     , Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg
                     ]
                         ++ (Arborist.activeNode model.arborist
@@ -231,16 +235,16 @@ nodeView context item =
                         Styles.nodeContainer
                             ++ [ ( "background-color"
                                  , case context.state of
-                                    Active ->
+                                    Arborist.Active ->
                                         Styles.green
 
-                                    Hovered ->
+                                    Arborist.Hovered ->
                                         Styles.lightBlue
 
-                                    DropTarget ->
+                                    Arborist.DropTarget ->
                                         Styles.orange
 
-                                    Normal ->
+                                    Arborist.Normal ->
                                         Styles.blue
                                  )
                                , ( "color", "white" )
@@ -267,13 +271,13 @@ nodeView context item =
                 [ style <|
                     Styles.nodeContainer
                         ++ (case context.state of
-                                Active ->
+                                Arborist.Active ->
                                     [ ( "background-color", Styles.green )
                                     , ( "color", "white" )
                                     , ( "border", "0" )
                                     ]
 
-                                DropTarget ->
+                                Arborist.DropTarget ->
                                     [ ( "background-color", Styles.orange )
                                     , ( "border", "0" )
                                     , ( "color", "white" )

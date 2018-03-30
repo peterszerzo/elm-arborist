@@ -11,9 +11,7 @@ import Html.Events exposing (onInput, onClick)
 import Svg exposing (svg, path)
 import Svg.Attributes exposing (viewBox, d, stroke)
 import Arborist
-import Arborist.Tree as Tree
 import Arborist.Settings as Settings
-import Arborist.Context exposing (NodeState(..))
 import DemoWebsite.Styles as Styles
 import Simple.Main as Conversation
 import Window exposing (size, resizes)

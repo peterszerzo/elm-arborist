@@ -9,8 +9,7 @@
     "exposed-modules": [
         "Arborist",
         "Arborist.Tree",
-        "Arborist.Settings",
-        "Arborist.Context"
+        "Arborist.Settings"
     ],
     "dependencies": {
         "elm-lang/animation-frame": "1.0.1 <= v < 2.0.0",

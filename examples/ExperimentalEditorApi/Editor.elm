@@ -5,12 +5,11 @@ import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Arborist
 import Arborist.Settings as Settings
-import Arborist.Tree as Tree
 import ExperimentalEditorApi.Node as Node
 
 
 type alias Data =
-    Tree.Tree Node.Node
+    Arborist.Tree Node.Node
 
 
 type alias State =
@@ -19,13 +18,14 @@ type alias State =
     }
 
 
-init : Tree.Tree Node.Node -> State
+init : Data -> State
 init startTree =
     { arborist =
         Arborist.initWith
             [ Settings.nodeWidth 80
             , Settings.nodeHeight 40
-            , Settings.throttleMouseMoves (150 * Time.millisecond)
+            , Settings.throttleMouseMoves (250 * Time.millisecond)
+            , Settings.sturdyMode True
             , Settings.dragAndDrop True
             ]
             startTree
@@ -64,6 +64,9 @@ view config =
                     [ style
                         [ ( "width", "80px" )
                         , ( "height", "40px" )
+                        , ( "display", "flex" )
+                        , ( "align-items", "center" )
+                        , ( "justify-content", "center" )
                         , ( "background-color", "#adadad" )
                         ]
                     ]
@@ -79,16 +82,6 @@ view config =
 
                         newArborist =
                             Arborist.update msg state.arborist
-
-                        -- Debug message passing order
-                        --
-                        --(Arborist.Model model) =
-                        --    config.state.arborist
-                        --
-                        --(Arborist.Model newModel) =
-                        --    newArborist
-                        --_ =
-                        --    ( toString model.hovered, msg, toString newModel.hovered ) |> Debug.log "-update"
                     in
                         config.toMsg { state | arborist = newArborist } config.data
                 )

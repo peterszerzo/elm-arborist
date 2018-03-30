@@ -4,18 +4,18 @@ module Internal.ComputedTree exposing (ComputedTree, tree, flat, layout, init, i
 -}
 
 import Internal.TreeHelpers as TreeHelpers exposing (TreeNodePath)
-import Arborist.Tree
+import Internal.Tree as Tree
 
 
 type ComputedTree item
     = ComputedTree
-        { tree : Arborist.Tree.Tree item
+        { tree : Tree.Tree item
         , flat : List ( TreeNodePath, Maybe item )
         , layout : TreeHelpers.Layout
         }
 
 
-tree : ComputedTree item -> Arborist.Tree.Tree item
+tree : ComputedTree item -> Tree.Tree item
 tree (ComputedTree computedTree) =
     computedTree.tree
 
@@ -38,7 +38,7 @@ item path (ComputedTree { flat }) =
         |> Maybe.andThen Tuple.second
 
 
-init : Bool -> Arborist.Tree.Tree item -> ComputedTree item
+init : Bool -> Tree.Tree item -> ComputedTree item
 init showPlaceholderLeaves tree =
     let
         withPlaceholders =

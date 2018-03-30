@@ -24,10 +24,10 @@ We can then use the `Arborist.Tree` module to construct a tree structure:
 import Arborist.Tree as Tree
 
 tree =
-  Tree.Node ( "Frank", 54 )
-    [ Tree.Node ( "Mark", 36 ) []
-    , Tree.Node ( "Sally", 31 )
-        [ Tree.Node ( "Robert", 14 )
+  Arborist.node ( "Frank", 54 )
+    [ Arborist.node ( "Mark", 36 ) []
+    , Arborist.node ( "Sally", 31 )
+        [ Arborist.node ( "Robert", 14 )
         ]
     ]
 ```

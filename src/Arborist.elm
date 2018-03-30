@@ -11,10 +11,19 @@ module Arborist
         , update
         , NodeView
         , view
+        , Tree
         , tree
+        , node
+        , empty
+        , flatten
+        , decoder
+        , encoder
         , activeNode
+        , deactivate
         , setActiveNode
         , deleteActiveNode
+        , Context
+        , NodeState(..)
         )
 
 {-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes. Structured as a TEA component defining its own init, update and view, `elm-arborist` allows you to easily initialize a tree editor, keep its state in an opaque model, and access the [edited result at any time](#tree).
@@ -30,6 +39,11 @@ module Arborist
 @docs applySettings, resize
 
 
+# Creating and modifying raw trees
+
+@docs node, empty, flatten, decoder, encoder
+
+
 # Tree getters and modifiers
 
 @docs tree, activeNode, setActiveNode, deleteActiveNode
@@ -39,25 +53,74 @@ module Arborist
 
 @docs reposition
 
+
+# Context
+
+@docs NodeState, Context
+
 -}
 
 import AnimationFrame
-import Arborist.Context as Context
 import Time
 import Dict
 import Html exposing (Html, Attribute, node, div)
 import Html.Keyed
 import Html.Attributes exposing (style, value)
 import Html.Events exposing (on, onWithOptions)
+import Json.Encode as Encode
 import Json.Decode as Decode
-import Arborist.Tree
+import Internal.Tree as Tree
 import Internal.ComputedTree as ComputedTree
-import Internal.Settings as Settings exposing (Setting)
+import Internal.Settings as Settings
 import Drag exposing (Drag)
 import Utils
 import Internal.TreeHelpers as TreeHelpers exposing (TreeNodePath)
 import Views.NodeConnectors
 import Views.Styles as Styles
+
+
+{-| Opaque type for a tree.
+-}
+type alias Tree node =
+    Tree.Tree node
+
+
+{-| Non-empty node, constructed from a single root node and an array of children represented as trees.
+
+    node "Parent" [ node "Child1" [], node "Child2" [] ]
+
+-}
+node : nodeType -> List (Tree.Tree nodeType) -> Tree.Tree nodeType
+node =
+    Tree.Node
+
+
+{-| Empty tree.
+-}
+empty : Tree.Tree node
+empty =
+    Tree.Empty
+
+
+{-| Flatten tree into a list of ( path, node ) tuples.
+-}
+flatten : Tree.Tree node -> List ( List Int, node )
+flatten =
+    Tree.flatten
+
+
+{-| Tree decoder as a function of the node's decoder. Assumes a `value` and `children` fields, holding the current node contents and an array of children, respectively.
+-}
+decoder : Decode.Decoder node -> Decode.Decoder (Tree.Tree node)
+decoder =
+    Tree.decoder
+
+
+{-| Encodes a tree into JSON, given its node encoder.
+-}
+encoder : (node -> Encode.Value) -> (Tree.Tree node -> Encode.Value)
+encoder =
+    Tree.encoder
 
 
 type ActiveNode
@@ -91,37 +154,20 @@ type Model node
         }
 
 
-defaultSettings : Settings.Settings
-defaultSettings =
-    { nodeWidth = 120
-    , nodeHeight = 36
-    , canvasWidth = 600
-    , canvasHeight = 480
-    , level = 80
-    , gutter = 20
-    , centerOffset = ( 0, 0 )
-    , connectorStrokeAttributes = []
-    , isDragAndDropEnabled = True
-    , showPlaceholderLeaves = True
-    , throttleMouseMoves = Nothing
-    , isSturdyMode = False
-    }
-
-
 {-| Initialize model from a [tree](Tree).
 -}
-init : Arborist.Tree.Tree node -> Model node
+init : Tree.Tree node -> Model node
 init =
     initWith []
 
 
 {-| Initialize model from a [tree](Tree), using a list of [settings](Settings).
 -}
-initWith : List Setting -> Arborist.Tree.Tree node -> Model node
+initWith : List Settings.Setting -> Tree.Tree node -> Model node
 initWith settings tree =
     let
         settings_ =
-            Settings.apply settings defaultSettings
+            Settings.apply settings Settings.defaults
 
         computedTree =
             ComputedTree.init (settings_.showPlaceholderLeaves) tree
@@ -131,7 +177,7 @@ initWith settings tree =
             , computedTree = computedTree
             , prevComputedTree = computedTree
             , active =
-                if settings_.isSturdyMode && tree /= Arborist.Tree.Empty then
+                if settings_.isSturdyMode && tree /= Tree.Empty then
                     Just []
                 else
                     Nothing
@@ -148,7 +194,7 @@ initWith settings tree =
 
 {-| Apply a new list of settings to the model.
 -}
-applySettings : List Setting -> Model node -> Model node
+applySettings : List Settings.Setting -> Model node -> Model node
 applySettings settings (Model model) =
     Model
         { model
@@ -180,13 +226,23 @@ reposition (Model model) =
         }
 
 
+{-| Remove active node
+-}
+deactivate : Model node -> Model node
+deactivate (Model model) =
+    Model
+        { model
+            | active = Nothing
+        }
+
+
 {-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as some contextual information as a two-field record:
 
   - `position : ( Float, Float )`: the node's position on the canvas (useful for rendering an edit pop-up).
   - `context`: view context, identical to the one provided in [NodeView](#NodeView).
 
 -}
-activeNode : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context.Context node } )
+activeNode : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context node } )
 activeNode (Model model) =
     model.active
         |> Maybe.map
@@ -232,8 +288,8 @@ setActiveNode newNode (Model model) =
         newTree =
             -- Handle special case when the tree is completely empty
             -- and a new node is added at the root.
-            if tree == Arborist.Tree.Empty && model.active == Just [] then
-                Arborist.Tree.Node newNode []
+            if tree == Tree.Empty && model.active == Just [] then
+                Tree.Node newNode []
             else
                 model.active
                     |> Maybe.map
@@ -309,7 +365,7 @@ subscriptions (Model model) =
 
 {-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
 -}
-tree : Model node -> Arborist.Tree.Tree node
+tree : Model node -> Tree.Tree node
 tree (Model { computedTree }) =
     ComputedTree.tree computedTree
 
@@ -632,7 +688,12 @@ update msg (Model model) =
             Model model
 
 
-getDropTarget : Settings.Settings -> TreeNodePath -> ( Float, Float ) -> ComputedTree.ComputedTree node -> Maybe TreeNodePath
+getDropTarget :
+    Settings.Settings
+    -> TreeNodePath
+    -> ( Float, Float )
+    -> ComputedTree.ComputedTree node
+    -> Maybe TreeNodePath
 getDropTarget settings path ( dragX, dragY ) computedTree =
     let
         flat =
@@ -653,7 +714,7 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
     in
         flat
             |> List.filterMap
-                (\( path_, _ ) ->
+                (\( path_, node ) ->
                     let
                         ( xo, yo ) =
                             nodeGeometry settings path_ layout
@@ -675,12 +736,12 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
                                 ]
                             )
                         then
-                            Just ( path_, dx + dy )
+                            Just ( path_, dx + dy, node )
                         else
                             Nothing
                 )
             |> List.sortWith
-                (\( _, d1 ) ( _, d2 ) ->
+                (\( _, d1, node1 ) ( _, d2, node2 ) ->
                     if d1 > d2 then
                         GT
                     else if d1 == d2 then
@@ -689,7 +750,17 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
                         LT
                 )
             |> List.head
-            |> Maybe.map Tuple.first
+            |> Maybe.andThen
+                (\( dropTargetPath, _, dropTargetNode ) ->
+                    if
+                        -- Can't drop node on an empty sibling
+                        ((path |> List.reverse |> List.tail) == (dropTargetPath |> List.reverse |> List.tail))
+                            && (dropTargetNode == Nothing)
+                    then
+                        Nothing
+                    else
+                        Just dropTargetPath
+                )
 
 
 nodeGeometry : Settings.Settings -> List Int -> TreeHelpers.Layout -> Maybe NodeGeometry
@@ -721,10 +792,10 @@ nodeGeometry settings path layout =
 {-| View function for an individual node, depending on its [context](Context), and its value. This value is expressed as a maybe because the node may contain an `insert new node`-type placeholder.
 -}
 type alias NodeView node =
-    Context.Context node -> Maybe node -> Html Msg
+    Context node -> Maybe node -> Html Msg
 
 
-viewContext : Model node -> List Int -> Context.Context node
+viewContext : Model node -> List Int -> Context node
 viewContext (Model model) path =
     let
         flatTree =
@@ -791,13 +862,13 @@ viewContext (Model model) path =
                         )
             , state =
                 if (model.active == Just path) then
-                    Context.Active
+                    Active
                 else if isDropTarget then
-                    Context.DropTarget
+                    DropTarget
                 else if (model.hovered == Just path) then
-                    Context.Hovered
+                    Hovered
                 else
-                    Context.Normal
+                    Normal
             }
     in
         nodeViewContext
@@ -891,7 +962,13 @@ view viewNode attrs (Model model) =
                     ([ ( "width", "100%" )
                      , ( "height", "100%" )
                      , ( "position", "relative" )
-                     , ( "transform", "translate3d(" ++ (Utils.floatToPxString canvasTotalDragOffsetX) ++ ", " ++ (Utils.floatToPxString canvasTotalDragOffsetY) ++ ", 0)" )
+                     , ( "transform"
+                       , "translate3d("
+                            ++ (Utils.floatToPxString canvasTotalDragOffsetX)
+                            ++ ", "
+                            ++ (Utils.floatToPxString canvasTotalDragOffsetY)
+                            ++ ", 0)"
+                       )
                      ]
                         ++ (Styles.throttleTransitionStyles [ "transform" ] model.settings.throttleMouseMoves)
                     )
@@ -982,8 +1059,13 @@ view viewNode attrs (Model model) =
                                                 [ viewNode nodeViewContext node
                                                 ]
                                           )
+                                        , (if node == Nothing then
+                                            ( key ++ "connector2", Html.text "" )
+                                           else
+                                            ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.map (always NoOp) )
+                                          )
                                         ]
-                                            ++ (if isDragged then
+                                            ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
                                                     [ ( key ++ "shadow"
                                                       , div
                                                             [ style <|
@@ -1003,12 +1085,6 @@ view viewNode attrs (Model model) =
                                                 else
                                                     []
                                                )
-                                            ++ (if node == Nothing then
-                                                    []
-                                                else
-                                                    [ ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.map (always NoOp) )
-                                                    ]
-                                               )
                                 )
                             |> Maybe.withDefault []
                     )
@@ -1016,3 +1092,34 @@ view viewNode attrs (Model model) =
                     |> List.foldl (++) []
                 )
             ]
+
+
+{-| The state of a node at a given time. May be normal one of the following:
+
+  - `Normal`: node in rest state
+  - `Hovered`: a hovered over node
+  - `Active`: an activated node. Overrides hover
+  - `DropTarget`: indicates that a swap or insert of the dragged subtree will take place at this node upon release
+
+-}
+type NodeState
+    = Normal
+    | Active
+    | Hovered
+    | DropTarget
+
+
+{-| View context. Contains the following fields:
+
+  - `parent`: the item at the parent, not available for the root node
+  - `siblings`: a list of all direct siblings
+  - `children`: a list of all direct children
+  - `state`: node [state](#NodeState)
+
+-}
+type alias Context item =
+    { parent : Maybe item
+    , siblings : List item
+    , children : List item
+    , state : NodeState
+    }

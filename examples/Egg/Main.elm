@@ -10,9 +10,7 @@ import Html.Events exposing (onInput, onClick)
 import Svg exposing (svg, path)
 import Svg.Attributes exposing (viewBox, d, stroke)
 import Arborist
-import Arborist.Tree as Tree
 import Arborist.Settings as Settings
-import Arborist.Context exposing (NodeState(..))
 import Egg.Styles as Styles
 import Window exposing (size, resizes)
 
@@ -37,44 +35,20 @@ type alias Model =
 
 {-| The starting tree.
 -}
-tree : Tree.Tree Node
+tree : Arborist.Tree Node
 tree =
-    Tree.Node { code = """<div>
+    Arborist.node { code = """<div>
   {props.children}
 </div>""" }
-        [ Tree.Node { code = "<header>I'm Egg{props.children}</header>" }
+        [ Arborist.node { code = "<header>I'm Egg{props.children}</header>" }
             []
-        , Tree.Node { code = "<main>World</main>" }
-            [ Tree.Node { code = "<code>const a;</code>" } []
+        , Arborist.node { code = "<main>World</main>" }
+            [ Arborist.node { code = "<code>const a;</code>" } []
             ]
-        , Tree.Node { code = "<footer>Made with a frying pan at ...</footer>" }
+        , Arborist.node { code = "<footer>Made with a frying pan at ...</footer>" }
             []
-        , Tree.Node { code = "<style>{`\nheader {\n  background-color: #FFF;\n}\n\nfooter {\n  background-color: #dedede;\n}\n`}</style>" } []
+        , Arborist.node { code = "<style>{`\nheader {\n  background-color: #FFF;\n}\n\nfooter {\n  background-color: #dedede;\n}\n`}</style>" } []
         ]
-
-
-{-| Flatten
--}
-flatten : Tree.Tree a -> List ( List Int, a )
-flatten =
-    flattenTail []
-
-
-flattenTail : List Int -> Tree.Tree a -> List ( List Int, a )
-flattenTail path tree =
-    case tree of
-        Tree.Empty ->
-            []
-
-        Tree.Node val children ->
-            [ ( path, val ) ]
-                ++ (List.indexedMap
-                        (\index child ->
-                            (flattenTail (path ++ [ index ]) child)
-                        )
-                        children
-                        |> List.foldl (++) []
-                   )
 
 
 init : ( Model, Cmd Msg )
@@ -119,7 +93,7 @@ update msg model =
     let
         flatTree =
             Arborist.tree model.arborist
-                |> flatten
+                |> Arborist.flatten
 
         sourceCode =
             flatTree
@@ -246,7 +220,7 @@ view model =
                     ]
                  <|
                     [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
-                        ++ (Arborist.activeNodeWithContext model.arborist
+                        ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
                                     (\( item, { position } ) ->
                                         let
@@ -309,16 +283,16 @@ nodeView context item =
                         Styles.nodeContainer
                             ++ [ ( "background-color"
                                  , case context.state of
-                                    Active ->
+                                    Arborist.Active ->
                                         Styles.green
 
-                                    Hovered ->
+                                    Arborist.Hovered ->
                                         Styles.lightBlue
 
-                                    DropTarget ->
+                                    Arborist.DropTarget ->
                                         Styles.orange
 
-                                    Normal ->
+                                    Arborist.Normal ->
                                         Styles.blue
                                  )
                                , ( "color", "white" )
@@ -334,13 +308,13 @@ nodeView context item =
                     Styles.nodeContainer
                         ++ [ ( "height", "30px" ) ]
                         ++ (case context.state of
-                                Active ->
+                                Arborist.Active ->
                                     [ ( "background-color", Styles.green )
                                     , ( "color", "white" )
                                     , ( "border", "0" )
                                     ]
 
-                                DropTarget ->
+                                Arborist.DropTarget ->
                                     [ ( "background-color", Styles.orange )
                                     , ( "border", "0" )
                                     , ( "color", "white" )

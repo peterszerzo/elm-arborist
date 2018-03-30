@@ -6,7 +6,7 @@ module Egg.Styles exposing (..)
 
 blue : String
 blue =
-    "#075D84"
+    "#046896"
 
 
 lightBlue : String
@@ -54,34 +54,6 @@ h1 {
 
 p {
   margin: 6px 0 0 0;
-}
-
-.intro {
-  text-align: center;
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  z-index: 100;
-  padding: 20px;
-  background-color: #FFF;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.intro a {
-  display: inline-block;
-  margin: 0 8px;
-}
-
-.intro__icon {
-  width: 60px;
-  height: 60px;
-  margin: -10px auto;
-}
-
-.intro__icon svg {
-  width: 100%;
-  height: 100%;
-  fill: """ ++ green ++ """;
 }
 
 a {

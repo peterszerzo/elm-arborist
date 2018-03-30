@@ -5,7 +5,6 @@ import Html.Lazy exposing (lazy)
 import ExperimentalEditorApi.Editor as Editor
 import ExperimentalEditorApi.Node as Node
 import Arborist
-import Arborist.Tree as Tree
 
 
 type alias Model =
@@ -32,11 +31,15 @@ update msg model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { editorData = Tree.Node Node.placeholder []
-      , editorState = Editor.init Tree.Empty
-      }
-    , Cmd.none
-    )
+    let
+        tree =
+            Arborist.node Node.placeholder []
+    in
+        ( { editorData = tree
+          , editorState = Editor.init tree
+          }
+        , Cmd.none
+        )
 
 
 view : Model -> Html Msg

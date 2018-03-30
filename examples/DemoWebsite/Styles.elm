@@ -6,7 +6,7 @@ module DemoWebsite.Styles exposing (..)
 
 blue : String
 blue =
-    "#075D84"
+    "#046896"
 
 
 lightBlue : String
@@ -16,7 +16,7 @@ lightBlue =
 
 green : String
 green =
-    "#197753"
+    "#037C4E"
 
 
 orange : String
@@ -63,8 +63,9 @@ p {
   left: 20px;
   z-index: 100;
   padding: 20px;
-  background-color: #FFF;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  background-color: #fafafa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .intro a {
@@ -156,49 +157,6 @@ button:focus {
   box-shadow: 0 0 3px """ ++ green ++ """;
 }
 """
-
-
-box : List ( String, String )
-box =
-    [ ( "margin", "auto" )
-    ]
-
-
-popup : List ( String, String )
-popup =
-    [ ( "width", "320px" )
-    , ( "background-color", "white" )
-    , ( "height", "240px" )
-    , ( "border-top", "4px solid " ++ green )
-    , ( "padding", "20px 20px 0 20px" )
-    , ( "overflow", "auto" )
-    , ( "position", "absolute" )
-    , ( "transform", "translate3d(-50%, 50px, 0)" )
-    , ( "box-shadow", "0 0 12px rgba(0, 0, 0, 0.2)" )
-    ]
-
-
-nodeContainer : List ( String, String )
-nodeContainer =
-    [ ( "width", "100%" )
-    , ( "height", "45px" )
-    , ( "font-size", "0.875rem" )
-    , ( "padding", "4px 20px" )
-    , ( "box-sizing", "border-box" )
-    , ( "padding", "0 12px" )
-    , ( "display", "flex" )
-    , ( "align-items", "center" )
-    , ( "justify-content", "center" )
-    ]
-
-
-text : List ( String, String )
-text =
-    [ ( "margin", "0" )
-    , ( "font-size", "0.875rem" )
-    , ( "line-height", "1.2" )
-    , ( "text-align", "center" )
-    ]
 
 
 button : List ( String, String )

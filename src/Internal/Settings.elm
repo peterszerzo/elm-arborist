@@ -20,6 +20,23 @@ type alias Settings =
     }
 
 
+defaults : Settings
+defaults =
+    { nodeWidth = 120
+    , nodeHeight = 36
+    , canvasWidth = 600
+    , canvasHeight = 480
+    , level = 80
+    , gutter = 20
+    , centerOffset = ( 0, 0 )
+    , connectorStrokeAttributes = []
+    , isDragAndDropEnabled = True
+    , showPlaceholderLeaves = True
+    , throttleMouseMoves = Nothing
+    , isSturdyMode = False
+    }
+
+
 type Setting
     = NodeWidth Int
     | NodeHeight Int

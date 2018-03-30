@@ -11,17 +11,17 @@ module Arborist.Settings
         , dragAndDrop
         , placeholderLeaves
         , throttleMouseMoves
-        , sturdyModeEXPERIMENTAL
+        , sturdyMode
         )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes, dragAndDrop, placeholderLeaves, throttleMouseMoves, sturdyModeEXPERIMENTAL
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes, dragAndDrop, placeholderLeaves, throttleMouseMoves, sturdyMode
 
 -}
 
-import Internal.Settings exposing (Setting(..))
 import Svg
+import Internal.Settings exposing (Setting(..))
 import Time
 
 
@@ -108,10 +108,7 @@ throttleMouseMoves =
 
 
 {-| Enables sturdy mode: as long as the tree is not empty, there is always one active node. Use this mode when it is critical that active node-related feedback doesn't leave the screen.
-
-This method is experimental: not all edge cases are flushed out.
-
 -}
-sturdyModeEXPERIMENTAL : Bool -> Setting
-sturdyModeEXPERIMENTAL =
+sturdyMode : Bool -> Setting
+sturdyMode =
     SturdyMode
