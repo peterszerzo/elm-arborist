@@ -73,12 +73,12 @@ import Html.Styled.Attributes exposing (style, value, css)
 import Html.Styled.Events exposing (on, onWithOptions)
 import Json.Encode as Encode
 import Json.Decode as Decode
-import Internal.Tree as Tree
-import Internal.ComputedTree as ComputedTree
+import Tree
+import Tree.Computed as ComputedTree
+import Tree.Extra as TreeHelpers exposing (TreeNodePath)
 import Internal.Settings as Settings
 import Drag exposing (Drag)
 import Utils
-import Internal.TreeHelpers as TreeHelpers exposing (TreeNodePath)
 import Views.NodeConnectors
 import Views.Styles as Styles
 

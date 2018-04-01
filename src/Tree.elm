@@ -1,4 +1,4 @@
-module Internal.Tree exposing (..)
+module Tree exposing (..)
 
 {-| A tiny tiny tree module. Only a few utility methods are provided here - after all, if you want to manupilate the tree, you should probably do so using the interface 🤓.
 

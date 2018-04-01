@@ -5,8 +5,8 @@ import Json.Decode as Decode
 import Expect exposing (Expectation)
 import Test exposing (..)
 import Arborist
-import Internal.Tree as Tree
-import Internal.TreeHelpers as TreeHelpers
+import Tree
+import Tree.Extra as TreeHelpers
 
 
 tree : Tree.Tree String

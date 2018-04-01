@@ -1,17 +1,17 @@
-module Internal.ComputedTree exposing (ComputedTree, tree, flat, layout, init, item)
+module Tree.Computed exposing (ComputedTree, tree, flat, layout, init, item)
 
 {-| This module encapsulates computed information on a tree, information typically used for layout. When the tree is updated, there is a guarantee that this data is recalculated, avoiding expensive render-time recalculations or leaving it up to the developer to make sure the cache doesn't go stale.
 -}
 
-import Internal.TreeHelpers as TreeHelpers exposing (TreeNodePath)
-import Internal.Tree as Tree
+import Tree.Extra exposing (TreeNodePath)
+import Tree
 
 
 type ComputedTree item
     = ComputedTree
         { tree : Tree.Tree item
         , flat : List ( TreeNodePath, Maybe item )
-        , layout : TreeHelpers.Layout
+        , layout : Tree.Extra.Layout
         }
 
 
@@ -25,7 +25,7 @@ flat (ComputedTree { flat }) =
     flat
 
 
-layout : ComputedTree item -> TreeHelpers.Layout
+layout : ComputedTree item -> Tree.Extra.Layout
 layout (ComputedTree computedTree) =
     computedTree.layout
 
@@ -43,17 +43,17 @@ init showPlaceholderLeaves tree =
     let
         withPlaceholders =
             if showPlaceholderLeaves then
-                TreeHelpers.addTrailingEmpties tree
+                Tree.Extra.addTrailingEmpties tree
             else
                 tree
 
         flat =
-            TreeHelpers.flatten withPlaceholders
+            Tree.Extra.flatten withPlaceholders
 
         layout =
             withPlaceholders
-                |> TreeHelpers.analyze
-                |> TreeHelpers.layout
+                |> Tree.Extra.analyze
+                |> Tree.Extra.layout
     in
         ComputedTree
             { tree = tree

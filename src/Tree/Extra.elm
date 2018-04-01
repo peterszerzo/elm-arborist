@@ -1,8 +1,8 @@
-module Internal.TreeHelpers exposing (..)
+module Tree.Extra exposing (..)
 
 import Dict
 import Utils
-import Internal.Tree as Tree exposing (..)
+import Tree as Tree exposing (..)
 
 
 -- Data structure
