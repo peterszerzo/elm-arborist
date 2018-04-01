@@ -1,7 +1,6 @@
 module Internal.TreeHelpers exposing (..)
 
 import Dict
-import Json.Decode as Decode
 import Utils
 import Internal.Tree as Tree exposing (..)
 

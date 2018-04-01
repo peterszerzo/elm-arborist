@@ -24,12 +24,6 @@ nodeBase settings =
     ]
 
 
-dragShadowNode : List ( String, String )
-dragShadowNode =
-    [ ( "background-color", "rgba(0, 0, 0, 0.05)" )
-    ]
-
-
 throttleTransitionStyles : List String -> Maybe Time.Time -> List ( String, String )
 throttleTransitionStyles styleProperties throttle =
     -- TODO: this is currently disabled for lack of reliability.

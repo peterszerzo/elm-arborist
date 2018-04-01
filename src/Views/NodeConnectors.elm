@@ -1,9 +1,9 @@
 module Views.NodeConnectors exposing (..)
 
-import Html exposing (Html)
-import Html.Attributes exposing (style)
-import Svg exposing (svg, line)
-import Svg.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth, strokeLinecap, strokeLinejoin)
+import Html.Styled exposing (Html)
+import Html.Styled.Attributes exposing (style)
+import Svg.Styled exposing (svg, line)
+import Svg.Styled.Attributes exposing (width, height, viewBox, x1, x2, y1, y2, stroke, strokeWidth, strokeLinecap, strokeLinejoin)
 import Views.Styles as Styles
 import Internal.Settings as Settings
 
@@ -27,12 +27,11 @@ view : Settings.Settings -> Float -> ( Float, Float ) -> ( Float, Float ) -> Lis
 view settings opacity ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
-            [ stroke "#E2E2E2"
-            , strokeWidth (toString strokeWeight)
+            [ stroke settings.connectorStroke
+            , strokeWidth settings.connectorStrokeWidth
             , strokeLinecap "round"
             , strokeLinejoin "round"
             ]
-                ++ settings.connectorStrokeAttributes
 
         pts =
             center :: childCenters

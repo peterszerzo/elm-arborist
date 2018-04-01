@@ -1,6 +1,5 @@
 module Internal.Settings exposing (..)
 
-import Svg
 import Time
 
 
@@ -12,7 +11,8 @@ type alias Settings =
     , level : Float
     , gutter : Float
     , centerOffset : ( Float, Float )
-    , connectorStrokeAttributes : List (Svg.Attribute Never)
+    , connectorStroke : String
+    , connectorStrokeWidth : String
     , isDragAndDropEnabled : Bool
     , showPlaceholderLeaves : Bool
     , throttleMouseMoves : Maybe Time.Time
@@ -29,7 +29,8 @@ defaults =
     , level = 80
     , gutter = 20
     , centerOffset = ( 0, 0 )
-    , connectorStrokeAttributes = []
+    , connectorStroke = "#E2E2E2"
+    , connectorStrokeWidth = "2"
     , isDragAndDropEnabled = True
     , showPlaceholderLeaves = True
     , throttleMouseMoves = Nothing
@@ -45,7 +46,8 @@ type Setting
     | Level Int
     | Gutter Int
     | CenterOffset Int Int
-    | ConnectorStrokeAttributes (List (Svg.Attribute Never))
+    | ConnectorStroke String
+    | ConnectorStrokeWidth String
     | DragAndDrop Bool
     | PlaceholderLeaves Bool
     | ThrottleMouseMoves Time.Time
@@ -82,8 +84,11 @@ apply newSettings settings =
                     CenterOffset x y ->
                         { settings | centerOffset = ( toFloat x, toFloat y ) }
 
-                    ConnectorStrokeAttributes attrs ->
-                        { settings | connectorStrokeAttributes = attrs }
+                    ConnectorStroke stroke ->
+                        { settings | connectorStroke = stroke }
+
+                    ConnectorStrokeWidth strokeWidth ->
+                        { settings | connectorStrokeWidth = strokeWidth }
 
                     DragAndDrop isEnabled ->
                         { settings | isDragAndDropEnabled = isEnabled }

@@ -7,7 +7,8 @@ module Arborist.Settings
         , level
         , gutter
         , centerOffset
-        , connectorStrokeAttributes
+        , connectorStroke
+        , connectorStrokeWidth
         , dragAndDrop
         , placeholderLeaves
         , throttleMouseMoves
@@ -16,11 +17,10 @@ module Arborist.Settings
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStrokeAttributes, dragAndDrop, placeholderLeaves, throttleMouseMoves, sturdyMode
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, placeholderLeaves, throttleMouseMoves, sturdyMode
 
 -}
 
-import Svg
 import Internal.Settings exposing (Setting(..))
 import Time
 
@@ -74,16 +74,18 @@ centerOffset =
     CenterOffset
 
 
-{-| Use this to specify SVG stroke attributes that will be applied for all paths linking nodes together, e.g:
-
-    connectorStrokeAttributes [ strokeWidth "3", stroke "#EFEFEF", strokeLinecap "round" ]
-
-Note the `Never` in the type signature: the compiler won't allow any event handlers with messages. Those are swallowed with an `Html.Attributes.map`.
-
+{-| Stroke color of the lines connecting siblings.
 -}
-connectorStrokeAttributes : List (Svg.Attribute Never) -> Setting
-connectorStrokeAttributes =
-    ConnectorStrokeAttributes
+connectorStroke : String -> Setting
+connectorStroke =
+    ConnectorStroke
+
+
+{-| Stroke width of the lines connecting siblings.
+-}
+connectorStrokeWidth : String -> Setting
+connectorStrokeWidth =
+    ConnectorStrokeWidth
 
 
 {-| Enable or disable drag and drop with this boolean flag (`True` is enabled, which is the default value). Note that the tree can still be panned if drag and drop is disabled.

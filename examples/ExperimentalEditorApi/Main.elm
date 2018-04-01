@@ -1,7 +1,6 @@
 module ExperimentalEditorApi.Main exposing (..)
 
 import Html exposing (Html, div, h1, program)
-import Html.Lazy exposing (lazy)
 import ExperimentalEditorApi.Editor as Editor
 import ExperimentalEditorApi.Node as Node
 import Arborist

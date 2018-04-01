@@ -8,9 +8,12 @@ module Arborist
         , applySettings
         , resize
         , reposition
+        , deactivate
         , update
         , NodeView
+        , StyledNodeView
         , view
+        , styledView
         , Tree
         , tree
         , node
@@ -19,7 +22,6 @@ module Arborist
         , decoder
         , encoder
         , activeNode
-        , deactivate
         , setActiveNode
         , deleteActiveNode
         , Context
@@ -31,7 +33,7 @@ module Arborist
 
 # Module setup
 
-@docs Model, Msg, init, initWith, update, NodeView, view, subscriptions
+@docs Model, Msg, init, initWith, update, NodeView, StyledNodeView, view, styledView, subscriptions
 
 
 # Configuration
@@ -63,11 +65,12 @@ module Arborist
 import AnimationFrame
 import Time
 import Dict
-import Html exposing (Html, Attribute, node, div)
-import Html.Styled exposing (fromUnstyled, toUnstyled)
-import Html.Keyed
-import Html.Attributes exposing (style, value)
-import Html.Events exposing (on, onWithOptions)
+import Css exposing (..)
+import Html
+import Html.Styled exposing (fromUnstyled, toUnstyled, node, div, text)
+import Html.Styled.Keyed
+import Html.Styled.Attributes exposing (style, value, css)
+import Html.Styled.Events exposing (on, onWithOptions)
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Internal.Tree as Tree
@@ -793,7 +796,7 @@ nodeGeometry settings path layout =
 {-| View function for an individual node, depending on its [context](Context), and its value. This value is expressed as a maybe because the node may contain an `insert new node`-type placeholder.
 -}
 type alias NodeView node =
-    Context node -> Maybe node -> Html Msg
+    Context node -> Maybe node -> Html.Html Msg
 
 
 {-| Styled version of [NodeView](#NodeView), using `elm-css`.
@@ -883,9 +886,9 @@ viewContext (Model model) path =
 
 {-| Styled version of [view](#NodeView), using `elm-css`.
 -}
-styledView : StyledNodeView node -> List (Attribute Msg) -> Model node -> Html.Styled.Html Msg
-styledView nodeView attrs (Model model) =
-    view (\ctx node -> nodeView ctx node |> toUnstyled) attrs (Model model) |> fromUnstyled
+view : NodeView node -> List (Html.Attribute Msg) -> Model node -> Html.Html Msg
+view nodeView attrs (Model model) =
+    styledView (\ctx node -> nodeView ctx node |> fromUnstyled) (List.map Html.Styled.Attributes.fromUnstyled attrs) (Model model) |> toUnstyled
 
 
 {-| The editor's view function, taking the following arguments:
@@ -895,8 +898,8 @@ styledView nodeView attrs (Model model) =
   - the editor's [model](#Model).
 
 -}
-view : NodeView node -> List (Attribute Msg) -> Model node -> Html Msg
-view viewNode attrs (Model model) =
+styledView : StyledNodeView node -> List (Html.Styled.Attribute Msg) -> Model node -> Html.Styled.Html Msg
+styledView viewNode attrs (Model model) =
     let
         flatTree =
             ComputedTree.flat model.computedTree
@@ -956,11 +959,8 @@ view viewNode attrs (Model model) =
                         )
                    , on "mouseleave" (Decode.succeed CanvasMouseLeave)
                    , style
-                        [ ( "overflow", "hidden" )
-                        , ( "width", Utils.floatToPxString model.settings.canvasWidth )
+                        [ ( "width", Utils.floatToPxString model.settings.canvasWidth )
                         , ( "height", Utils.floatToPxString model.settings.canvasHeight )
-                        , ( "box-sizing", "border-box" )
-                        , ( "position", "relative" )
                         , ( "cursor"
                           , if isCanvasDragging then
                                 "move"
@@ -968,15 +968,22 @@ view viewNode attrs (Model model) =
                                 "auto"
                           )
                         ]
+                   , css
+                        [ overflow hidden
+                        , boxSizing borderBox
+                        , position relative
+                        ]
                    ]
                 ++ attrs
             )
-            [ Html.Keyed.node "div"
-                [ style
-                    ([ ( "width", "100%" )
-                     , ( "height", "100%" )
-                     , ( "position", "relative" )
-                     , ( "transform"
+            [ Html.Styled.Keyed.node "div"
+                [ css
+                    [ width (pct 100)
+                    , height (pct 100)
+                    , position relative
+                    ]
+                , style
+                    ([ ( "transform"
                        , "translate3d("
                             ++ (Utils.floatToPxString canvasTotalDragOffsetX)
                             ++ ", "
@@ -1074,9 +1081,9 @@ view viewNode attrs (Model model) =
                                                 ]
                                           )
                                         , (if node == Nothing then
-                                            ( key ++ "connector2", Html.text "" )
+                                            ( key ++ "connector2", text "" )
                                            else
-                                            ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.map (always NoOp) )
+                                            ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.Styled.map (always NoOp) )
                                           )
                                         ]
                                             ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
@@ -1084,9 +1091,11 @@ view viewNode attrs (Model model) =
                                                       , div
                                                             [ style <|
                                                                 nodeBaseStyle
-                                                                    ++ Styles.dragShadowNode
                                                                     ++ (coordStyle ( x, y ))
                                                                     ++ (Styles.throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
+                                                            , css
+                                                                [ backgroundColor <| rgba 0 0 0 0.05
+                                                                ]
                                                             ]
                                                             []
                                                       )
@@ -1094,7 +1103,7 @@ view viewNode attrs (Model model) =
                                                         ++ (if node == Nothing then
                                                                 []
                                                             else
-                                                                [ ( key ++ "connector1", Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters |> Html.map (always NoOp) ) ]
+                                                                [ ( key ++ "connector1", Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters |> Html.Styled.map (always NoOp) ) ]
                                                            )
                                                 else
                                                     []

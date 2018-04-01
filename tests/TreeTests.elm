@@ -3,18 +3,18 @@ module TreeTests exposing (..)
 import Json.Encode as Encode
 import Json.Decode as Decode
 import Expect exposing (Expectation)
-import Fuzz exposing (Fuzzer, int, list, string)
 import Test exposing (..)
-import Arborist.Tree as Tree
-import Utils.Tree
+import Arborist
+import Internal.Tree as Tree
+import Internal.TreeHelpers as TreeHelpers
 
 
 tree : Tree.Tree String
 tree =
-    Tree.Node "Apple"
-        [ Tree.Node "Pear" []
-        , Tree.Node "Peach"
-            [ Tree.Node "Apricot" []
+    Arborist.node "Apple"
+        [ Arborist.node "Pear" []
+        , Arborist.node "Peach"
+            [ Arborist.node "Apricot" []
             ]
         ]
 
@@ -25,41 +25,41 @@ suite =
         [ test "Deletes" <|
             \_ ->
                 Expect.equal
-                    (Utils.Tree.delete [ 1, 0 ]
-                        (Tree.Node "Apple"
-                            [ Tree.Node "Pear"
-                                [ Tree.Node "Pear2" []
+                    (TreeHelpers.delete [ 1, 0 ]
+                        (Arborist.node "Apple"
+                            [ Arborist.node "Pear"
+                                [ Arborist.node "Pear2" []
                                 ]
-                            , Tree.Node "Peach"
-                                [ Tree.Node "Apricot" []
+                            , Arborist.node "Peach"
+                                [ Arborist.node "Apricot" []
                                 ]
                             ]
                         )
                     )
-                    (Tree.Node "Apple"
-                        [ Tree.Node "Pear" [ Tree.Node "Pear2" [] ]
-                        , Tree.Node "Peach" []
+                    (Arborist.node "Apple"
+                        [ Arborist.node "Pear" [ Arborist.node "Pear2" [] ]
+                        , Arborist.node "Peach" []
                         ]
                     )
         , test "Updates" <|
             \_ ->
-                Expect.equal (Utils.Tree.update [ 1, 0 ] "Apricot2" tree)
-                    (Tree.Node "Apple"
-                        [ Tree.Node "Pear" []
-                        , Tree.Node "Peach"
-                            [ Tree.Node "Apricot2" []
+                Expect.equal (TreeHelpers.update [ 1, 0 ] "Apricot2" tree)
+                    (Arborist.node "Apple"
+                        [ Arborist.node "Pear" []
+                        , Arborist.node "Peach"
+                            [ Arborist.node "Apricot2" []
                             ]
                         ]
                     )
         , test "Inserts" <|
             \_ ->
-                Expect.equal (Utils.Tree.insert [] (Just "Banana") tree)
-                    (Tree.Node "Apple"
-                        [ Tree.Node "Pear" []
-                        , Tree.Node "Peach"
-                            [ Tree.Node "Apricot" []
+                Expect.equal (TreeHelpers.insert [] (Just "Banana") tree)
+                    (Arborist.node "Apple"
+                        [ Arborist.node "Pear" []
+                        , Arborist.node "Peach"
+                            [ Arborist.node "Apricot" []
                             ]
-                        , Tree.Node "Banana" []
+                        , Arborist.node "Banana" []
                         ]
                     )
         , test "Calculates depth" <|

@@ -3,18 +3,12 @@ module DemoWebsite.Main exposing (..)
 {-| Code for the Arborist website.
 -}
 
-import Task
-import Json.Decode as Decode
 import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
 import Html.Attributes exposing (class, style, value, type_, href)
-import Html.Events exposing (onInput, onClick)
 import Svg exposing (svg, path)
 import Svg.Attributes exposing (viewBox, d, stroke)
-import Arborist
-import Arborist.Settings as Settings
 import DemoWebsite.Styles as Styles
 import Simple.Main as Conversation
-import Window exposing (size, resizes)
 
 
 {-| The Node data type held in each of the tree's nodes.

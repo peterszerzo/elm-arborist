@@ -4,12 +4,9 @@ module Simple.Main exposing (..)
 -}
 
 import Task
-import Json.Decode as Decode
 import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
 import Html.Attributes exposing (class, style, value, type_, href)
 import Html.Events exposing (onInput, onClick)
-import Svg exposing (svg, path)
-import Svg.Attributes exposing (viewBox, d, stroke)
 import Arborist
 import Arborist.Settings as Settings
 import Simple.Styles as Styles
@@ -71,9 +68,6 @@ init =
                 , Settings.throttleMouseMoves (100 * Time.millisecond)
 
                 --, Settings.sturdyMode True
-                , Settings.connectorStrokeAttributes
-                    [ stroke "#E2E2E2"
-                    ]
                 ]
                 tree
       , newNode = { question = "", answer = "" }
