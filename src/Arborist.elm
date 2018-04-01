@@ -64,6 +64,7 @@ import AnimationFrame
 import Time
 import Dict
 import Html exposing (Html, Attribute, node, div)
+import Html.Styled exposing (fromUnstyled, toUnstyled)
 import Html.Keyed
 import Html.Attributes exposing (style, value)
 import Html.Events exposing (on, onWithOptions)
@@ -795,6 +796,12 @@ type alias NodeView node =
     Context node -> Maybe node -> Html Msg
 
 
+{-| Styled version of [NodeView](#NodeView), using `elm-css`.
+-}
+type alias StyledNodeView node =
+    Context node -> Maybe node -> Html.Styled.Html Msg
+
+
 viewContext : Model node -> List Int -> Context node
 viewContext (Model model) path =
     let
@@ -872,6 +879,13 @@ viewContext (Model model) path =
             }
     in
         nodeViewContext
+
+
+{-| Styled version of [view](#NodeView), using `elm-css`.
+-}
+styledView : StyledNodeView node -> List (Attribute Msg) -> Model node -> Html.Styled.Html Msg
+styledView nodeView attrs (Model model) =
+    view (\ctx node -> nodeView ctx node |> toUnstyled) attrs (Model model) |> fromUnstyled
 
 
 {-| The editor's view function, taking the following arguments:
