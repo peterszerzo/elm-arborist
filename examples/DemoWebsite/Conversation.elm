@@ -1,14 +1,15 @@
-module Simple.Main exposing (..)
+module DemoWebsite.Conversation exposing (..)
 
 {-| A simple Arborist app modeling a conversation flow.
 -}
 
-import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
-import Html.Attributes exposing (class, style, value, type_, href)
-import Html.Events exposing (onInput, onClick)
+import Task
+import Html.Styled exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
+import Html.Styled.Attributes exposing (class, style, value, type_, href)
+import Html.Styled.Events exposing (onInput, onClick)
 import Arborist
 import Arborist.Settings as Settings
-import Simple.Styles as Styles
+import DemoWebsite.Styles as Styles
 import Window exposing (size, resizes)
 import Time
 
@@ -38,6 +39,7 @@ type alias Model =
 
     -- Keep track of a to-be-inserted node
     , newNode : Node
+    , windowSize : Window.Size
     }
 
 
@@ -69,8 +71,9 @@ init =
                 ]
                 tree
       , newNode = { question = "", answer = "" }
+      , windowSize = { width = 0, height = 0 }
       }
-    , Cmd.none
+    , Task.perform Resize Window.size
     )
 
 
@@ -82,6 +85,9 @@ type Msg
     | EditNewNodeAnswer String
     | SetActive Node
     | DeleteActive
+    | Reposition
+    | Deactivate
+    | Resize Window.Size
 
 
 
@@ -120,6 +126,21 @@ update msg model =
             , Cmd.none
             )
 
+        Resize { width, height } ->
+            ( { model | arborist = Arborist.resize width height model.arborist, windowSize = { width = width, height = height } }
+            , Cmd.none
+            )
+
+        Reposition ->
+            ( { model | arborist = Arborist.reposition model.arborist }
+            , Cmd.none
+            )
+
+        Deactivate ->
+            ( { model | arborist = Arborist.deactivate model.arborist }
+            , Cmd.none
+            )
+
 
 
 -- View
@@ -137,10 +158,12 @@ view model =
                         , ( "position", "absolute" )
                         , ( "top", "0px" )
                         , ( "left", "0px" )
+                        , ( "width", (toString model.windowSize.width) ++ "px" )
+                        , ( "height", (toString model.windowSize.height) ++ "px" )
                         ]
                     ]
                  <|
-                    [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg
+                    [ Arborist.styledView nodeView [ style Styles.box ] model.arborist |> Html.Styled.map ArboristMsg
                     ]
                         ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
@@ -186,7 +209,7 @@ view model =
 
 {-| Describe how a node should render inside the tree's layout.
 -}
-nodeView : Arborist.NodeView Node
+nodeView : Arborist.StyledNodeView Node
 nodeView context item =
     item
         |> Maybe.map
@@ -280,7 +303,10 @@ bubble =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Arborist.subscriptions model.arborist |> Sub.map ArboristMsg
+    Sub.batch
+        [ Arborist.subscriptions model.arborist |> Sub.map ArboristMsg
+        , Window.resizes Resize
+        ]
 
 
 {-| Entry point

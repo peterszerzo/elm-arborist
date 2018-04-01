@@ -3,12 +3,15 @@ module DemoWebsite.Main exposing (..)
 {-| Code for the Arborist website.
 -}
 
-import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
-import Html.Attributes exposing (class, style, value, type_, href)
-import Svg exposing (svg, path)
-import Svg.Attributes exposing (viewBox, d, stroke)
+import Css exposing (..)
+import Css.Foreign as Foreign
+import Html exposing (program)
+import Html.Styled exposing (Html, div, node, h1, h2, h3, p, a, text, label, input, map, button, toUnstyled)
+import Html.Styled.Attributes exposing (class, style, value, type_, href, css)
+import Svg.Styled exposing (svg, path)
+import Svg.Styled.Attributes exposing (viewBox, d, stroke)
 import DemoWebsite.Styles as Styles
-import Simple.Main as Conversation
+import DemoWebsite.Conversation as Conversation
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -72,7 +75,7 @@ update msg model =
 
 logo : Html msg
 logo =
-    svg [ viewBox "0 0 1000 1000" ]
+    svg [ Svg.Styled.Attributes.viewBox "0 0 1000 1000", Svg.Styled.Attributes.fill "currentColor" ]
         [ path [ d "M520,720l220,-220l220,220l-440,0Z" ] []
         , path [ d "M40,720l220,-220l220,220l-440,0Z" ] []
         , path [ d "M280,480l220,-220l220,220l-440,0Z" ] []
@@ -87,8 +90,34 @@ view : Model -> Html Msg
 view model =
     div [] <|
         [ node "style" [] [ text Styles.raw ]
-        , div [ class "intro" ]
-            [ div [ class "intro__icon" ] [ logo ]
+        , div
+            [ css
+                [ textAlign center
+                , position absolute
+                , bottom <| px 20
+                , left <| px 20
+                , property "z-index" "100"
+                , padding <| px 20
+                , borderRadius <| px 4
+                , backgroundColor <| (hex "fafafa")
+                , property "box-shadow" "0 2px 4px rgba(0, 0, 0, 0.1)"
+                , Foreign.descendants
+                    [ Foreign.a
+                        [ display inlineBlock
+                        , margin2 (px 0) (px 8)
+                        ]
+                    ]
+                ]
+            ]
+            [ div
+                [ css
+                    [ width (px 60)
+                    , height (px 60)
+                    , margin2 (px -10) auto
+                    , color (hex "037C4E")
+                    ]
+                ]
+                [ logo ]
             , h1 [] [ text "elm-arborist" ]
             , p []
                 [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v2.1 Docs" ]
@@ -96,7 +125,7 @@ view model =
                 , a [ href "Egg/index.html" ] [ text "* Fun stuff!" ]
                 ]
             ]
-        , Conversation.view model.conversation |> Html.map ConversationMsg
+        , Conversation.view model.conversation |> Html.Styled.map ConversationMsg
         ]
 
 
@@ -107,7 +136,7 @@ main =
     program
         { init = init
         , update = update
-        , view = view
+        , view = view >> toUnstyled
         , subscriptions =
             (\model ->
                 Sub.batch

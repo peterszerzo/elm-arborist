@@ -88,11 +88,17 @@ This should work for a large number of tree editing cases. If you need a broader
 
 ### Settings
 
-Replace `init` with `initWith [ Arborist.canvasWidth 800, Arborist.nodeHeight 40, Arborist.gutter 20 ]` to add all kinds of customizations to the editor. See `Arborist.Settings`. 
+Replace `init` with `initWith [ Arborist.Settings.canvasWidth 800, Arborist.Settings.nodeHeight 40, Arborist.Settings.gutter 20 ]` to add all kinds of customizations to the editor. See `Arborist.Settings`. 
 
 ### Animations
 
 Using the `Arborist.subscriptions`, you can smoothly animate to center a node when it is activated. See example for details.
+
+### Styling
+
+You can use `styledView` instead of `view`, taking `StyledNodeView` instead of `NodeView` if you wish to use [elm-css](http://package.elm-lang.org/packages/rtfeldman/elm-css/latest) to style your view. `Arborist` uses `elm-css` under the hood, as it was necessary for most realistic use-cases that came up with the library.
+
+Please open an issue if first-class [style-elements](http://package.elm-lang.org/packages/mdgriffith/style-elements/latest) support is essential to your project.
 
 ```
 🌲🌲🌲  🌲🌲🌲 🌲  🌲🌲🌲 🌲🌲  🌲  🌲🌲🌲 🌲🌲🌲   🌲 🌲🌲        🌲🌲      🌲   

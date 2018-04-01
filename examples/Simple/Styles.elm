@@ -122,6 +122,7 @@ button:focus {
 box : List ( String, String )
 box =
     [ ( "margin", "auto" )
+    , ( "border", "1px solid #adadad" )
     ]
 
 

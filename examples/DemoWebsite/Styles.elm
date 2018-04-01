@@ -56,35 +56,6 @@ p {
   margin: 6px 0 0 0;
 }
 
-.intro {
-  text-align: center;
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  z-index: 100;
-  padding: 20px;
-  border-radius: 4px;
-  background-color: #fafafa;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.intro a {
-  display: inline-block;
-  margin: 0 8px;
-}
-
-.intro__icon {
-  width: 60px;
-  height: 60px;
-  margin: -10px auto;
-}
-
-.intro__icon svg {
-  width: 100%;
-  height: 100%;
-  fill: """ ++ green ++ """;
-}
-
 a {
   text-decoration: none;
   color: inherit;
@@ -157,6 +128,51 @@ button:focus {
   box-shadow: 0 0 3px """ ++ green ++ """;
 }
 """
+
+
+box : List ( String, String )
+box =
+    [ ( "margin", "auto" )
+    ]
+
+
+popup : List ( String, String )
+popup =
+    [ ( "width", "320px" )
+    , ( "background-color", "white" )
+    , ( "height", "240px" )
+    , ( "border-top", "4px solid " ++ green )
+    , ( "padding", "20px 20px 0 20px" )
+    , ( "border-radius", "4px" )
+    , ( "overflow", "auto" )
+    , ( "position", "absolute" )
+    , ( "transform", "translate3d(-50%, 50px, 0)" )
+    , ( "box-shadow", "0 2px 4px rgba(0, 0, 0, 0.15)" )
+    ]
+
+
+nodeContainer : List ( String, String )
+nodeContainer =
+    [ ( "width", "100%" )
+    , ( "height", "45px" )
+    , ( "font-size", "0.875rem" )
+    , ( "padding", "4px 20px" )
+    , ( "border-radius", "4px" )
+    , ( "box-sizing", "border-box" )
+    , ( "padding", "0 12px" )
+    , ( "display", "flex" )
+    , ( "align-items", "center" )
+    , ( "justify-content", "center" )
+    ]
+
+
+text : List ( String, String )
+text =
+    [ ( "margin", "0" )
+    , ( "font-size", "0.875rem" )
+    , ( "line-height", "1.2" )
+    , ( "text-align", "center" )
+    ]
 
 
 button : List ( String, String )
