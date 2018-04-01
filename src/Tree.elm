@@ -35,6 +35,20 @@ type Tree node
     | TerminalNode node node
 
 
+expand : Tree node -> Maybe ( node, List (Tree node) )
+expand tree =
+    case tree of
+        Empty ->
+            Nothing
+
+        Node node children ->
+            Just ( node, children )
+
+        -- TODO: implement
+        TerminalNode _ _ ->
+            Nothing
+
+
 decoder : Decode.Decoder node -> Decode.Decoder (Tree node)
 decoder nodeDecoder =
     Decode.oneOf

@@ -18,6 +18,7 @@ module Arborist
         , tree
         , node
         , empty
+        , expand
         , flatten
         , decoder
         , encoder
@@ -43,10 +44,10 @@ module Arborist
 
 # Creating and modifying raw trees
 
-@docs Tree, node, empty, flatten, decoder, encoder
+@docs Tree, node, empty, expand, flatten, decoder, encoder
 
 
-# Tree getters and modifiers
+# Arborist tree getters and modifiers
 
 @docs tree, activeNode, setActiveNode, deleteActiveNode
 
@@ -104,6 +105,19 @@ node =
 empty : Tree.Tree node
 empty =
     Tree.Empty
+
+
+{-| Expand a tree into a raw data structure that can be recursed by the user:
+
+  - if the tree is empty, it returns `Nothing`.
+  - if the tree isn't empty, it returns `Just ( currentNode, childtrees )`
+
+Compared to the [tree example](http://elm-lang.org/examples/binary-tree) on Elm's website, the `Empty` and `Node` constructors are deliberately not exposed by this library, in order to accommodate a few not-so-common node use-cases that make said union type complicated for a newcomer to the library.
+
+-}
+expand : Tree.Tree node -> Maybe ( node, List (Tree node) )
+expand =
+    Tree.expand
 
 
 {-| Flatten tree into a list of ( path, node ) tuples.
