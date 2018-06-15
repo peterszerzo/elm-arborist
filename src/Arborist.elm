@@ -107,12 +107,10 @@ empty =
     Tree.Empty
 
 
-{-| Expand a tree into a raw data structure that can be recursed by the user:
+{-| Expand a tree into a raw data structure that can be traversed. Compared to the [tree example](http://elm-lang.org/examples/binary-tree) on Elm's website, the `Empty` and `Node` constructors are deliberately not exposed by this library, because there are plans to support other types of branching such as multiple siblings ending in the same terminal node.
 
   - if the tree is empty, it returns `Nothing`.
   - if the tree isn't empty, it returns `Just ( currentNode, childtrees )`
-
-Compared to the [tree example](http://elm-lang.org/examples/binary-tree) on Elm's website, the `Empty` and `Node` constructors are deliberately not exposed by this library, in order to accommodate a few not-so-common node use-cases that make said union type complicated for a newcomer to the library.
 
 -}
 expand : Tree.Tree node -> Maybe ( node, List (Tree node) )
@@ -241,6 +239,7 @@ reposition (Model model) =
         { model
             | panOffset = ( 0, 0 )
             , targetPanOffset = Nothing
+            , drag = Drag.init
         }
 
 
