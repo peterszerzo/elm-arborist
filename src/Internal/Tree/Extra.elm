@@ -1,8 +1,8 @@
-module Tree.Extra exposing (..)
+module Internal.Tree.Extra exposing (..)
 
 import Dict
 import Utils
-import Tree as Tree exposing (..)
+import Arborist.Tree as Tree exposing (..)
 
 
 -- Data structure
@@ -48,10 +48,6 @@ addTrailingEmpties tree =
         Tree.Node item children ->
             Node item <| List.map addTrailingEmpties children ++ [ Empty ]
 
-        -- TODO: implement
-        Tree.TerminalNode _ _ ->
-            Empty
-
 
 removeEmpties : Tree a -> Tree a
 removeEmpties tree =
@@ -61,10 +57,6 @@ removeEmpties tree =
 
         Node item children ->
             Node item <| (List.filter (\tree -> tree /= Empty) children |> List.map removeEmpties)
-
-        -- TODO: implement
-        Tree.TerminalNode _ _ ->
-            Empty
 
 
 {-| Find item by path
@@ -82,10 +74,6 @@ find path tree =
             Just tree
 
         ( head :: tail, Empty ) ->
-            Nothing
-
-        -- TODO: implement
-        ( _, _ ) ->
             Nothing
 
 
@@ -223,10 +211,6 @@ flattenTail path tree =
                         |> List.foldl (++) []
                    )
 
-        -- TODO: implement
-        TerminalNode _ _ ->
-            [ ( path, Nothing ) ]
-
 
 {-| Analyze tree.
 -}
@@ -274,13 +258,6 @@ analyzeTail { depth, current } tree =
                         |> List.foldl Dict.union Dict.empty
                 , shortNodes = childrenAnalysis |> List.map .shortNodes |> List.foldl (++) []
                 }
-
-        -- TODO: implement
-        TerminalNode _ _ ->
-            { depth = 0
-            , nodeInfo = Dict.empty
-            , shortNodes = []
-            }
 
 
 {-| Lays out elements.

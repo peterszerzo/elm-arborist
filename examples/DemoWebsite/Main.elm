@@ -120,7 +120,7 @@ view model =
                 [ logo ]
             , h1 [] [ text "elm-arborist" ]
             , p []
-                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v2.1 Docs" ]
+                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v4.0 Docs" ]
                 , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
                 , a [ href "Egg/index.html" ] [ text "* Fun stuff!" ]
                 ]

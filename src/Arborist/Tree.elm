@@ -1,4 +1,4 @@
-module Tree exposing (..)
+module Arborist.Tree exposing (Tree(..), map, decoder, encoder, depth, flatten)
 
 {-| A tiny tiny tree module. Only a few utility methods are provided here - after all, if you want to manupilate the tree, you should probably do so using the interface 🤓.
 
@@ -28,27 +28,10 @@ import Json.Encode as Encode
 type Tree node
     = Empty
     | Node node (List (Tree node))
-      -- Handles the case where
-      -- TODO: this is a placeholder only, with no implementation.
-      -- It is kept around to make sure other modules in the library are compatible
-      -- as they evolve.
-    | TerminalNode node node
 
 
-expand : Tree node -> Maybe ( node, List (Tree node) )
-expand tree =
-    case tree of
-        Empty ->
-            Nothing
-
-        Node node children ->
-            Just ( node, children )
-
-        -- TODO: implement
-        TerminalNode _ _ ->
-            Nothing
-
-
+{-| Decode a tree based on the decoder of its node
+-}
 decoder : Decode.Decoder node -> Decode.Decoder (Tree node)
 decoder nodeDecoder =
     Decode.oneOf
@@ -59,6 +42,8 @@ decoder nodeDecoder =
         ]
 
 
+{-| Encodes a tree based on the encoder of its node
+-}
 encoder : (node -> Encode.Value) -> Tree node -> Encode.Value
 encoder nodeEncoder tree =
     case tree of
@@ -70,10 +55,6 @@ encoder nodeEncoder tree =
                 [ ( "value", nodeEncoder node )
                 , ( "children", List.map (encoder nodeEncoder) children |> Encode.list )
                 ]
-
-        -- TODO: implement
-        TerminalNode _ _ ->
-            Encode.null
 
 
 {-| Tree depth.
@@ -92,10 +73,6 @@ depthHelper currentDepth tree =
         Node _ children ->
             currentDepth :: List.map (depthHelper (currentDepth + 1)) children |> List.foldl max -1
 
-        -- TODO: implement
-        TerminalNode _ _ ->
-            0
-
 
 {-| Map over the nodes of the tree.
 -}
@@ -107,10 +84,6 @@ map fn tree =
 
         Node val children ->
             Node (fn val) (List.map (map fn) children)
-
-        -- TODO: implement
-        TerminalNode _ _ ->
-            Empty
 
 
 {-| Flatten a tree into a list of ( path, node ) tuples. The path is a list of integers showing how you can get to the node (the root would be `[]`, its first child `[ 1 ]`).
@@ -135,7 +108,3 @@ flattenTail path tree =
                         children
                         |> List.foldl (++) []
                    )
-
-        -- TODO: implement
-        TerminalNode _ _ ->
-            []

@@ -14,14 +14,7 @@ module Arborist
         , StyledNodeView
         , view
         , styledView
-        , Tree
         , tree
-        , node
-        , empty
-        , expand
-        , flatten
-        , decoder
-        , encoder
         , activeNode
         , setActiveNode
         , deleteActiveNode
@@ -40,11 +33,6 @@ module Arborist
 # Configuration
 
 @docs applySettings, resize
-
-
-# Creating and modifying raw trees
-
-@docs Tree, node, empty, expand, flatten, decoder, encoder
 
 
 # Arborist tree getters and modifiers
@@ -72,71 +60,15 @@ import Html.Styled exposing (fromUnstyled, toUnstyled, node, div, text)
 import Html.Styled.Keyed
 import Html.Styled.Attributes exposing (style, value, css)
 import Html.Styled.Events exposing (on, onWithOptions)
-import Json.Encode as Encode
 import Json.Decode as Decode
-import Tree
-import Tree.Computed as ComputedTree
-import Tree.Extra as TreeHelpers exposing (TreeNodePath)
+import Arborist.Tree as Tree
+import Internal.Tree.Computed as ComputedTree
+import Internal.Tree.Extra as TreeHelpers exposing (TreeNodePath)
 import Internal.Settings as Settings
 import Drag exposing (Drag)
 import Utils
 import Views.NodeConnectors
 import Views.Styles as Styles
-
-
-{-| Opaque type for a tree.
--}
-type alias Tree node =
-    Tree.Tree node
-
-
-{-| Non-empty node, constructed from a single root node and an array of children represented as trees.
-
-    node "Parent" [ node "Child1" [], node "Child2" [] ]
-
--}
-node : nodeType -> List (Tree.Tree nodeType) -> Tree.Tree nodeType
-node =
-    Tree.Node
-
-
-{-| Empty tree.
--}
-empty : Tree.Tree node
-empty =
-    Tree.Empty
-
-
-{-| Expand a tree into a raw data structure that can be traversed. Compared to the [tree example](http://elm-lang.org/examples/binary-tree) on Elm's website, the `Empty` and `Node` constructors are deliberately not exposed by this library, because there are plans to support other types of branching such as multiple siblings ending in the same terminal node.
-
-  - if the tree is empty, it returns `Nothing`.
-  - if the tree isn't empty, it returns `Just ( currentNode, childtrees )`
-
--}
-expand : Tree.Tree node -> Maybe ( node, List (Tree node) )
-expand =
-    Tree.expand
-
-
-{-| Flatten tree into a list of ( path, node ) tuples.
--}
-flatten : Tree.Tree node -> List ( List Int, node )
-flatten =
-    Tree.flatten
-
-
-{-| Tree decoder as a function of the node's decoder. Assumes a `value` and `children` fields, holding the current node contents and an array of children, respectively.
--}
-decoder : Decode.Decoder node -> Decode.Decoder (Tree.Tree node)
-decoder =
-    Tree.decoder
-
-
-{-| Encodes a tree into JSON, given its node encoder.
--}
-encoder : (node -> Encode.Value) -> (Tree.Tree node -> Encode.Value)
-encoder =
-    Tree.encoder
 
 
 type ActiveNode

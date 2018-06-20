@@ -1,5 +1,5 @@
 {
-    "version": "3.1.1",
+    "version": "4.0.0",
     "summary": "Tree-editing interface for Elm",
     "repository": "https://github.com/peterszerzo/elm-arborist.git",
     "license": "BSD3",
@@ -8,7 +8,8 @@
     ],
     "exposed-modules": [
         "Arborist",
-        "Arborist.Settings"
+        "Arborist.Settings",
+        "Arborist.Tree"
     ],
     "dependencies": {
         "elm-lang/animation-frame": "1.0.1 <= v < 2.0.0",

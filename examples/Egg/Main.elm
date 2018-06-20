@@ -1,15 +1,13 @@
 port module Egg.Main exposing (..)
 
 import Task
-import Json.Decode as Decode
 import Json.Encode as Encode
 import Regex
 import Html exposing (Html, header, div, node, h1, h2, h3, p, a, text, program, label, textarea, map, button)
 import Html.Attributes exposing (class, style, value, type_, href, id)
 import Html.Events exposing (onInput, onClick)
-import Svg exposing (svg, path)
-import Svg.Attributes exposing (viewBox, d, stroke)
 import Arborist
+import Arborist.Tree as Tree
 import Arborist.Settings as Settings
 import Egg.Styles as Styles
 import Window exposing (size, resizes)
@@ -35,19 +33,19 @@ type alias Model =
 
 {-| The starting tree.
 -}
-tree : Arborist.Tree Node
+tree : Tree.Tree Node
 tree =
-    Arborist.node { code = """<div>
+    Tree.Node { code = """<div>
   {props.children}
 </div>""" }
-        [ Arborist.node { code = "<header>I'm Egg{props.children}</header>" }
+        [ Tree.Node { code = "<header>I'm Egg{props.children}</header>" }
             []
-        , Arborist.node { code = "<main>World</main>" }
-            [ Arborist.node { code = "<code>const a;</code>" } []
+        , Tree.Node { code = "<main>World</main>" }
+            [ Tree.Node { code = "<code>const a;</code>" } []
             ]
-        , Arborist.node { code = "<footer>Made with a frying pan at ...</footer>" }
+        , Tree.Node { code = "<footer>Made with a frying pan at ...</footer>" }
             []
-        , Arborist.node { code = "<style>{`\nheader {\n  background-color: #FFF;\n}\n\nfooter {\n  background-color: #dedede;\n}\n`}</style>" } []
+        , Tree.Node { code = "<style>{`\nheader {\n  background-color: #FFF;\n}\n\nfooter {\n  background-color: #dedede;\n}\n`}</style>" } []
         ]
 
 
@@ -59,9 +57,7 @@ init =
                 , Settings.nodeHeight 30
                 , Settings.level 80
                 , Settings.nodeWidth 100
-                , Settings.connectorStrokeAttributes
-                    [ stroke "#454545"
-                    ]
+                , Settings.connectorStroke "#454545"
                 ]
                 tree
       , newNode = { code = "" }
@@ -93,7 +89,7 @@ update msg model =
     let
         flatTree =
             Arborist.tree model.arborist
-                |> Arborist.flatten
+                |> Tree.flatten
 
         sourceCode =
             flatTree

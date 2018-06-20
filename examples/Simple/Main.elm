@@ -8,8 +8,8 @@ import Html.Attributes exposing (class, style, value, type_, href)
 import Html.Events exposing (onInput, onClick)
 import Arborist
 import Arborist.Settings as Settings
+import Arborist.Tree as Tree
 import Simple.Styles as Styles
-import Window exposing (size, resizes)
 import Time
 
 
@@ -43,14 +43,14 @@ type alias Model =
 
 {-| The starting tree.
 -}
-tree : Arborist.Tree Node
+tree : Tree.Tree Node
 tree =
-    Arborist.node { answer = "", question = "Do you like trees?" }
-        [ Arborist.node { answer = "yes", question = "How much?" }
-            [ Arborist.node { answer = "A lot!", question = "Where were you all my life?" } []
+    Tree.Node { answer = "", question = "Do you like trees?" }
+        [ Tree.Node { answer = "yes", question = "How much?" }
+            [ Tree.Node { answer = "A lot!", question = "Where were you all my life?" } []
             ]
-        , Arborist.node { answer = "No.", question = "Seriously?" }
-            [ Arborist.node { answer = "Yes", question = "How about rollercoasters?" } []
+        , Tree.Node { answer = "No.", question = "Seriously?" }
+            [ Tree.Node { answer = "Yes", question = "How about rollercoasters?" } []
             ]
         ]
 
