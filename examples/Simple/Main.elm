@@ -63,9 +63,7 @@ init =
                 , Settings.nodeHeight 45
                 , Settings.level 100
                 , Settings.nodeWidth 160
-                , Settings.throttleMouseMoves (100 * Time.millisecond)
-
-                --, Settings.sturdyMode True
+                , Settings.sturdyMode True
                 ]
                 tree
       , newNode = { question = "", answer = "" }
