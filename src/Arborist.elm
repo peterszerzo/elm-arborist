@@ -17,6 +17,7 @@ module Arborist
         , tree
         , activeNode
         , setActiveNode
+        , setActiveNodeWithChildren
         , deleteActiveNode
         , Context
         , NodeState(..)
@@ -37,7 +38,7 @@ module Arborist
 
 # Arborist tree getters and modifiers
 
-@docs tree, activeNode, setActiveNode, deleteActiveNode
+@docs tree, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
 
 
 # Display modifiers
@@ -56,7 +57,7 @@ import Time
 import Dict
 import Css exposing (..)
 import Html
-import Html.Styled exposing (fromUnstyled, toUnstyled, node, div, text)
+import Html.Styled exposing (fromUnstyled, toUnstyled, div, text)
 import Html.Styled.Keyed
 import Html.Styled.Attributes exposing (style, value, css)
 import Html.Styled.Events exposing (on, onWithOptions)
@@ -227,6 +228,13 @@ activeNode (Model model) =
 -}
 setActiveNode : node -> Model node -> Model node
 setActiveNode newNode (Model model) =
+    setActiveNodeWithChildren newNode Nothing (Model model)
+
+
+{-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
+-}
+setActiveNodeWithChildren : node -> Maybe (List node) -> Model node -> Model node
+setActiveNodeWithChildren newNode newChildren (Model model) =
     let
         tree =
             ComputedTree.tree model.computedTree
@@ -252,7 +260,7 @@ setActiveNode newNode (Model model) =
                             in
                                 case node of
                                     Just (Just node) ->
-                                        TreeHelpers.update active newNode tree
+                                        TreeHelpers.updateAtWithChildren active newNode newChildren tree
 
                                     Just Nothing ->
                                         TreeHelpers.insert (List.take (List.length active - 1) active) (Just newNode) tree
@@ -289,7 +297,7 @@ deleteActiveNode (Model model) =
                 if model.settings.isSturdyMode then
                     Just [ 0 ]
                 else
-                    model.active
+                    Nothing
             , prevComputedTree = model.computedTree
         }
 
@@ -319,36 +327,6 @@ tree (Model { computedTree }) =
     ComputedTree.tree computedTree
 
 
-{-| Logger function added to `update` in let block to log mouse events.
-
-IMPORTANT: do not call this in production!
-
--}
-logForDragDebug : Msg -> Model node -> String
-logForDragDebug msg (Model model) =
-    case msg of
-        NodeMouseDown _ _ _ _ ->
-            Debug.log "node-mouse-down" ""
-
-        NodeMouseUp _ _ ->
-            Debug.log "node-mouse-up" ""
-
-        NodeMouseEnter pth ->
-            Debug.log "node-mouse-enter" ""
-
-        NodeMouseLeave pth ->
-            Debug.log "node-mouse-leave" ""
-
-        CanvasMouseDown _ _ ->
-            Debug.log "canvas-mouse-down" ""
-
-        CanvasMouseUp _ _ ->
-            Debug.log "canvas-mouse-up" ""
-
-        _ ->
-            ""
-
-
 {-| Module messages
 -}
 type Msg
@@ -363,6 +341,27 @@ type Msg
     | CanvasMouseUp Float Float
     | CanvasMouseLeave
     | NoOp
+
+
+moveTowards : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
+moveTowards ( x, y ) ( targetX, targetY ) =
+    let
+        d =
+            ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
+
+        dx =
+            if targetX == x then
+                0
+            else
+                (d / 10) * (targetX - x) / d
+
+        dy =
+            if targetY == y then
+                0
+            else
+                (d / 10) * (targetY - y) / d
+    in
+        ( x + dx, y + dy )
 
 
 {-| Update function handling changes in the model.
@@ -380,27 +379,8 @@ update msg (Model model) =
                     , panOffset =
                         model.targetPanOffset
                             |> Maybe.map
-                                (\( targetX, targetY ) ->
-                                    let
-                                        ( x, y ) =
-                                            model.panOffset
-
-                                        d =
-                                            ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
-
-                                        dx =
-                                            if targetX == x then
-                                                0
-                                            else
-                                                (d / 10) * (targetX - x) / d
-
-                                        dy =
-                                            if targetY == y then
-                                                0
-                                            else
-                                                (d / 10) * (targetY - y) / d
-                                    in
-                                        ( x + dx, y + dy )
+                                (\targetPanOffset ->
+                                    moveTowards model.panOffset targetPanOffset
                                 )
                             |> Maybe.withDefault model.panOffset
                     , targetPanOffset =
@@ -829,11 +809,49 @@ viewContext (Model model) path =
         nodeViewContext
 
 
+nodeDragInfo : List Int -> Model node -> ( Bool, ( Float, Float ), Maybe (List Int), Bool )
+nodeDragInfo path (Model model) =
+    let
+        modelIsDragging =
+            Drag.state model.drag /= Nothing
+
+        dragState =
+            Drag.state model.drag
+    in
+        if modelIsDragging then
+            dragState
+                |> Maybe.map
+                    (\( draggedPath, offset ) ->
+                        case draggedPath of
+                            Just draggedPath ->
+                                let
+                                    isDropTarget =
+                                        getDropTarget model.settings draggedPath offset model.computedTree
+                                            |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
+                                            |> Maybe.withDefault False
+                                in
+                                    if Utils.startsWith draggedPath path then
+                                        ( True, offset, Just draggedPath, isDropTarget )
+                                    else
+                                        ( False, ( 0, 0 ), Just draggedPath, isDropTarget )
+
+                            Nothing ->
+                                ( False, ( 0, 0 ), Nothing, False )
+                    )
+                |> Maybe.withDefault ( False, ( 0, 0 ), Nothing, False )
+        else
+            ( False, ( 0, 0 ), Nothing, False )
+
+
 {-| Styled version of [view](#NodeView), using `elm-css`.
 -}
 view : NodeView node -> List (Html.Attribute Msg) -> Model node -> Html.Html Msg
 view nodeView attrs (Model model) =
-    styledView (\ctx node -> nodeView ctx node |> fromUnstyled) (List.map Html.Styled.Attributes.fromUnstyled attrs) (Model model) |> toUnstyled
+    styledView
+        (\ctx node -> nodeView ctx node |> fromUnstyled)
+        (List.map Html.Styled.Attributes.fromUnstyled attrs)
+        (Model model)
+        |> toUnstyled
 
 
 {-| The editor's view function, taking the following arguments:
@@ -953,33 +971,8 @@ styledView viewNode attrs (Model model) =
                                             List.map toString path
                                                 |> String.join "-"
 
-                                        modelIsDragging =
-                                            Drag.state model.drag /= Nothing
-
                                         ( isDragged, ( xDrag, yDrag ), draggedPath, isDropTarget ) =
-                                            if modelIsDragging then
-                                                dragState
-                                                    |> Maybe.map
-                                                        (\( draggedPath, offset ) ->
-                                                            case draggedPath of
-                                                                Just draggedPath ->
-                                                                    let
-                                                                        isDropTarget =
-                                                                            getDropTarget model.settings draggedPath offset model.computedTree
-                                                                                |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
-                                                                                |> Maybe.withDefault False
-                                                                    in
-                                                                        if Utils.startsWith draggedPath path then
-                                                                            ( True, offset, Just draggedPath, isDropTarget )
-                                                                        else
-                                                                            ( False, ( 0, 0 ), Just draggedPath, isDropTarget )
-
-                                                                Nothing ->
-                                                                    ( False, ( 0, 0 ), Nothing, False )
-                                                        )
-                                                    |> Maybe.withDefault ( False, ( 0, 0 ), Nothing, False )
-                                            else
-                                                ( False, ( 0, 0 ), Nothing, False )
+                                            nodeDragInfo path (Model model)
 
                                         xWithDrag =
                                             x + xDrag

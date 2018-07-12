@@ -10,7 +10,6 @@ import Arborist
 import Arborist.Settings as Settings
 import Arborist.Tree as Tree
 import Simple.Styles as Styles
-import Time
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -63,7 +62,7 @@ init =
                 , Settings.nodeHeight 45
                 , Settings.level 100
                 , Settings.nodeWidth 160
-                , Settings.sturdyMode True
+                , Settings.sturdyMode False
                 ]
                 tree
       , newNode = { question = "", answer = "" }
@@ -95,7 +94,7 @@ update msg model =
             )
 
         SetActive newNode ->
-            ( { model | arborist = Arborist.setActiveNode newNode model.arborist }
+            ( { model | arborist = Arborist.setActiveNodeWithChildren newNode (Just []) model.arborist }
             , Cmd.none
             )
 

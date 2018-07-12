@@ -118,25 +118,34 @@ updateSubtree path subtree tree =
             tree
 
 
-update : TreeNodePath -> a -> Tree a -> Tree a
-update path replaceItem tree =
+updateAtWithChildren : TreeNodePath -> a -> Maybe (List a) -> Tree a -> Tree a
+updateAtWithChildren path replaceItem replaceChildren tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             Node item <|
                 List.indexedMap
                     (\index child ->
                         if index == head then
-                            update tail replaceItem child
+                            updateAtWithChildren tail replaceItem replaceChildren child
                         else
                             child
                     )
                     children
 
         ( [], Node item children ) ->
-            Node replaceItem children
+            Node replaceItem
+                (replaceChildren
+                    |> Maybe.map (List.map (\child -> Node child []))
+                    |> Maybe.withDefault children
+                )
 
         ( _, tree ) ->
             tree
+
+
+updateAt : TreeNodePath -> a -> Tree a -> Tree a
+updateAt path replaceItem tree =
+    updateAtWithChildren path replaceItem Nothing tree
 
 
 insert : TreeNodePath -> Maybe a -> Tree a -> Tree a

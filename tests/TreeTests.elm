@@ -4,17 +4,16 @@ import Json.Encode as Encode
 import Json.Decode as Decode
 import Expect exposing (Expectation)
 import Test exposing (..)
-import Arborist
-import Tree
-import Tree.Extra as TreeHelpers
+import Arborist.Tree as Tree
+import Internal.Tree.Extra as TreeHelpers
 
 
 tree : Tree.Tree String
 tree =
-    Arborist.node "Apple"
-        [ Arborist.node "Pear" []
-        , Arborist.node "Peach"
-            [ Arborist.node "Apricot" []
+    Tree.Node "Apple"
+        [ Tree.Node "Pear" []
+        , Tree.Node "Peach"
+            [ Tree.Node "Apricot" []
             ]
         ]
 
@@ -26,40 +25,63 @@ suite =
             \_ ->
                 Expect.equal
                     (TreeHelpers.delete [ 1, 0 ]
-                        (Arborist.node "Apple"
-                            [ Arborist.node "Pear"
-                                [ Arborist.node "Pear2" []
+                        (Tree.Node "Apple"
+                            [ Tree.Node "Pear"
+                                [ Tree.Node "Pear2" []
                                 ]
-                            , Arborist.node "Peach"
-                                [ Arborist.node "Apricot" []
+                            , Tree.Node "Peach"
+                                [ Tree.Node "Apricot" []
                                 ]
                             ]
                         )
                     )
-                    (Arborist.node "Apple"
-                        [ Arborist.node "Pear" [ Arborist.node "Pear2" [] ]
-                        , Arborist.node "Peach" []
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Pear" [ Tree.Node "Pear2" [] ]
+                        , Tree.Node "Peach" []
                         ]
                     )
         , test "Updates" <|
             \_ ->
-                Expect.equal (TreeHelpers.update [ 1, 0 ] "Apricot2" tree)
-                    (Arborist.node "Apple"
-                        [ Arborist.node "Pear" []
-                        , Arborist.node "Peach"
-                            [ Arborist.node "Apricot2" []
+                Expect.equal (TreeHelpers.updateAt [ 1, 0 ] "Apricot2" tree)
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Pear" []
+                        , Tree.Node "Peach"
+                            [ Tree.Node "Apricot2" []
                             ]
+                        ]
+                    )
+        , test "Updates with children" <|
+            \_ ->
+                Expect.equal (TreeHelpers.updateAtWithChildren [ 1, 0 ] "Apricot2" (Just [ "PeachChild1", "PeachChild2" ]) tree)
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Pear" []
+                        , Tree.Node "Peach"
+                            [ Tree.Node "Apricot2"
+                                [ Tree.Node "PeachChild1" []
+                                , Tree.Node "PeachChild2" []
+                                ]
+                            ]
+                        ]
+                    )
+        , test "Swaps" <|
+            \_ ->
+                Expect.equal (TreeHelpers.swap [ 0 ] [ 1 ] tree)
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Peach"
+                            [ Tree.Node "Apricot" []
+                            ]
+                        , Tree.Node "Pear" []
                         ]
                     )
         , test "Inserts" <|
             \_ ->
                 Expect.equal (TreeHelpers.insert [] (Just "Banana") tree)
-                    (Arborist.node "Apple"
-                        [ Arborist.node "Pear" []
-                        , Arborist.node "Peach"
-                            [ Arborist.node "Apricot" []
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Pear" []
+                        , Tree.Node "Peach"
+                            [ Tree.Node "Apricot" []
                             ]
-                        , Arborist.node "Banana" []
+                        , Tree.Node "Banana" []
                         ]
                     )
         , test "Calculates depth" <|
