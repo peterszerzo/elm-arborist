@@ -3,7 +3,7 @@ module Internal.Settings exposing (..)
 import Time
 
 
-type alias Settings =
+type alias Settings node =
     { canvasWidth : Float
     , canvasHeight : Float
     , nodeWidth : Float
@@ -17,10 +17,11 @@ type alias Settings =
     , showPlaceholderLeaves : Bool
     , throttleMouseMoves : Maybe Time.Time
     , isSturdyMode : Bool
+    , defaultNode : Maybe node
     }
 
 
-defaults : Settings
+defaults : Settings node
 defaults =
     { nodeWidth = 120
     , nodeHeight = 36
@@ -35,10 +36,11 @@ defaults =
     , showPlaceholderLeaves = True
     , throttleMouseMoves = Nothing
     , isSturdyMode = False
+    , defaultNode = Nothing
     }
 
 
-type Setting
+type Setting node
     = NodeWidth Int
     | NodeHeight Int
     | CanvasWidth Int
@@ -52,9 +54,10 @@ type Setting
     | PlaceholderLeaves Bool
     | ThrottleMouseMoves Time.Time
     | SturdyMode Bool
+    | DefaultNode node
 
 
-apply : List Setting -> Settings -> Settings
+apply : List (Setting node) -> Settings node -> Settings node
 apply newSettings settings =
     case newSettings of
         [] ->
@@ -101,4 +104,7 @@ apply newSettings settings =
 
                     SturdyMode isSturdyMode ->
                         { settings | isSturdyMode = isSturdyMode }
+
+                    DefaultNode node ->
+                        { settings | defaultNode = Just node }
                 )

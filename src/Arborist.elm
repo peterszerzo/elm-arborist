@@ -88,7 +88,7 @@ type alias NodeGeometry =
 -}
 type Model node
     = Model
-        { settings : Settings.Settings
+        { settings : Settings.Settings node
         , computedTree : ComputedTree.ComputedTree node
         , prevComputedTree : ComputedTree.ComputedTree node
         , active : Maybe TreeNodePath
@@ -112,7 +112,7 @@ init =
 
 {-| Initialize model from a [tree](Tree), using a list of [settings](Settings).
 -}
-initWith : List Settings.Setting -> Tree.Tree node -> Model node
+initWith : List (Settings.Setting node) -> Tree.Tree node -> Model node
 initWith settings tree =
     let
         settings_ =
@@ -143,7 +143,7 @@ initWith settings tree =
 
 {-| Apply a new list of settings to the model.
 -}
-applySettings : List Settings.Setting -> Model node -> Model node
+applySettings : List (Settings.Setting node) -> Model node -> Model node
 applySettings settings (Model model) =
     Model
         { model
@@ -618,7 +618,7 @@ update msg (Model model) =
 
 
 getDropTarget :
-    Settings.Settings
+    Settings.Settings node
     -> TreeNodePath
     -> ( Float, Float )
     -> ComputedTree.ComputedTree node
@@ -692,7 +692,7 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
                 )
 
 
-nodeGeometry : Settings.Settings -> List Int -> TreeHelpers.Layout -> Maybe NodeGeometry
+nodeGeometry : Settings.Settings node -> List Int -> TreeHelpers.Layout -> Maybe NodeGeometry
 nodeGeometry settings path layout =
     layout
         |> Dict.get path

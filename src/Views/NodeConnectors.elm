@@ -23,7 +23,7 @@ toCoord =
     floor >> toString
 
 
-view : Settings.Settings -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html Never
+view : Settings.Settings node -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html Never
 view settings opacity ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
