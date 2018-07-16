@@ -3,6 +3,10 @@ module Internal.Settings exposing (..)
 import Time
 
 
+type alias ShowPlaceholderLeavesAdvanced node =
+    { node : node, parent : Maybe node, children : List node, siblings : List node } -> Bool
+
+
 type alias Settings node =
     { canvasWidth : Float
     , canvasHeight : Float
@@ -15,6 +19,7 @@ type alias Settings node =
     , connectorStrokeWidth : String
     , isDragAndDropEnabled : Bool
     , showPlaceholderLeaves : Bool
+    , showPlaceholderLeavesAdvanced : Maybe (ShowPlaceholderLeavesAdvanced node)
     , throttleMouseMoves : Maybe Time.Time
     , isSturdyMode : Bool
     , defaultNode : Maybe node
@@ -34,6 +39,7 @@ defaults =
     , connectorStrokeWidth = "2"
     , isDragAndDropEnabled = True
     , showPlaceholderLeaves = True
+    , showPlaceholderLeavesAdvanced = Nothing
     , throttleMouseMoves = Nothing
     , isSturdyMode = False
     , defaultNode = Nothing
@@ -51,10 +57,21 @@ type Setting node
     | ConnectorStroke String
     | ConnectorStrokeWidth String
     | DragAndDrop Bool
-    | PlaceholderLeaves Bool
+    | ShowPlaceholderLeaves Bool
+    | ShowPlaceholderLeavesAdvanced (ShowPlaceholderLeavesAdvanced node)
     | ThrottleMouseMoves Time.Time
     | SturdyMode Bool
     | DefaultNode node
+
+
+showPlaceholderLeavesAdvanced : Settings node -> ShowPlaceholderLeavesAdvanced node
+showPlaceholderLeavesAdvanced settings =
+    case settings.showPlaceholderLeavesAdvanced of
+        Just showPlaceholderLeavesAdvanced ->
+            showPlaceholderLeavesAdvanced
+
+        Nothing ->
+            \_ -> settings.showPlaceholderLeaves
 
 
 apply : List (Setting node) -> Settings node -> Settings node
@@ -96,8 +113,11 @@ apply newSettings settings =
                     DragAndDrop isEnabled ->
                         { settings | isDragAndDropEnabled = isEnabled }
 
-                    PlaceholderLeaves show ->
+                    ShowPlaceholderLeaves show ->
                         { settings | showPlaceholderLeaves = show }
+
+                    ShowPlaceholderLeavesAdvanced show ->
+                        { settings | showPlaceholderLeavesAdvanced = Just show }
 
                     ThrottleMouseMoves time ->
                         { settings | throttleMouseMoves = Just time }

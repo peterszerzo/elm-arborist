@@ -63,6 +63,9 @@ init =
                 , Settings.level 100
                 , Settings.nodeWidth 160
                 , Settings.sturdyMode False
+                , Settings.canvasWidth 1000
+                , Settings.canvasHeight 600
+                , Settings.defaultNode { question = "abc", answer = "def" }
                 ]
                 tree
       , newNode = { question = "", answer = "" }

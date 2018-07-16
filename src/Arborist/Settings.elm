@@ -10,14 +10,15 @@ module Arborist.Settings
         , connectorStroke
         , connectorStrokeWidth
         , dragAndDrop
-        , placeholderLeaves
+        , showPlaceholderLeaves
         , throttleMouseMoves
         , sturdyMode
+        , defaultNode
         )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, placeholderLeaves, throttleMouseMoves, sturdyMode
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, throttleMouseMoves, sturdyMode, defaultNode
 
 -}
 
@@ -97,9 +98,16 @@ dragAndDrop =
 
 {-| Set whether placeholder leaves should be displayed.
 -}
-placeholderLeaves : Bool -> Setting node
-placeholderLeaves =
-    PlaceholderLeaves
+showPlaceholderLeaves : Bool -> Setting node
+showPlaceholderLeaves =
+    ShowPlaceholderLeaves
+
+
+{-| A fine-grained control version of `showPlaceholderLeaves`, allowing control on the display of placeholder leaves based on the contents of the node, as well as its parent and children.
+-}
+showPlaceholderLeavesAdvanced : ({ node : node, parent : Maybe node, children : List node, siblings : List node } -> Bool) -> Setting node
+showPlaceholderLeavesAdvanced =
+    ShowPlaceholderLeavesAdvanced
 
 
 {-| Turn on mouse move throttling over a specified interval. You must connect `subscriptions` for this to work.
@@ -107,6 +115,13 @@ placeholderLeaves =
 throttleMouseMoves : Time.Time -> Setting node
 throttleMouseMoves =
     ThrottleMouseMoves
+
+
+{-| Sets a default node to be created automatically when a child placeholder is clicked. If none is specified, the placeholder is activated so that a new node may be added manually.
+-}
+defaultNode : node -> Setting node
+defaultNode =
+    DefaultNode
 
 
 {-| Enables sturdy mode: as long as the tree is not empty, there is always one active node. Use this mode when it is critical that active node-related feedback doesn't leave the screen.

@@ -72,12 +72,6 @@ import Views.NodeConnectors
 import Views.Styles as Styles
 
 
-type ActiveNode
-    = None
-    | ExistingNode TreeNodePath
-    | NewNode TreeNodePath
-
-
 type alias NodeGeometry =
     { center : ( Float, Float )
     , childCenters : List ( Float, Float )
@@ -231,6 +225,38 @@ setActiveNode newNode (Model model) =
     setActiveNodeWithChildren newNode Nothing (Model model)
 
 
+setActiveNodeWithChildrenHelper : List Int -> node -> Maybe (List node) -> Tree.Tree node -> Tree.Tree node
+setActiveNodeWithChildrenHelper active newNode newChildren tree =
+    let
+        flat =
+            tree
+                |> TreeHelpers.addTrailingEmpties
+                |> TreeHelpers.flatten
+    in
+        -- Handle special case when the tree is completely empty
+        -- and a new node is added at the root.
+        if tree == Tree.Empty && active == [] then
+            Tree.Node newNode []
+        else
+            let
+                node =
+                    flat
+                        |> List.filter (\( path, _ ) -> active == path)
+                        |> List.head
+                        |> Maybe.map Tuple.second
+            in
+                case node of
+                    Just (Just node) ->
+                        TreeHelpers.updateAtWithChildren active newNode newChildren tree
+
+                    Just Nothing ->
+                        TreeHelpers.insert (List.take (List.length active - 1) active) (Just newNode) tree
+
+                    _ ->
+                        -- Impossible state
+                        tree
+
+
 {-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
 -}
 setActiveNodeWithChildren : node -> Maybe (List node) -> Model node -> Model node
@@ -239,37 +265,13 @@ setActiveNodeWithChildren newNode newChildren (Model model) =
         tree =
             ComputedTree.tree model.computedTree
 
-        flat =
-            ComputedTree.flat model.computedTree
-
         newTree =
-            -- Handle special case when the tree is completely empty
-            -- and a new node is added at the root.
-            if tree == Tree.Empty && model.active == Just [] then
-                Tree.Node newNode []
-            else
-                model.active
-                    |> Maybe.map
-                        (\active ->
-                            let
-                                node =
-                                    flat
-                                        |> List.filter (\( path, _ ) -> active == path)
-                                        |> List.head
-                                        |> Maybe.map Tuple.second
-                            in
-                                case node of
-                                    Just (Just node) ->
-                                        TreeHelpers.updateAtWithChildren active newNode newChildren tree
-
-                                    Just Nothing ->
-                                        TreeHelpers.insert (List.take (List.length active - 1) active) (Just newNode) tree
-
-                                    _ ->
-                                        -- Impossible state
-                                        tree
-                        )
-                    |> Maybe.withDefault tree
+            model.active
+                |> Maybe.map
+                    (\active ->
+                        setActiveNodeWithChildrenHelper active newNode newChildren tree
+                    )
+                |> Maybe.withDefault tree
     in
         Model
             { model
@@ -364,6 +366,55 @@ moveTowards ( x, y ) ( targetX, targetY ) =
         ( x + dx, y + dy )
 
 
+resolveDrop : Model node -> Tree.Tree node
+resolveDrop (Model model) =
+    let
+        flat =
+            ComputedTree.flat model.computedTree
+
+        layout =
+            ComputedTree.layout model.computedTree
+
+        tree =
+            ComputedTree.tree model.computedTree
+    in
+        Drag.state model.drag
+            |> Maybe.map
+                (\( path, dragOffset ) ->
+                    path
+                        |> Maybe.map
+                            (\path ->
+                                getDropTarget model.settings path dragOffset model.computedTree
+                                    |> Maybe.map
+                                        (\dropTargetPath ->
+                                            flat
+                                                |> List.filter (\( path, node ) -> path == dropTargetPath)
+                                                |> List.head
+                                                |> Maybe.andThen
+                                                    (\( path, currentNode ) ->
+                                                        case currentNode of
+                                                            Just realNode ->
+                                                                Just ( path, realNode )
+
+                                                            Nothing ->
+                                                                Nothing
+                                                    )
+                                                |> Maybe.map (\_ -> TreeHelpers.swap path dropTargetPath tree)
+                                                |> Maybe.withDefault
+                                                    -- If the drop target is a placeholder, first add an Empty node in the original tree
+                                                    -- so the swap method actually finds a node.
+                                                    (TreeHelpers.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
+                                                        |> TreeHelpers.swap path dropTargetPath
+                                                        |> TreeHelpers.removeEmpties
+                                                    )
+                                        )
+                                    |> Maybe.withDefault tree
+                            )
+                        |> Maybe.withDefault tree
+                )
+            |> Maybe.withDefault tree
+
+
 {-| Update function handling changes in the model.
 -}
 update : Msg -> Model node -> Model node
@@ -444,14 +495,39 @@ update msg (Model model) =
                                         Nothing
                             )
 
+                tree =
+                    ComputedTree.tree model.computedTree
+
                 flat =
                     ComputedTree.flat model.computedTree
 
-                layout =
-                    ComputedTree.layout model.computedTree
+                newTree =
+                    case active_ of
+                        Just path ->
+                            case Dict.get path (Dict.fromList flat) of
+                                Just (Just node) ->
+                                    tree
 
-                tree =
-                    ComputedTree.tree model.computedTree
+                                -- A placeholder has been clicked. Add new node to the tree
+                                Just Nothing ->
+                                    case model.settings.defaultNode of
+                                        Just defaultNode ->
+                                            setActiveNodeWithChildrenHelper path defaultNode Nothing tree
+
+                                        Nothing ->
+                                            tree
+
+                                Nothing ->
+                                    tree
+
+                        Nothing ->
+                            resolveDrop (Model model)
+
+                newComputedTree =
+                    ComputedTree.init model.settings.showPlaceholderLeaves newTree
+
+                layout =
+                    ComputedTree.layout newComputedTree
 
                 newPanOffset =
                     active_
@@ -470,43 +546,6 @@ update msg (Model model) =
                                                 |> List.foldl Utils.addFloatTuples ( 0, 0 )
                                         )
                             )
-
-                newTree =
-                    Drag.state model.drag
-                        |> Maybe.map
-                            (\( path, dragOffset ) ->
-                                path
-                                    |> Maybe.map
-                                        (\path ->
-                                            getDropTarget model.settings path dragOffset model.computedTree
-                                                |> Maybe.map
-                                                    (\dropTargetPath ->
-                                                        flat
-                                                            |> List.filter (\( path, node ) -> path == dropTargetPath)
-                                                            |> List.head
-                                                            |> Maybe.andThen
-                                                                (\( path, currentNode ) ->
-                                                                    case currentNode of
-                                                                        Just realNode ->
-                                                                            Just ( path, realNode )
-
-                                                                        Nothing ->
-                                                                            Nothing
-                                                                )
-                                                            |> Maybe.map (\_ -> TreeHelpers.swap path dropTargetPath tree)
-                                                            |> Maybe.withDefault
-                                                                -- If the drop target is a placeholder, first add an Empty node in the original tree
-                                                                -- so the swap method actually finds a node.
-                                                                (TreeHelpers.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
-                                                                    |> TreeHelpers.swap path dropTargetPath
-                                                                    |> TreeHelpers.removeEmpties
-                                                                )
-                                                    )
-                                                |> Maybe.withDefault tree
-                                        )
-                                    |> Maybe.withDefault tree
-                            )
-                        |> Maybe.withDefault tree
             in
                 Model
                     { model
