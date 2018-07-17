@@ -83,7 +83,7 @@ type alias NodeGeometry =
 type Model node
     = Model
         { settings : Settings.Settings node
-        , computedTree : ComputedTree.ComputedTree node
+        , tree : Tree.Tree node
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
         , isReceivingSubscriptions : Bool
@@ -110,13 +110,10 @@ initWith settings tree =
     let
         settings_ =
             Settings.apply settings Settings.defaults
-
-        computedTree =
-            ComputedTree.init (settings_.showPlaceholderLeaves) tree
     in
         Model
             { settings = settings_
-            , computedTree = computedTree
+            , tree = tree
             , active =
                 if settings_.isSturdyMode && tree /= Tree.Empty then
                     Just []
@@ -190,8 +187,11 @@ activeNode (Model model) =
         |> Maybe.map
             (\active ->
                 let
+                    computedTree =
+                        ComputedTree.init True model.tree
+
                     treeLayout =
-                        ComputedTree.layout model.computedTree
+                        ComputedTree.layout computedTree
 
                     geo =
                         nodeGeometry model.settings active treeLayout
@@ -203,7 +203,7 @@ activeNode (Model model) =
                             |> Maybe.map Tuple.second
                             |> Maybe.withDefault ( 0, 0 )
                 in
-                    ( ComputedTree.item active model.computedTree
+                    ( ComputedTree.item active computedTree
                     , { position =
                             [ geo
                             , model.panOffset
@@ -260,8 +260,11 @@ setActiveNodeWithChildrenHelper active newNode newChildren tree =
 setActiveNodeWithChildren : node -> Maybe (List node) -> Model node -> Model node
 setActiveNodeWithChildren newNode newChildren (Model model) =
     let
+        computedTree =
+            ComputedTree.init True model.tree
+
         tree =
-            ComputedTree.tree model.computedTree
+            ComputedTree.tree computedTree
 
         newTree =
             model.active
@@ -273,7 +276,7 @@ setActiveNodeWithChildren newNode newChildren (Model model) =
     in
         Model
             { model
-                | computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
+                | tree = newTree
             }
 
 
@@ -281,23 +284,26 @@ setActiveNodeWithChildren newNode newChildren (Model model) =
 -}
 deleteActiveNode : Model node -> Model node
 deleteActiveNode (Model model) =
-    Model
-        { model
-            | computedTree =
-                model.active
-                    |> Maybe.map
-                        (\active ->
-                            TreeHelpers.delete active
-                                (ComputedTree.tree model.computedTree)
-                                |> ComputedTree.init model.settings.showPlaceholderLeaves
-                        )
-                    |> Maybe.withDefault model.computedTree
-            , active =
-                if model.settings.isSturdyMode then
-                    Just [ 0 ]
-                else
-                    Nothing
-        }
+    let
+        computedTree =
+            ComputedTree.init True model.tree
+    in
+        Model
+            { model
+                | tree =
+                    model.active
+                        |> Maybe.map
+                            (\active ->
+                                TreeHelpers.delete active
+                                    model.tree
+                            )
+                        |> Maybe.withDefault model.tree
+                , active =
+                    if model.settings.isSturdyMode then
+                        Just [ 0 ]
+                    else
+                        Nothing
+            }
 
 
 {-| Subscriptions responsible for obtaining animation frames used to smoothly center an activated tree node. Using these subscriptions is completely optional - if they aren't wired up in your app, the editor will simply jump to the activated node without an animation. We recommend adding these subscriptions as you familiarize yourself with the package, as it is a significant user experience improvement.
@@ -321,8 +327,8 @@ subscriptions (Model model) =
 {-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
 -}
 tree : Model node -> Tree.Tree node
-tree (Model { computedTree }) =
-    ComputedTree.tree computedTree
+tree (Model { tree }) =
+    tree
 
 
 {-| Module messages
@@ -365,14 +371,17 @@ moveTowards ( x, y ) ( targetX, targetY ) =
 resolveDrop : Model node -> Tree.Tree node
 resolveDrop (Model model) =
     let
+        computedTree =
+            ComputedTree.init True model.tree
+
         flat =
-            ComputedTree.flat model.computedTree
+            ComputedTree.flat computedTree
 
         layout =
-            ComputedTree.layout model.computedTree
+            ComputedTree.layout computedTree
 
         tree =
-            ComputedTree.tree model.computedTree
+            ComputedTree.tree computedTree
     in
         Drag.state model.drag
             |> Maybe.map
@@ -380,7 +389,7 @@ resolveDrop (Model model) =
                     path
                         |> Maybe.map
                             (\path ->
-                                getDropTarget model.settings path dragOffset model.computedTree
+                                getDropTarget model.settings path dragOffset computedTree
                                     |> Maybe.map
                                         (\dropTargetPath ->
                                             flat
@@ -491,11 +500,14 @@ update msg (Model model) =
                                         Nothing
                             )
 
+                computedTree =
+                    ComputedTree.init True model.tree
+
                 tree =
-                    ComputedTree.tree model.computedTree
+                    ComputedTree.tree computedTree
 
                 flat =
-                    ComputedTree.flat model.computedTree
+                    ComputedTree.flat computedTree
 
                 newTree =
                     case active_ of
@@ -547,7 +559,7 @@ update msg (Model model) =
                     { model
                         | drag =
                             Drag.init
-                        , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
+                        , tree = newTree
 
                         -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
                         , targetPanOffset =
@@ -767,8 +779,11 @@ type alias StyledNodeView node =
 viewContext : Model node -> List Int -> Context node
 viewContext (Model model) path =
     let
+        computedTree =
+            ComputedTree.init True model.tree
+
         flatTree =
-            ComputedTree.flat model.computedTree
+            ComputedTree.flat computedTree
 
         modelIsDragging =
             Drag.state model.drag /= Nothing
@@ -780,7 +795,7 @@ viewContext (Model model) path =
                         (\( draggedPath, offset ) ->
                             case draggedPath of
                                 Just draggedPath ->
-                                    getDropTarget model.settings draggedPath offset model.computedTree
+                                    getDropTarget model.settings draggedPath offset computedTree
                                         |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
                                         |> Maybe.withDefault False
 
@@ -846,6 +861,9 @@ viewContext (Model model) path =
 nodeDragInfo : List Int -> Model node -> ( Bool, ( Float, Float ), Maybe (List Int), Bool )
 nodeDragInfo path (Model model) =
     let
+        computedTree =
+            ComputedTree.init True model.tree
+
         modelIsDragging =
             Drag.state model.drag /= Nothing
 
@@ -860,7 +878,7 @@ nodeDragInfo path (Model model) =
                             Just draggedPath ->
                                 let
                                     isDropTarget =
-                                        getDropTarget model.settings draggedPath offset model.computedTree
+                                        getDropTarget model.settings draggedPath offset computedTree
                                             |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
                                             |> Maybe.withDefault False
                                 in
@@ -898,11 +916,14 @@ view nodeView attrs (Model model) =
 styledView : StyledNodeView node -> List (Html.Styled.Attribute Msg) -> Model node -> Html.Styled.Html Msg
 styledView viewNode attrs (Model model) =
     let
+        computedTree =
+            ComputedTree.init True model.tree
+
         flatTree =
-            ComputedTree.flat model.computedTree
+            ComputedTree.flat computedTree
 
         layout =
-            ComputedTree.layout model.computedTree
+            ComputedTree.layout computedTree
 
         nodeBaseStyle =
             Styles.nodeBase model.settings
