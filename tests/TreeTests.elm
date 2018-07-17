@@ -87,6 +87,36 @@ suite =
         , test "Calculates depth" <|
             \_ ->
                 Expect.equal (Tree.depth tree) 3
+        , test "Adds trailing empties" <|
+            \_ ->
+                Expect.equal
+                    (TreeHelpers.addTrailingEmpties
+                        (Tree.Node "Apple"
+                            [ Tree.Node "Pear" []
+                            ]
+                        )
+                    )
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Pear" [ Tree.Empty ]
+                        , Tree.Empty
+                        ]
+                    )
+        , test "Adds trailing conditionally" <|
+            \_ ->
+                Expect.equal
+                    (TreeHelpers.addTrailingEmptiesAdvanced
+                        (\{ node, parent, siblings, children } ->
+                            node /= "Apple" && parent == Just "Apple" && siblings == [ "Pear" ] && children == [ "Peach" ]
+                        )
+                        (Tree.Node "Apple"
+                            [ Tree.Node "Pear" [ Tree.Node "Peach" [] ]
+                            ]
+                        )
+                    )
+                    (Tree.Node "Apple"
+                        [ Tree.Node "Pear" [ Tree.Node "Peach" [], Tree.Empty ]
+                        ]
+                    )
         , test "Encodes and decoders" <|
             \_ ->
                 Expect.equal (tree |> Tree.encoder Encode.string |> Decode.decodeValue (Tree.decoder Decode.string)) (Ok tree)

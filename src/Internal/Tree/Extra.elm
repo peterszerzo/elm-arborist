@@ -40,13 +40,63 @@ type alias TreeAnalysis =
 {-| Add an empty element every
 -}
 addTrailingEmpties : Tree a -> Tree a
-addTrailingEmpties tree =
+addTrailingEmpties =
+    addTrailingEmptiesAdvanced (\_ -> True)
+
+
+{-| Add an empty element every
+-}
+addTrailingEmptiesAdvancedHelper :
+    { parent : Maybe a, siblings : List a }
+    -> ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool)
+    -> Tree a
+    -> Tree a
+addTrailingEmptiesAdvancedHelper context addEmpty tree =
     case tree of
         Tree.Empty ->
             Empty
 
         Tree.Node item children ->
-            Node item <| List.map addTrailingEmpties children ++ [ Empty ]
+            let
+                childNodes =
+                    List.map
+                        (\child ->
+                            case child of
+                                Tree.Node item children ->
+                                    Just item
+
+                                Empty ->
+                                    Nothing
+                        )
+                        children
+                        |> List.filterMap (\x -> x)
+            in
+                Node item <|
+                    List.map
+                        (addTrailingEmptiesAdvancedHelper
+                            { parent = Just item
+                            , siblings = childNodes
+                            }
+                            addEmpty
+                        )
+                        children
+                        ++ (if
+                                addEmpty
+                                    { parent = context.parent
+                                    , siblings = context.siblings
+                                    , node = item
+                                    , children = childNodes
+                                    }
+                            then
+                                [ Empty ]
+                            else
+                                []
+                           )
+
+
+addTrailingEmptiesAdvanced : ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool) -> Tree a -> Tree a
+addTrailingEmptiesAdvanced =
+    addTrailingEmptiesAdvancedHelper { parent = Nothing, siblings = [] }
 
 
 removeEmpties : Tree a -> Tree a
