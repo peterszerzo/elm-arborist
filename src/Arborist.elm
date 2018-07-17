@@ -84,7 +84,6 @@ type Model node
     = Model
         { settings : Settings.Settings node
         , computedTree : ComputedTree.ComputedTree node
-        , prevComputedTree : ComputedTree.ComputedTree node
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
         , isReceivingSubscriptions : Bool
@@ -118,7 +117,6 @@ initWith settings tree =
         Model
             { settings = settings_
             , computedTree = computedTree
-            , prevComputedTree = computedTree
             , active =
                 if settings_.isSturdyMode && tree /= Tree.Empty then
                     Just []
@@ -276,7 +274,6 @@ setActiveNodeWithChildren newNode newChildren (Model model) =
         Model
             { model
                 | computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
-                , prevComputedTree = model.computedTree
             }
 
 
@@ -300,7 +297,6 @@ deleteActiveNode (Model model) =
                     Just [ 0 ]
                 else
                     Nothing
-            , prevComputedTree = model.computedTree
         }
 
 
@@ -552,7 +548,6 @@ update msg (Model model) =
                         | drag =
                             Drag.init
                         , computedTree = ComputedTree.init model.settings.showPlaceholderLeaves newTree
-                        , prevComputedTree = model.computedTree
 
                         -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
                         , targetPanOffset =
