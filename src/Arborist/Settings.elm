@@ -11,6 +11,7 @@ module Arborist.Settings
         , connectorStrokeWidth
         , dragAndDrop
         , showPlaceholderLeaves
+        , showPlaceholderLeavesAdvanced
         , throttleMouseMoves
         , sturdyMode
         , defaultNode
@@ -18,7 +19,7 @@ module Arborist.Settings
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, throttleMouseMoves, sturdyMode, defaultNode
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, throttleMouseMoves, sturdyMode, defaultNode
 
 -}
 

@@ -114,7 +114,7 @@ removeEmpties tree =
 find : TreeNodePath -> Tree a -> Maybe (Tree a)
 find path tree =
     case ( path, tree ) of
-        ( head :: tail, Node item children ) ->
+        ( head :: tail, Node _ children ) ->
             children
                 |> List.drop head
                 |> List.head

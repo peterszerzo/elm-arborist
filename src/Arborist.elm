@@ -59,7 +59,7 @@ import Css exposing (..)
 import Html
 import Html.Styled exposing (fromUnstyled, toUnstyled, div, text)
 import Html.Styled.Keyed
-import Html.Styled.Attributes exposing (style, value, css)
+import Html.Styled.Attributes exposing (style, css)
 import Html.Styled.Events exposing (on, onWithOptions)
 import Json.Decode as Decode
 import Arborist.Tree as Tree
@@ -175,6 +175,23 @@ deactivate (Model model) =
         }
 
 
+computeTree : Model node -> { flat : List ( List Int, Maybe node ), layout : TreeHelpers.Layout }
+computeTree (Model model) =
+    let
+        computedTree =
+            ComputedTree.init True model.tree
+
+        layout =
+            ComputedTree.layout computedTree
+
+        flat =
+            ComputedTree.flat computedTree
+    in
+        { layout = layout
+        , flat = flat
+        }
+
+
 {-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as some contextual information as a two-field record:
 
   - `position : ( Float, Float )`: the node's position on the canvas (useful for rendering an edit pop-up).
@@ -187,14 +204,11 @@ activeNode (Model model) =
         |> Maybe.map
             (\active ->
                 let
-                    computedTree =
-                        ComputedTree.init True model.tree
-
-                    treeLayout =
-                        ComputedTree.layout computedTree
+                    { layout, flat } =
+                        computeTree (Model model)
 
                     geo =
-                        nodeGeometry model.settings active treeLayout
+                        nodeGeometry model.settings active layout
                             |> Maybe.map .center
                             |> Maybe.withDefault ( 0, 0 )
 
@@ -203,7 +217,10 @@ activeNode (Model model) =
                             |> Maybe.map Tuple.second
                             |> Maybe.withDefault ( 0, 0 )
                 in
-                    ( ComputedTree.item active computedTree
+                    ( flat
+                        |> List.filter (\( path_, item ) -> active == path_)
+                        |> List.head
+                        |> Maybe.andThen Tuple.second
                     , { position =
                             [ geo
                             , model.panOffset
@@ -260,19 +277,13 @@ setActiveNodeWithChildrenHelper active newNode newChildren tree =
 setActiveNodeWithChildren : node -> Maybe (List node) -> Model node -> Model node
 setActiveNodeWithChildren newNode newChildren (Model model) =
     let
-        computedTree =
-            ComputedTree.init True model.tree
-
-        tree =
-            ComputedTree.tree computedTree
-
         newTree =
             model.active
                 |> Maybe.map
                     (\active ->
-                        setActiveNodeWithChildrenHelper active newNode newChildren tree
+                        setActiveNodeWithChildrenHelper active newNode newChildren model.tree
                     )
-                |> Maybe.withDefault tree
+                |> Maybe.withDefault model.tree
     in
         Model
             { model
@@ -284,26 +295,22 @@ setActiveNodeWithChildren newNode newChildren (Model model) =
 -}
 deleteActiveNode : Model node -> Model node
 deleteActiveNode (Model model) =
-    let
-        computedTree =
-            ComputedTree.init True model.tree
-    in
-        Model
-            { model
-                | tree =
-                    model.active
-                        |> Maybe.map
-                            (\active ->
-                                TreeHelpers.delete active
-                                    model.tree
-                            )
-                        |> Maybe.withDefault model.tree
-                , active =
-                    if model.settings.isSturdyMode then
-                        Just [ 0 ]
-                    else
-                        Nothing
-            }
+    Model
+        { model
+            | tree =
+                model.active
+                    |> Maybe.map
+                        (\active ->
+                            TreeHelpers.delete active
+                                model.tree
+                        )
+                    |> Maybe.withDefault model.tree
+            , active =
+                if model.settings.isSturdyMode then
+                    Just [ 0 ]
+                else
+                    Nothing
+        }
 
 
 {-| Subscriptions responsible for obtaining animation frames used to smoothly center an activated tree node. Using these subscriptions is completely optional - if they aren't wired up in your app, the editor will simply jump to the activated node without an animation. We recommend adding these subscriptions as you familiarize yourself with the package, as it is a significant user experience improvement.
@@ -336,7 +343,7 @@ tree (Model { tree }) =
 type Msg
     = AnimationFrameTick Time.Time
     | MouseMoveThrottleTick Time.Time
-    | NodeMouseDown Bool TreeNodePath Float Float
+    | NodeMouseDown TreeNodePath Float Float
     | NodeMouseUp Float Float
     | NodeMouseEnter TreeNodePath
     | NodeMouseLeave TreeNodePath
@@ -371,17 +378,8 @@ moveTowards ( x, y ) ( targetX, targetY ) =
 resolveDrop : Model node -> Tree.Tree node
 resolveDrop (Model model) =
     let
-        computedTree =
-            ComputedTree.init True model.tree
-
-        flat =
-            ComputedTree.flat computedTree
-
-        layout =
-            ComputedTree.layout computedTree
-
-        tree =
-            ComputedTree.tree computedTree
+        { flat } =
+            computeTree (Model model)
     in
         Drag.state model.drag
             |> Maybe.map
@@ -389,11 +387,11 @@ resolveDrop (Model model) =
                     path
                         |> Maybe.map
                             (\path ->
-                                getDropTarget model.settings path dragOffset computedTree
+                                getDropTarget path dragOffset (Model model)
                                     |> Maybe.map
                                         (\dropTargetPath ->
                                             flat
-                                                |> List.filter (\( path, node ) -> path == dropTargetPath)
+                                                |> List.filter (\( path, _ ) -> path == dropTargetPath)
                                                 |> List.head
                                                 |> Maybe.andThen
                                                     (\( path, currentNode ) ->
@@ -404,20 +402,20 @@ resolveDrop (Model model) =
                                                             Nothing ->
                                                                 Nothing
                                                     )
-                                                |> Maybe.map (\_ -> TreeHelpers.swap path dropTargetPath tree)
+                                                |> Maybe.map (\_ -> TreeHelpers.swap path dropTargetPath model.tree)
                                                 |> Maybe.withDefault
                                                     -- If the drop target is a placeholder, first add an Empty node in the original tree
                                                     -- so the swap method actually finds a node.
-                                                    (TreeHelpers.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
+                                                    (TreeHelpers.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing model.tree
                                                         |> TreeHelpers.swap path dropTargetPath
                                                         |> TreeHelpers.removeEmpties
                                                     )
                                         )
-                                    |> Maybe.withDefault tree
+                                    |> Maybe.withDefault model.tree
                             )
-                        |> Maybe.withDefault tree
+                        |> Maybe.withDefault model.tree
                 )
-            |> Maybe.withDefault tree
+            |> Maybe.withDefault model.tree
 
 
 {-| Update function handling changes in the model.
@@ -428,7 +426,8 @@ update msg (Model model) =
         MouseMoveThrottleTick _ ->
             Model { model | isCanvasMouseMoveThrottled = False }
 
-        AnimationFrameTick time ->
+        -- TODO: account for delayed frames when moving nodes around
+        AnimationFrameTick _ ->
             Model
                 { model
                     | isReceivingSubscriptions = True
@@ -454,7 +453,7 @@ update msg (Model model) =
                                 )
                 }
 
-        NodeMouseDown isPlaceholder path x y ->
+        NodeMouseDown path x y ->
             let
                 active_ =
                     (if not model.settings.isDragAndDropEnabled then
@@ -500,33 +499,27 @@ update msg (Model model) =
                                         Nothing
                             )
 
-                computedTree =
-                    ComputedTree.init True model.tree
-
-                tree =
-                    ComputedTree.tree computedTree
-
-                flat =
-                    ComputedTree.flat computedTree
+                { flat } =
+                    computeTree (Model model)
 
                 newTree =
                     case active_ of
                         Just path ->
                             case Dict.get path (Dict.fromList flat) of
-                                Just (Just node) ->
-                                    tree
+                                Just (Just _) ->
+                                    model.tree
 
                                 -- A placeholder has been clicked. Add new node to the tree
                                 Just Nothing ->
                                     case model.settings.defaultNode of
                                         Just defaultNode ->
-                                            setActiveNodeWithChildrenHelper path defaultNode Nothing tree
+                                            setActiveNodeWithChildrenHelper path defaultNode Nothing model.tree
 
                                         Nothing ->
-                                            tree
+                                            model.tree
 
                                 Nothing ->
-                                    tree
+                                    model.tree
 
                         Nothing ->
                             resolveDrop (Model model)
@@ -622,7 +615,7 @@ update msg (Model model) =
                     Drag.state model.drag
                         |> Maybe.map
                             (\( path, ( x, y ) ) ->
-                                if (abs x + abs y) < 20 then
+                                if (abs x + abs y) < 21 then
                                     Nothing
                                 else
                                     model.active
@@ -664,21 +657,17 @@ update msg (Model model) =
 
 
 getDropTarget :
-    Settings.Settings node
-    -> TreeNodePath
+    TreeNodePath
     -> ( Float, Float )
-    -> ComputedTree.ComputedTree node
+    -> Model node
     -> Maybe TreeNodePath
-getDropTarget settings path ( dragX, dragY ) computedTree =
+getDropTarget path ( dragX, dragY ) (Model model) =
     let
-        flat =
-            ComputedTree.flat computedTree
-
-        layout =
-            ComputedTree.layout computedTree
+        { flat, layout } =
+            computeTree (Model model)
 
         ( x0, y0 ) =
-            nodeGeometry settings path layout
+            nodeGeometry model.settings path layout
                 |> Maybe.map .center
                 |> Maybe.withDefault ( 0, 0 )
 
@@ -692,7 +681,7 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
                 (\( path_, node ) ->
                     let
                         ( xo, yo ) =
-                            nodeGeometry settings path_ layout
+                            nodeGeometry model.settings path_ layout
                                 |> Maybe.map .center
                                 |> Maybe.withDefault ( 0, 0 )
 
@@ -706,8 +695,8 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
                             (List.all identity
                                 [ not (Utils.startsWith path path_)
                                 , not (Utils.startsWith path_ path)
-                                , dx < settings.nodeWidth
-                                , dy < settings.nodeHeight
+                                , dx < model.settings.nodeWidth
+                                , dy < model.settings.nodeHeight
                                 ]
                             )
                         then
@@ -716,7 +705,7 @@ getDropTarget settings path ( dragX, dragY ) computedTree =
                             Nothing
                 )
             |> List.sortWith
-                (\( _, d1, node1 ) ( _, d2, node2 ) ->
+                (\( _, d1, _ ) ( _, d2, _ ) ->
                     if d1 > d2 then
                         GT
                     else if d1 == d2 then
@@ -779,36 +768,27 @@ type alias StyledNodeView node =
 viewContext : Model node -> List Int -> Context node
 viewContext (Model model) path =
     let
-        computedTree =
-            ComputedTree.init True model.tree
-
-        flatTree =
-            ComputedTree.flat computedTree
-
-        modelIsDragging =
-            Drag.state model.drag /= Nothing
+        { flat } =
+            computeTree (Model model)
 
         isDropTarget =
-            if modelIsDragging then
-                Drag.state model.drag
-                    |> Maybe.map
-                        (\( draggedPath, offset ) ->
-                            case draggedPath of
-                                Just draggedPath ->
-                                    getDropTarget model.settings draggedPath offset computedTree
-                                        |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
-                                        |> Maybe.withDefault False
+            Drag.state model.drag
+                |> Maybe.map
+                    (\( draggedPath, offset ) ->
+                        case draggedPath of
+                            Just draggedPath ->
+                                getDropTarget draggedPath offset (Model model)
+                                    |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
+                                    |> Maybe.withDefault False
 
-                                Nothing ->
-                                    False
-                        )
-                    |> Maybe.withDefault False
-            else
-                False
+                            Nothing ->
+                                False
+                    )
+                |> Maybe.withDefault False
 
         nodeViewContext =
             { parent =
-                flatTree
+                flat
                     |> List.filterMap
                         (\( path_, node ) ->
                             -- List.take -1 path == List.take 0 path, hence the additional path /= [] condition
@@ -819,7 +799,7 @@ viewContext (Model model) path =
                         )
                     |> List.head
             , siblings =
-                flatTree
+                flat
                     |> List.filterMap
                         (\( path_, node ) ->
                             node
@@ -832,7 +812,7 @@ viewContext (Model model) path =
                                     )
                         )
             , children =
-                flatTree
+                flat
                     |> List.filterMap
                         (\( path_, node ) ->
                             node
@@ -858,12 +838,9 @@ viewContext (Model model) path =
         nodeViewContext
 
 
-nodeDragInfo : List Int -> Model node -> ( Bool, ( Float, Float ), Maybe (List Int), Bool )
+nodeDragInfo : List Int -> Model node -> ( Bool, ( Float, Float ) )
 nodeDragInfo path (Model model) =
     let
-        computedTree =
-            ComputedTree.init True model.tree
-
         modelIsDragging =
             Drag.state model.drag /= Nothing
 
@@ -876,23 +853,17 @@ nodeDragInfo path (Model model) =
                     (\( draggedPath, offset ) ->
                         case draggedPath of
                             Just draggedPath ->
-                                let
-                                    isDropTarget =
-                                        getDropTarget model.settings draggedPath offset computedTree
-                                            |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
-                                            |> Maybe.withDefault False
-                                in
-                                    if Utils.startsWith draggedPath path then
-                                        ( True, offset, Just draggedPath, isDropTarget )
-                                    else
-                                        ( False, ( 0, 0 ), Just draggedPath, isDropTarget )
+                                if Utils.startsWith draggedPath path then
+                                    ( True, offset )
+                                else
+                                    ( False, ( 0, 0 ) )
 
                             Nothing ->
-                                ( False, ( 0, 0 ), Nothing, False )
+                                ( False, ( 0, 0 ) )
                     )
-                |> Maybe.withDefault ( False, ( 0, 0 ), Nothing, False )
+                |> Maybe.withDefault ( False, ( 0, 0 ) )
         else
-            ( False, ( 0, 0 ), Nothing, False )
+            ( False, ( 0, 0 ) )
 
 
 {-| Styled version of [view](#NodeView), using `elm-css`.
@@ -916,14 +887,8 @@ view nodeView attrs (Model model) =
 styledView : StyledNodeView node -> List (Html.Styled.Attribute Msg) -> Model node -> Html.Styled.Html Msg
 styledView viewNode attrs (Model model) =
     let
-        computedTree =
-            ComputedTree.init True model.tree
-
-        flatTree =
-            ComputedTree.flat computedTree
-
-        layout =
-            ComputedTree.layout computedTree
+        { flat, layout } =
+            computeTree (Model model)
 
         nodeBaseStyle =
             Styles.nodeBase model.settings
@@ -933,12 +898,6 @@ styledView viewNode attrs (Model model) =
 
         dragState =
             Drag.state model.drag
-
-        isNodeDragging =
-            dragState
-                |> Maybe.map Tuple.first
-                |> Maybe.map ((/=) Nothing)
-                |> Maybe.withDefault False
 
         ( canvasDragOffset, isCanvasDragging ) =
             dragState
@@ -1026,7 +985,7 @@ styledView viewNode attrs (Model model) =
                                             List.map toString path
                                                 |> String.join "-"
 
-                                        ( isDragged, ( xDrag, yDrag ), draggedPath, isDropTarget ) =
+                                        ( isDragged, ( xDrag, yDrag ) ) =
                                             nodeDragInfo path (Model model)
 
                                         xWithDrag =
@@ -1055,7 +1014,7 @@ styledView viewNode attrs (Model model) =
                                                     { stopPropagation = True
                                                     , preventDefault = False
                                                     }
-                                                    (Decode.map2 (NodeMouseDown (node == Nothing) path)
+                                                    (Decode.map2 (NodeMouseDown path)
                                                         (Decode.field "screenX" Decode.float)
                                                         (Decode.field "screenY" Decode.float)
                                                     )
@@ -1104,7 +1063,7 @@ styledView viewNode attrs (Model model) =
                                 )
                             |> Maybe.withDefault []
                     )
-                    flatTree
+                    flat
                     |> List.foldl (++) []
                 )
             ]
