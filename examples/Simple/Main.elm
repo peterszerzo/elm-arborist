@@ -66,6 +66,7 @@ init =
                 , Settings.canvasWidth 1000
                 , Settings.canvasHeight 600
                 , Settings.defaultNode { question = "abc", answer = "def" }
+                , Settings.showPlaceholderLeaves True
                 ]
                 tree
       , newNode = { question = "", answer = "" }

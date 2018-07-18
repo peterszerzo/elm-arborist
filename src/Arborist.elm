@@ -63,7 +63,6 @@ import Html.Styled.Attributes exposing (style, css)
 import Html.Styled.Events exposing (on, onWithOptions)
 import Json.Decode as Decode
 import Arborist.Tree as Tree
-import Internal.Tree.Computed as ComputedTree
 import Internal.Tree.Extra as TreeHelpers exposing (TreeNodePath)
 import Internal.Settings as Settings
 import Drag exposing (Drag)
@@ -178,14 +177,24 @@ deactivate (Model model) =
 computeTree : Model node -> { flat : List ( List Int, Maybe node ), layout : TreeHelpers.Layout }
 computeTree (Model model) =
     let
-        computedTree =
-            ComputedTree.init True model.tree
+        withPlaceholders =
+            case ( model.settings.showPlaceholderLeaves, model.settings.showPlaceholderLeavesAdvanced ) of
+                ( _, Just addEmpties ) ->
+                    TreeHelpers.addTrailingEmptiesAdvanced addEmpties model.tree
 
-        layout =
-            ComputedTree.layout computedTree
+                ( True, _ ) ->
+                    TreeHelpers.addTrailingEmpties model.tree
+
+                ( _, _ ) ->
+                    model.tree
 
         flat =
-            ComputedTree.flat computedTree
+            TreeHelpers.flatten withPlaceholders
+
+        layout =
+            withPlaceholders
+                |> TreeHelpers.analyze
+                |> TreeHelpers.layout
     in
         { layout = layout
         , flat = flat
@@ -240,36 +249,37 @@ setActiveNode newNode (Model model) =
     setActiveNodeWithChildren newNode Nothing (Model model)
 
 
-setActiveNodeWithChildrenHelper : List Int -> node -> Maybe (List node) -> Tree.Tree node -> Tree.Tree node
-setActiveNodeWithChildrenHelper active newNode newChildren tree =
+setActiveNodeWithChildrenHelper : List Int -> node -> Maybe (List node) -> Model node -> Model node
+setActiveNodeWithChildrenHelper active newNode newChildren (Model model) =
     let
-        flat =
-            tree
-                |> TreeHelpers.addTrailingEmpties
-                |> TreeHelpers.flatten
-    in
+        { flat } =
+            computeTree (Model model)
+
         -- Handle special case when the tree is completely empty
         -- and a new node is added at the root.
-        if tree == Tree.Empty && active == [] then
-            Tree.Node newNode []
-        else
-            let
-                node =
-                    flat
-                        |> List.filter (\( path, _ ) -> active == path)
-                        |> List.head
-                        |> Maybe.map Tuple.second
-            in
-                case node of
-                    Just (Just node) ->
-                        TreeHelpers.updateAtWithChildren active newNode newChildren tree
+        newTree =
+            if model.tree == Tree.Empty && active == [] then
+                Tree.Node newNode []
+            else
+                let
+                    node =
+                        flat
+                            |> List.filter (\( path, _ ) -> active == path)
+                            |> List.head
+                            |> Maybe.map Tuple.second
+                in
+                    case node of
+                        Just (Just node) ->
+                            TreeHelpers.updateAtWithChildren active newNode newChildren model.tree
 
-                    Just Nothing ->
-                        TreeHelpers.insert (List.take (List.length active - 1) active) (Just newNode) tree
+                        Just Nothing ->
+                            TreeHelpers.insert (List.take (List.length active - 1) active) (Just newNode) model.tree
 
-                    _ ->
-                        -- Impossible state
-                        tree
+                        _ ->
+                            -- Impossible state
+                            model.tree
+    in
+        Model { model | tree = newTree }
 
 
 {-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
@@ -281,7 +291,8 @@ setActiveNodeWithChildren newNode newChildren (Model model) =
             model.active
                 |> Maybe.map
                     (\active ->
-                        setActiveNodeWithChildrenHelper active newNode newChildren model.tree
+                        setActiveNodeWithChildrenHelper active newNode newChildren (Model model)
+                            |> (\(Model model) -> model.tree)
                     )
                 |> Maybe.withDefault model.tree
     in
@@ -513,7 +524,8 @@ update msg (Model model) =
                                 Just Nothing ->
                                     case model.settings.defaultNode of
                                         Just defaultNode ->
-                                            setActiveNodeWithChildrenHelper path defaultNode Nothing model.tree
+                                            setActiveNodeWithChildrenHelper path defaultNode Nothing (Model model)
+                                                |> (\(Model model) -> model.tree)
 
                                         Nothing ->
                                             model.tree
@@ -524,11 +536,8 @@ update msg (Model model) =
                         Nothing ->
                             resolveDrop (Model model)
 
-                newComputedTree =
-                    ComputedTree.init model.settings.showPlaceholderLeaves newTree
-
-                layout =
-                    ComputedTree.layout newComputedTree
+                { layout } =
+                    computeTree (Model { model | tree = newTree })
 
                 newPanOffset =
                     active_
