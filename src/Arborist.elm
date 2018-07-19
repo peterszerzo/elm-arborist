@@ -63,7 +63,7 @@ import Html.Styled.Attributes exposing (style, css)
 import Html.Styled.Events exposing (on, onWithOptions)
 import Json.Decode as Decode
 import Arborist.Tree as Tree
-import Internal.Tree.Extra as TreeHelpers exposing (TreeNodePath)
+import Internal.Tree.Extra as TreeExtra exposing (TreeNodePath)
 import Internal.Settings as Settings
 import Drag exposing (Drag)
 import Utils
@@ -174,27 +174,27 @@ deactivate (Model model) =
         }
 
 
-computeTree : Model node -> { flat : List ( List Int, Maybe node ), layout : TreeHelpers.Layout }
+computeTree : Model node -> { flat : List ( List Int, Maybe node ), layout : TreeExtra.Layout }
 computeTree (Model model) =
     let
         withPlaceholders =
             case ( model.settings.showPlaceholderLeaves, model.settings.showPlaceholderLeavesAdvanced ) of
                 ( _, Just addEmpties ) ->
-                    TreeHelpers.addTrailingEmptiesAdvanced addEmpties model.tree
+                    TreeExtra.addTrailingEmptiesAdvanced addEmpties model.tree
 
                 ( True, _ ) ->
-                    TreeHelpers.addTrailingEmpties model.tree
+                    TreeExtra.addTrailingEmpties model.tree
 
                 ( _, _ ) ->
                     model.tree
 
         flat =
-            TreeHelpers.flatten withPlaceholders
+            TreeExtra.flatten withPlaceholders
 
         layout =
             withPlaceholders
-                |> TreeHelpers.analyze
-                |> TreeHelpers.layout
+                |> TreeExtra.analyze
+                |> TreeExtra.layout
     in
         { layout = layout
         , flat = flat
@@ -270,10 +270,10 @@ setActiveNodeWithChildrenHelper active newNode newChildren (Model model) =
                 in
                     case node of
                         Just (Just node) ->
-                            TreeHelpers.updateAtWithChildren active newNode newChildren model.tree
+                            TreeExtra.updateAtWithChildren active newNode newChildren model.tree
 
                         Just Nothing ->
-                            TreeHelpers.insert (List.take (List.length active - 1) active) (Just newNode) model.tree
+                            TreeExtra.insert (List.take (List.length active - 1) active) (Just newNode) model.tree
 
                         _ ->
                             -- Impossible state
@@ -312,7 +312,7 @@ deleteActiveNode (Model model) =
                 model.active
                     |> Maybe.map
                         (\active ->
-                            TreeHelpers.delete active
+                            TreeExtra.delete active
                                 model.tree
                         )
                     |> Maybe.withDefault model.tree
@@ -413,13 +413,13 @@ resolveDrop (Model model) =
                                                             Nothing ->
                                                                 Nothing
                                                     )
-                                                |> Maybe.map (\_ -> TreeHelpers.swap path dropTargetPath model.tree)
+                                                |> Maybe.map (\_ -> TreeExtra.swap path dropTargetPath model.tree)
                                                 |> Maybe.withDefault
                                                     -- If the drop target is a placeholder, first add an Empty node in the original tree
                                                     -- so the swap method actually finds a node.
-                                                    (TreeHelpers.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing model.tree
-                                                        |> TreeHelpers.swap path dropTargetPath
-                                                        |> TreeHelpers.removeEmpties
+                                                    (TreeExtra.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing model.tree
+                                                        |> TreeExtra.swap path dropTargetPath
+                                                        |> TreeExtra.removeEmpties
                                                     )
                                         )
                                     |> Maybe.withDefault model.tree
@@ -487,12 +487,8 @@ update msg (Model model) =
                                 active_
                     }
 
-        NodeMouseUp x y ->
+        NodeMouseUp _ _ ->
             let
-                isPlaceholder =
-                    (activeNode (Model model) |> Maybe.map Tuple.first)
-                        == (Just Nothing)
-
                 active_ =
                     Drag.state model.drag
                         |> Maybe.andThen
@@ -501,7 +497,7 @@ update msg (Model model) =
                                     Just path ->
                                         -- If the node was dragged far enough already, it is not activated
                                         -- This case also protects from reading a slightly sloppy click as a drag
-                                        if (abs offsetX + abs offsetY > 20) then
+                                        if abs offsetX + abs offsetY > 20 then
                                             Nothing
                                         else
                                             Just path
@@ -736,7 +732,7 @@ getDropTarget path ( dragX, dragY ) (Model model) =
                 )
 
 
-nodeGeometry : Settings.Settings node -> List Int -> TreeHelpers.Layout -> Maybe NodeGeometry
+nodeGeometry : Settings.Settings node -> List Int -> TreeExtra.Layout -> Maybe NodeGeometry
 nodeGeometry settings path layout =
     layout
         |> Dict.get path
@@ -969,16 +965,14 @@ styledView viewNode attrs (Model model) =
                     , position relative
                     ]
                 , style
-                    ([ ( "transform"
-                       , "translate3d("
+                    [ ( "transform"
+                      , "translate3d("
                             ++ (Utils.floatToPxString canvasTotalDragOffsetX)
                             ++ ", "
                             ++ (Utils.floatToPxString canvasTotalDragOffsetY)
                             ++ ", 0)"
-                       )
-                     ]
-                        ++ (Styles.throttleTransitionStyles [ "transform" ] model.settings.throttleMouseMoves)
-                    )
+                      )
+                    ]
                 ]
               <|
                 (List.map
@@ -1011,7 +1005,6 @@ styledView viewNode attrs (Model model) =
                                                 [ style <|
                                                     nodeBaseStyle
                                                         ++ (coordStyle ( xWithDrag, yWithDrag ))
-                                                        ++ (Styles.throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
                                                         ++ (if isDragged then
                                                                 [ ( "z-index", "100" )
                                                                 , ( "cursor", "move" )
@@ -1048,20 +1041,18 @@ styledView viewNode attrs (Model model) =
                                           )
                                         ]
                                             ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
-                                                    [ ( key ++ "shadow"
-                                                      , div
-                                                            [ style <|
-                                                                nodeBaseStyle
-                                                                    ++ (coordStyle ( x, y ))
-                                                                    ++ (Styles.throttleTransitionStyles [ "top", "left" ] model.settings.throttleMouseMoves)
-                                                            , css
-                                                                [ backgroundColor <| rgba 0 0 0 0.05
-                                                                ]
+                                                    ( key ++ "shadow"
+                                                    , div
+                                                        [ style <|
+                                                            nodeBaseStyle
+                                                                ++ (coordStyle ( x, y ))
+                                                        , css
+                                                            [ backgroundColor <| rgba 0 0 0 0.05
                                                             ]
-                                                            []
-                                                      )
-                                                    ]
-                                                        ++ (if node == Nothing then
+                                                        ]
+                                                        []
+                                                    )
+                                                        :: (if node == Nothing then
                                                                 []
                                                             else
                                                                 [ ( key ++ "connector1", Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters |> Html.Styled.map (always NoOp) ) ]

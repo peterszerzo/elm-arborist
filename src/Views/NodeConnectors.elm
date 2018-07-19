@@ -89,9 +89,6 @@ view settings opacity ( dragX, dragY ) center childCenters =
                         ( minX + (settings.nodeWidth / 2) + dragX
                         , minY + settings.nodeHeight + dragY
                         )
-                    ++ Styles.throttleTransitionStyles
-                        [ "top", "left" ]
-                        settings.throttleMouseMoves
             ]
         <|
             (if List.length childCenters == 0 then

@@ -2,7 +2,7 @@ module Internal.Tree.Extra exposing (..)
 
 import Dict
 import Utils
-import Arborist.Tree as Tree exposing (..)
+import Arborist.Tree exposing (..)
 
 
 -- Data structure
@@ -53,16 +53,16 @@ addTrailingEmptiesAdvancedHelper :
     -> Tree a
 addTrailingEmptiesAdvancedHelper context addEmpty tree =
     case tree of
-        Tree.Empty ->
+        Empty ->
             Empty
 
-        Tree.Node item children ->
+        Node item children ->
             let
                 childNodes =
                     List.map
                         (\child ->
                             case child of
-                                Tree.Node item children ->
+                                Node item _ ->
                                     Just item
 
                                 Empty ->
@@ -123,7 +123,7 @@ find path tree =
         ( [], tree ) ->
             Just tree
 
-        ( head :: tail, Empty ) ->
+        ( _ :: _, Empty ) ->
             Nothing
 
 
@@ -182,7 +182,7 @@ updateAtWithChildren path replaceItem replaceChildren tree =
                     )
                     children
 
-        ( [], Node item children ) ->
+        ( [], Node _ children ) ->
             Node replaceItem
                 (replaceChildren
                     |> Maybe.map (List.map (\child -> Node child []))
@@ -264,7 +264,7 @@ flattenTail path tree =
             ( path, Just val )
                 :: (List.indexedMap
                         (\index child ->
-                            (flattenTail (path ++ [ index ]) child)
+                            flattenTail (path ++ [ index ]) child
                         )
                         children
                         |> List.foldl (++) []
@@ -291,7 +291,7 @@ analyzeTail { depth, current } tree =
                     []
             }
 
-        Node item children ->
+        Node _ children ->
             let
                 childrenAnalysis =
                     List.indexedMap
@@ -332,7 +332,7 @@ layout analysis =
                 (\path ->
                     let
                         depthDiff =
-                            analysis.depth - (List.length path) - 1
+                            analysis.depth - List.length path - 1
 
                         extraNodes =
                             List.range 0 (depthDiff - 1)
@@ -387,8 +387,8 @@ layout analysis =
                     (\index ( id, _ ) ->
                         ( id
                         , { center =
-                                ( toFloat index - (toFloat (List.length lowestLevelItems - 1)) / 2
-                                , (toFloat showLevels) - 1
+                                ( toFloat index - toFloat (List.length lowestLevelItems - 1) / 2
+                                , toFloat showLevels - 1
                                 )
                           , childCenters = []
                           }

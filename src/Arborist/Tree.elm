@@ -100,8 +100,8 @@ flattenTail path tree =
             []
 
         Node val children ->
-            [ ( path, val ) ]
-                ++ (List.indexedMap
+            ( path, val )
+                :: (List.indexedMap
                         (\index child ->
                             flattenTail (path ++ [ index ]) child
                         )
