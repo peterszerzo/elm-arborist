@@ -1,8 +1,9 @@
-module Internal.Tree.Extra exposing (..)
+module Internal.Tree.Extra exposing (Layout, NodeInfo, TreeAnalysis, TreeNodePath, addTrailingEmpties, addTrailingEmptiesAdvanced, addTrailingEmptiesAdvancedHelper, analyze, analyzeTail, delete, find, flatten, flattenTail, insert, layout, layoutLevelPass, removeEmpties, swap, updateAt, updateAtWithChildren, updateSubtree)
 
+import Arborist.Tree exposing (..)
 import Dict
 import Utils
-import Arborist.Tree exposing (..)
+
 
 
 -- Data structure
@@ -62,8 +63,8 @@ addTrailingEmptiesAdvancedHelper context addEmpty tree =
                     List.map
                         (\child ->
                             case child of
-                                Node item _ ->
-                                    Just item
+                                Node currentItem _ ->
+                                    Just currentItem
 
                                 Empty ->
                                     Nothing
@@ -71,27 +72,28 @@ addTrailingEmptiesAdvancedHelper context addEmpty tree =
                         children
                         |> List.filterMap (\x -> x)
             in
-                Node item <|
-                    List.map
-                        (addTrailingEmptiesAdvancedHelper
-                            { parent = Just item
-                            , siblings = childNodes
-                            }
+            Node item <|
+                List.map
+                    (addTrailingEmptiesAdvancedHelper
+                        { parent = Just item
+                        , siblings = childNodes
+                        }
+                        addEmpty
+                    )
+                    children
+                    ++ (if
                             addEmpty
-                        )
-                        children
-                        ++ (if
-                                addEmpty
-                                    { parent = context.parent
-                                    , siblings = context.siblings
-                                    , node = item
-                                    , children = childNodes
-                                    }
-                            then
-                                [ Empty ]
-                            else
-                                []
-                           )
+                                { parent = context.parent
+                                , siblings = context.siblings
+                                , node = item
+                                , children = childNodes
+                                }
+                        then
+                            [ Empty ]
+
+                        else
+                            []
+                       )
 
 
 addTrailingEmptiesAdvanced : ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool) -> Tree a -> Tree a
@@ -106,7 +108,7 @@ removeEmpties tree =
             Empty
 
         Node item children ->
-            Node item <| (List.filter (\tree -> tree /= Empty) children |> List.map removeEmpties)
+            Node item <| (List.filter (\childTree -> childTree /= Empty) children |> List.map removeEmpties)
 
 
 {-| Find item by path
@@ -120,8 +122,8 @@ find path tree =
                 |> List.head
                 |> Maybe.andThen (\childTree -> find tail childTree)
 
-        ( [], tree ) ->
-            Just tree
+        ( [], currentTree ) ->
+            Just currentTree
 
         ( _ :: _, Empty ) ->
             Nothing
@@ -136,15 +138,15 @@ swap path1 path2 tree =
         subtree2 =
             find path2 tree
     in
-        Maybe.map2
-            (\st1 st2 ->
-                tree
-                    |> updateSubtree path1 st2
-                    |> updateSubtree path2 st1
-            )
-            subtree1
-            subtree2
-            |> Maybe.withDefault tree
+    Maybe.map2
+        (\st1 st2 ->
+            tree
+                |> updateSubtree path1 st2
+                |> updateSubtree path2 st1
+        )
+        subtree1
+        subtree2
+        |> Maybe.withDefault tree
 
 
 updateSubtree : TreeNodePath -> Tree a -> Tree a -> Tree a
@@ -156,6 +158,7 @@ updateSubtree path subtree tree =
                     (\index child ->
                         if index == head then
                             updateSubtree tail subtree child
+
                         else
                             child
                     )
@@ -164,8 +167,8 @@ updateSubtree path subtree tree =
         ( [], _ ) ->
             subtree
 
-        ( _, tree ) ->
-            tree
+        ( _, currentTree ) ->
+            currentTree
 
 
 updateAtWithChildren : TreeNodePath -> a -> Maybe (List a) -> Tree a -> Tree a
@@ -177,6 +180,7 @@ updateAtWithChildren path replaceItem replaceChildren tree =
                     (\index child ->
                         if index == head then
                             updateAtWithChildren tail replaceItem replaceChildren child
+
                         else
                             child
                     )
@@ -189,8 +193,8 @@ updateAtWithChildren path replaceItem replaceChildren tree =
                     |> Maybe.withDefault children
                 )
 
-        ( _, tree ) ->
-            tree
+        ( _, anyTree ) ->
+            anyTree
 
 
 updateAt : TreeNodePath -> a -> Tree a -> Tree a
@@ -207,6 +211,7 @@ insert path insertItem tree =
                     (\index child ->
                         if index == head then
                             insert tail insertItem child
+
                         else
                             child
                     )
@@ -221,8 +226,8 @@ insert path insertItem tree =
                        ]
                 )
 
-        ( _, tree ) ->
-            tree
+        ( _, anyTree ) ->
+            anyTree
 
 
 delete : TreeNodePath -> Tree a -> Tree a
@@ -233,7 +238,8 @@ delete path tree =
                 |> List.indexedMap
                     (\index child ->
                         if index == head then
-                            (delete tail child)
+                            delete tail child
+
                         else
                             child
                     )
@@ -243,8 +249,8 @@ delete path tree =
         ( [], Node _ _ ) ->
             Empty
 
-        ( _, tree ) ->
-            tree
+        ( _, anyTree ) ->
+            anyTree
 
 
 {-| Flatten
@@ -287,6 +293,7 @@ analyzeTail { depth, current } tree =
             , shortNodes =
                 if List.length current.path < depth - 1 then
                     [ current.path ]
+
                 else
                     []
             }
@@ -307,16 +314,16 @@ analyzeTail { depth, current } tree =
                         )
                         children
             in
-                { depth = depth
-                , nodeInfo =
-                    Dict.singleton current.path
-                        { siblings = current.siblings
-                        , children = List.indexedMap (\index _ -> current.path ++ [ index ]) children
-                        }
-                        :: (List.map .nodeInfo childrenAnalysis)
-                        |> List.foldl Dict.union Dict.empty
-                , shortNodes = childrenAnalysis |> List.map .shortNodes |> List.foldl (++) []
-                }
+            { depth = depth
+            , nodeInfo =
+                Dict.singleton current.path
+                    { siblings = current.siblings
+                    , children = List.indexedMap (\index _ -> current.path ++ [ index ]) children
+                    }
+                    :: List.map .nodeInfo childrenAnalysis
+                    |> List.foldl Dict.union Dict.empty
+            , shortNodes = childrenAnalysis |> List.map .shortNodes |> List.foldl (++) []
+            }
 
 
 {-| Lays out elements.
@@ -342,17 +349,18 @@ layout analysis =
                                             childPath =
                                                 path ++ (List.range 0 n |> List.map (always 0))
                                         in
-                                            { path = childPath
-                                            , siblings = 0
-                                            , children =
-                                                if n == depthDiff - 1 then
-                                                    []
-                                                else
-                                                    [ childPath ++ [ 0 ] ]
-                                            }
+                                        { path = childPath
+                                        , siblings = 0
+                                        , children =
+                                            if n == depthDiff - 1 then
+                                                []
+
+                                            else
+                                                [ childPath ++ [ 0 ] ]
+                                        }
                                     )
                     in
-                        extraNodes
+                    extraNodes
                 )
                 analysis.shortNodes
                 |> List.foldl (++) []
@@ -365,6 +373,7 @@ layout analysis =
                     (\path info ->
                         if List.member path analysis.shortNodes then
                             { info | children = [ path ++ [ 0 ] ] }
+
                         else
                             info
                     )
@@ -376,28 +385,25 @@ layout analysis =
             nodeInfo
                 |> Dict.filter (\path _ -> List.length path == showLevels - 1)
                 |> Dict.toList
-
-        layout =
-            lowestLevelItems
-                |> List.sortWith
-                    (\( path1, _ ) ( path2, _ ) ->
-                        Utils.compareLists path1 path2
-                    )
-                |> List.indexedMap
-                    (\index ( id, _ ) ->
-                        ( id
-                        , { center =
-                                ( toFloat index - toFloat (List.length lowestLevelItems - 1) / 2
-                                , toFloat showLevels - 1
-                                )
-                          , childCenters = []
-                          }
-                        )
-                    )
-                |> Dict.fromList
-                |> layoutLevelPass (showLevels - 2) nodeInfo
     in
-        layout
+    lowestLevelItems
+        |> List.sortWith
+            (\( path1, _ ) ( path2, _ ) ->
+                Utils.compareLists path1 path2
+            )
+        |> List.indexedMap
+            (\index ( id, _ ) ->
+                ( id
+                , { center =
+                        ( toFloat index - toFloat (List.length lowestLevelItems - 1) / 2
+                        , toFloat showLevels - 1
+                        )
+                  , childCenters = []
+                  }
+                )
+            )
+        |> Dict.fromList
+        |> layoutLevelPass (showLevels - 2) nodeInfo
 
 
 layoutLevelPass : Int -> NodeInfo -> Layout -> Layout
@@ -406,9 +412,9 @@ layoutLevelPass level nodeInfo layout =
         (-1) ->
             layout
 
-        level ->
+        properLevel ->
             nodeInfo
-                |> Dict.filter (\path _ -> List.length path == level)
+                |> Dict.filter (\path _ -> List.length path == properLevel)
                 |> Dict.toList
                 |> List.map
                     (\( path, { children } ) ->
@@ -430,18 +436,19 @@ layoutLevelPass level nodeInfo layout =
                                         centerX =
                                             if List.length centers == 0 then
                                                 0
+
                                             else
-                                                (List.foldl (+) 0 centers)
+                                                List.foldl (+) 0 centers
                                                     / (List.length centers |> toFloat)
                                     in
-                                        { center =
-                                            ( centerX
-                                            , toFloat level
-                                            )
-                                        , childCenters = centers
-                                        }
+                                    { center =
+                                        ( centerX
+                                        , toFloat properLevel
+                                        )
+                                    , childCenters = centers
+                                    }
                                )
                         )
                     )
                 |> Dict.fromList
-                |> (\pass -> layoutLevelPass (level - 1) nodeInfo (Dict.union layout pass))
+                |> (\pass -> layoutLevelPass (properLevel - 1) nodeInfo (Dict.union layout pass))

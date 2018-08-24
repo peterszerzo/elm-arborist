@@ -1,10 +1,15 @@
-module Internal.Settings exposing (..)
+module Internal.Settings exposing (Setting(..), Settings, ShowPlaceholderLeavesAdvanced, apply, defaults, showPlaceholderLeavesAdvanced)
 
 import Time
 
 
 type alias ShowPlaceholderLeavesAdvanced node =
-    { node : node, parent : Maybe node, children : List node, siblings : List node } -> Bool
+    { node : node
+    , parent : Maybe node
+    , children : List node
+    , siblings : List node
+    }
+    -> Bool
 
 
 type alias Settings node =
@@ -66,12 +71,8 @@ type Setting node
 
 showPlaceholderLeavesAdvanced : Settings node -> ShowPlaceholderLeavesAdvanced node
 showPlaceholderLeavesAdvanced settings =
-    case settings.showPlaceholderLeavesAdvanced of
-        Just showPlaceholderLeavesAdvanced ->
-            showPlaceholderLeavesAdvanced
-
-        Nothing ->
-            \_ -> settings.showPlaceholderLeaves
+    settings.showPlaceholderLeavesAdvanced
+        |> Maybe.withDefault (\_ -> settings.showPlaceholderLeaves)
 
 
 apply : List (Setting node) -> Settings node -> Settings node
