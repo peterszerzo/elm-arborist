@@ -1,13 +1,14 @@
-module Utils exposing (floatToPxString, addFloatTuples, startsWith, onClickStopPropagation, compareLists)
+module Utils exposing (addFloatTuples, compareLists, convertElm018Styles, floatToPxString, onClickStopPropagation, startsWith)
 
-import Json.Decode as Decode
 import Html exposing (Attribute)
-import Html.Events exposing (onWithOptions)
+import Html.Attributes exposing (style)
+import Html.Events exposing (stopPropagationOn)
+import Json.Decode as Decode
 
 
 floatToPxString : Float -> String
 floatToPxString =
-    flip (++) "px" << toString << floor
+    (\a -> (++) a "px") << String.fromInt << floor
 
 
 addFloatTuples : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
@@ -22,13 +23,12 @@ startsWith start list =
 
 onClickStopPropagation : msg -> Attribute msg
 onClickStopPropagation message =
-    let
-        config =
-            { stopPropagation = True
-            , preventDefault = False
-            }
-    in
-        onWithOptions "click" config (Decode.succeed message)
+    stopPropagationOn "click" (Decode.succeed ( message, True ))
+
+
+convertElm018Styles : List ( String, String ) -> List (Attribute msg)
+convertElm018Styles =
+    List.map (\( property, value ) -> style property value)
 
 
 compareLists : List comparable -> List comparable -> Order
@@ -39,10 +39,11 @@ compareLists l1 l2 =
                 comp =
                     compare head1 head2
             in
-                if comp == EQ then
-                    compareLists tail1 tail2
-                else
-                    comp
+            if comp == EQ then
+                compareLists tail1 tail2
+
+            else
+                comp
 
         ( _, _ ) ->
             EQ

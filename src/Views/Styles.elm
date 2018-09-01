@@ -1,4 +1,4 @@
-module Views.Styles exposing (..)
+module Views.Styles exposing (coordinate, nodeBase)
 
 import Internal.Settings as Settings
 import Utils

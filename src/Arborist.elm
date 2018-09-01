@@ -35,15 +35,15 @@ module Arborist exposing
 
 -}
 
-import AnimationFrame
 import Arborist.Tree as Tree
+import Browser.Events
 import Css exposing (..)
 import Dict
 import Drag exposing (Drag)
 import Html
 import Html.Styled exposing (div, fromUnstyled, text, toUnstyled)
 import Html.Styled.Attributes exposing (css, style)
-import Html.Styled.Events exposing (on, onWithOptions)
+import Html.Styled.Events exposing (on, stopPropagationOn)
 import Html.Styled.Keyed
 import Internal.Settings as Settings
 import Internal.Tree.Extra as TreeExtra exposing (TreeNodePath)
@@ -74,7 +74,6 @@ type Model node
         , displayRoot : Maybe TreeNodePath
         , panOffset : ( Float, Float )
         , targetPanOffset : Maybe ( Float, Float )
-        , isCanvasMouseMoveThrottled : Bool
         }
 
 
@@ -88,16 +87,16 @@ init =
 {-| Initialize model from a [tree](Tree), using a list of [settings](Settings).
 -}
 initWith : List (Settings.Setting node) -> Tree.Tree node -> Model node
-initWith settings tree =
+initWith settings initTree =
     let
         settings_ =
             Settings.apply settings Settings.defaults
     in
     Model
         { settings = settings_
-        , tree = tree
+        , tree = initTree
         , active =
-            if settings_.isSturdyMode && tree /= Tree.Empty then
+            if settings_.isSturdyMode && initTree /= Tree.Empty then
                 Just []
 
             else
@@ -109,7 +108,6 @@ initWith settings tree =
         , displayRoot = Nothing
         , panOffset = ( 0, 0 )
         , targetPanOffset = Nothing
-        , isCanvasMouseMoveThrottled = False
         }
 
 
@@ -319,28 +317,21 @@ subscriptions (Model model) =
             Sub.none
 
           else
-            AnimationFrame.times AnimationFrameTick
-        , case model.settings.throttleMouseMoves of
-            Just interval ->
-                Time.every interval MouseMoveThrottleTick
-
-            Nothing ->
-                Sub.none
+            Browser.Events.onAnimationFrame AnimationFrameTick
         ]
 
 
 {-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
 -}
 tree : Model node -> Tree.Tree node
-tree (Model { tree }) =
-    tree
+tree (Model model) =
+    model.tree
 
 
 {-| Module messages
 -}
 type Msg
-    = AnimationFrameTick Time.Time
-    | MouseMoveThrottleTick Time.Time
+    = AnimationFrameTick Time.Posix
     | NodeMouseDown TreeNodePath Float Float
     | NodeMouseUp Float Float
     | NodeMouseEnter TreeNodePath
@@ -425,9 +416,6 @@ resolveDrop (Model model) =
 update : Msg -> Model node -> Model node
 update msg (Model model) =
     case msg of
-        MouseMoveThrottleTick _ ->
-            Model { model | isCanvasMouseMoveThrottled = False }
-
         AnimationFrameTick _ ->
             Model
                 { model
@@ -532,8 +520,8 @@ update msg (Model model) =
                 newPanOffset =
                     active_
                         |> Maybe.andThen
-                            (\active_ ->
-                                nodeGeometry model.settings active_ layout
+                            (\justActive ->
+                                nodeGeometry model.settings justActive layout
                                     |> Maybe.map .center
                                     |> Maybe.map
                                         (\( cx, cy ) ->
@@ -599,12 +587,6 @@ update msg (Model model) =
                 { model
                     | drag =
                         Drag.move xm ym model.drag
-                    , isCanvasMouseMoveThrottled =
-                        if model.isReceivingSubscriptions && model.settings.throttleMouseMoves /= Nothing then
-                            True
-
-                        else
-                            False
                 }
 
         CanvasMouseDown x y ->
@@ -949,45 +931,36 @@ styledView viewNode attrs (Model model) =
             Utils.addFloatTuples canvasDragOffset model.panOffset
     in
     div
-        ((if model.isCanvasMouseMoveThrottled then
-            []
+        ([ on "mousemove"
+            (Decode.map2 CanvasMouseMove
+                (Decode.field "screenX" Decode.float)
+                (Decode.field "screenY" Decode.float)
+            )
+         , on "mousedown"
+            (Decode.map2 CanvasMouseDown
+                (Decode.field "screenX" Decode.float)
+                (Decode.field "screenY" Decode.float)
+            )
+         , on "mouseup"
+            (Decode.map2 CanvasMouseUp
+                (Decode.field "screenX" Decode.float)
+                (Decode.field "screenY" Decode.float)
+            )
+         , on "mouseleave" (Decode.succeed CanvasMouseLeave)
+         , style "width" <| Utils.floatToPxString model.settings.canvasWidth
+         , style "height" <| Utils.floatToPxString model.settings.canvasHeight
+         , style "cursor" <|
+            if isCanvasDragging then
+                "move"
 
-          else
-            [ on "mousemove"
-                (Decode.map2 CanvasMouseMove
-                    (Decode.field "screenX" Decode.float)
-                    (Decode.field "screenY" Decode.float)
-                )
+            else
+                "auto"
+         , css
+            [ overflow hidden
+            , boxSizing borderBox
+            , position relative
             ]
-         )
-            ++ [ on "mousedown"
-                    (Decode.map2 CanvasMouseDown
-                        (Decode.field "screenX" Decode.float)
-                        (Decode.field "screenY" Decode.float)
-                    )
-               , on "mouseup"
-                    (Decode.map2 CanvasMouseUp
-                        (Decode.field "screenX" Decode.float)
-                        (Decode.field "screenY" Decode.float)
-                    )
-               , on "mouseleave" (Decode.succeed CanvasMouseLeave)
-               , style
-                    [ ( "width", Utils.floatToPxString model.settings.canvasWidth )
-                    , ( "height", Utils.floatToPxString model.settings.canvasHeight )
-                    , ( "cursor"
-                      , if isCanvasDragging then
-                            "move"
-
-                        else
-                            "auto"
-                      )
-                    ]
-               , css
-                    [ overflow hidden
-                    , boxSizing borderBox
-                    , position relative
-                    ]
-               ]
+         ]
             ++ attrs
         )
         [ Html.Styled.Keyed.node "div"
@@ -997,14 +970,13 @@ styledView viewNode attrs (Model model) =
                 , position relative
                 ]
             , style
-                [ ( "transform"
-                  , "translate3d("
-                        ++ Utils.floatToPxString canvasTotalDragOffsetX
-                        ++ ", "
-                        ++ Utils.floatToPxString canvasTotalDragOffsetY
-                        ++ ", 0)"
-                  )
-                ]
+                "transform"
+              <|
+                "translate3d("
+                    ++ Utils.floatToPxString canvasTotalDragOffsetX
+                    ++ ", "
+                    ++ Utils.floatToPxString canvasTotalDragOffsetY
+                    ++ ", 0)"
             ]
           <|
             (List.map
@@ -1017,7 +989,7 @@ styledView viewNode attrs (Model model) =
                                         center
 
                                     key =
-                                        List.map toString path
+                                        List.map String.fromInt path
                                             |> String.join "-"
 
                                     ( isDragged, ( xDrag, yDrag ) ) =
@@ -1034,36 +1006,34 @@ styledView viewNode attrs (Model model) =
                                 in
                                 [ ( key
                                   , div
-                                        [ style <|
-                                            nodeBaseStyle
-                                                ++ coordStyle ( xWithDrag, yWithDrag )
-                                                ++ (if isDragged then
-                                                        [ ( "z-index", "100" )
-                                                        , ( "cursor", "move" )
-                                                        ]
+                                        ((nodeBaseStyle
+                                            ++ coordStyle ( xWithDrag, yWithDrag )
+                                            ++ (if isDragged then
+                                                    [ ( "z-index", "100" )
+                                                    , ( "cursor", "move" )
+                                                    ]
 
-                                                    else
-                                                        []
-                                                   )
-                                        , onWithOptions "mousedown"
-                                            { stopPropagation = True
-                                            , preventDefault = False
-                                            }
-                                            (Decode.map2 (NodeMouseDown path)
-                                                (Decode.field "screenX" Decode.float)
-                                                (Decode.field "screenY" Decode.float)
-                                            )
-                                        , onWithOptions "mouseup"
-                                            { stopPropagation = True
-                                            , preventDefault = False
-                                            }
-                                            (Decode.map2 NodeMouseUp
-                                                (Decode.field "screenX" Decode.float)
-                                                (Decode.field "screenY" Decode.float)
-                                            )
-                                        , on "mouseenter" (Decode.succeed (NodeMouseEnter path))
-                                        , on "mouseleave" (Decode.succeed (NodeMouseLeave path))
-                                        ]
+                                                else
+                                                    []
+                                               )
+                                            |> List.map (\( property, value ) -> style property value)
+                                         )
+                                            ++ [ stopPropagationOn "mousedown"
+                                                    (Decode.map2 (NodeMouseDown path)
+                                                        (Decode.field "screenX" Decode.float)
+                                                        (Decode.field "screenY" Decode.float)
+                                                        |> Decode.map (\msg -> ( msg, True ))
+                                                    )
+                                               , stopPropagationOn "mouseup"
+                                                    (Decode.map2 NodeMouseUp
+                                                        (Decode.field "screenX" Decode.float)
+                                                        (Decode.field "screenY" Decode.float)
+                                                        |> Decode.map (\msg -> ( msg, True ))
+                                                    )
+                                               , on "mouseenter" (Decode.succeed (NodeMouseEnter path))
+                                               , on "mouseleave" (Decode.succeed (NodeMouseLeave path))
+                                               ]
+                                        )
                                         [ viewNode nodeViewContext node
                                         ]
                                   )
@@ -1076,13 +1046,15 @@ styledView viewNode attrs (Model model) =
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
                                             ( key ++ "shadow"
                                             , div
-                                                [ style <|
-                                                    nodeBaseStyle
-                                                        ++ coordStyle ( x, y )
-                                                , css
-                                                    [ backgroundColor <| rgba 0 0 0 0.05
-                                                    ]
-                                                ]
+                                                ((nodeBaseStyle
+                                                    ++ coordStyle ( x, y )
+                                                    |> List.map (\( property, value ) -> style property value)
+                                                 )
+                                                    ++ [ css
+                                                            [ backgroundColor <| rgba 0 0 0 0.05
+                                                            ]
+                                                       ]
+                                                )
                                                 []
                                             )
                                                 :: (if node == Nothing then

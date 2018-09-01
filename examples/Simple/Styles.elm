@@ -1,9 +1,11 @@
-module Simple.Styles exposing (..)
+module Simple.Styles exposing (black, blue, bodyText, box, bubble, button, faintGray, gray, green, lightBlue, nodeContainer, orange, popup, raw)
+
+import Html exposing (Html, p, text)
+import Html.Attributes exposing (style)
+
 
 {-| Program styling
 -}
-
-
 blue : String
 blue =
     "#046896"
@@ -156,13 +158,40 @@ nodeContainer =
     ]
 
 
-text : List ( String, String )
-text =
-    [ ( "margin", "0" )
-    , ( "font-size", "0.875rem" )
-    , ( "line-height", "1.2" )
-    , ( "text-align", "center" )
-    ]
+bodyText : String -> Html msg
+bodyText body =
+    p
+        [ style "margin" "0"
+        , style "font-size" "0.875rem"
+        , style "line-height" "1.2"
+        , style "text-align" "center"
+        ]
+        [ text body ]
+
+
+bubble : String -> Html msg
+bubble body =
+    p
+        [ style "position" "absolute"
+        , style "box-sizing" "border-box"
+        , style "width" "fit-content"
+        , style "min-width" "48px"
+        , style "height" "28px"
+        , style "border-radius" "14px"
+        , style "border" "2px solid #E2E2E2"
+        , style "background-color" "#FFF"
+        , style "font-size" "0.75rem"
+        , style "padding" "0 12px"
+        , style "color" "black"
+        , style "display" "flex"
+        , style "align-items" "center"
+        , style "justify-content" "center"
+        , style "top" "-46px"
+        , style "left" "50%"
+        , style "transform" "translateX(-50%)"
+        , style "z-index" "200"
+        ]
+        [ text body ]
 
 
 button : List ( String, String )

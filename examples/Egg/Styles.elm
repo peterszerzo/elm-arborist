@@ -1,4 +1,4 @@
-module Egg.Styles exposing (..)
+module Egg.Styles exposing (black, blue, box, button, faintGray, gray, green, lightBlue, nodeContainer, orange, popup, raw, text)
 
 {-| Program styling
 -}

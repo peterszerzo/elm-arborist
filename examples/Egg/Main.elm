@@ -1,16 +1,16 @@
-port module Egg.Main exposing (..)
+port module Egg.Main exposing (Model, Msg(..), Node, code, firstOpeningTag, init, main, nodeView, subscriptions, textareaStyle, tree, update, view, viewHeader)
 
-import Task
+import Arborist
+import Arborist.Settings as Settings
+import Arborist.Tree as Tree
+import Egg.Styles as Styles
+import Html exposing (Html, a, button, div, h1, h2, h3, header, label, map, node, p, program, text, textarea)
+import Html.Attributes exposing (class, href, id, style, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Json.Encode as Encode
 import Regex
-import Html exposing (Html, header, div, node, h1, h2, h3, p, a, text, program, label, textarea, map, button)
-import Html.Attributes exposing (class, style, value, type_, href, id)
-import Html.Events exposing (onInput, onClick)
-import Arborist
-import Arborist.Tree as Tree
-import Arborist.Settings as Settings
-import Egg.Styles as Styles
-import Window exposing (size, resizes)
+import Task
+import Window exposing (resizes, size)
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -106,8 +106,8 @@ update msg model =
 
                             prefixedCode =
                                 code
-                                    |> Regex.replace (Regex.All) (Regex.regex "<Child") (\_ -> "<Child" ++ pathPrefix)
-                                    |> Regex.replace (Regex.All)
+                                    |> Regex.replace Regex.All (Regex.regex "<Child") (\_ -> "<Child" ++ pathPrefix)
+                                    |> Regex.replace Regex.All
                                         (Regex.regex "{props.children}")
                                         (\_ ->
                                             childrenCount
@@ -117,44 +117,44 @@ update msg model =
                                                 |> String.join ""
                                         )
                         in
-                            "function Child" ++ pathPrefix ++ " (props) {\n return " ++ prefixedCode ++ "\n}"
+                        "function Child" ++ pathPrefix ++ " (props) {\n return " ++ prefixedCode ++ "\n}"
                     )
                 |> String.join "\n\n"
     in
-        case msg of
-            ArboristMsg arboristMsg ->
-                ( { model | arborist = Arborist.update arboristMsg model.arborist }
-                , code (Encode.object [ ( "sourcecode", Encode.string sourceCode ) ])
-                )
+    case msg of
+        ArboristMsg arboristMsg ->
+            ( { model | arborist = Arborist.update arboristMsg model.arborist }
+            , code (Encode.object [ ( "sourcecode", Encode.string sourceCode ) ])
+            )
 
-            SetActive newNode ->
-                ( { model | arborist = Arborist.setActiveNode newNode model.arborist }
-                , Cmd.none
-                )
+        SetActive newNode ->
+            ( { model | arborist = Arborist.setActiveNode newNode model.arborist }
+            , Cmd.none
+            )
 
-            DeleteActive ->
-                ( { model | arborist = Arborist.deleteActiveNode model.arborist }
-                , Cmd.none
-                )
+        DeleteActive ->
+            ( { model | arborist = Arborist.deleteActiveNode model.arborist }
+            , Cmd.none
+            )
 
-            EditNewNodeCode val ->
-                ( { model
-                    | newNode = { code = val }
-                  }
-                , Cmd.none
-                )
+        EditNewNodeCode val ->
+            ( { model
+                | newNode = { code = val }
+              }
+            , Cmd.none
+            )
 
-            Resize { width, height } ->
-                ( { model
-                    | arborist =
-                        Arborist.resize (width // 2) height model.arborist
-                    , windowSize =
-                        { width = width
-                        , height = height
-                        }
-                  }
-                , Cmd.none
-                )
+        Resize { width, height } ->
+            ( { model
+                | arborist =
+                    Arborist.resize (width // 2) height model.arborist
+                , windowSize =
+                    { width = width
+                    , height = height
+                    }
+              }
+            , Cmd.none
+            )
 
 
 
@@ -164,20 +164,18 @@ update msg model =
 viewHeader : Html Msg
 viewHeader =
     header
-        [ style
-            [ ( "width", "100%" )
-            , ( "height", "60px" )
-            , ( "position", "absolute" )
-            , ( "top", "0" )
-            , ( "left", "0" )
-            , ( "padding", "0 20px" )
-            , ( "display", "flex" )
-            , ( "align-items", "center" )
-            , ( "background-color", "#001122" )
-            , ( "font-size", "1.5rem" )
-            , ( "color", "#FFF" )
-            , ( "border-bottom", "1px solid #454545" )
-            ]
+        [ style "width" "100%"
+        , style "height" "60px"
+        , style "position" "absolute"
+        , style "top" "0"
+        , style "left" "0"
+        , style "padding" "0 20px"
+        , style "display" "flex"
+        , style "align-items" "center"
+        , style "background-color" "#001122"
+        , style "font-size" "1.5rem"
+        , style "color" "#FFF"
+        , style "border-bottom" "1px solid #454545"
         ]
         [ text "Egg" ]
 
@@ -190,29 +188,25 @@ view model =
         ]
             ++ [ div
                     [ id "playground-container"
-                    , style
-                        [ ( "position", "absolute" )
-                        , ( "background-color", "#FFF" )
-                        , ( "top", "60px" )
-                        , ( "left", "50%" )
-                        , ( "width", "50%" )
-                        , ( "height", "calc(100% - 60px)" )
-                        , ( "z-index", "10000" )
-                        , ( "border-left", "1px solid #dedede" )
-                        ]
+                    , style "position" "absolute"
+                    , style "background-color" "#FFF"
+                    , style "top" "60px"
+                    , style "left" "50%"
+                    , style "width" "50%"
+                    , style "height" "calc(100% - 60px)"
+                    , style "z-index" "10000"
+                    , style "border-left" "1px solid #dedede"
                     ]
                     []
                , -- For pop-up coordinates to work, include view in a container
                  div
-                    [ style
-                        [ ( "margin", "auto" )
-                        , ( "position", "absolute" )
-                        , ( "background-color", "#232323" )
-                        , ( "top", "60px" )
-                        , ( "left", "0" )
-                        , ( "width", (toString (model.windowSize.width // 2)) ++ "px" )
-                        , ( "height", (toString (model.windowSize.height - 60)) ++ "px" )
-                        ]
+                    [ style "margin" "auto"
+                    , style "position" "absolute"
+                    , style "background-color" "#232323"
+                    , style "top" "60px"
+                    , style "left" "0"
+                    , style "width" (toString (model.windowSize.width // 2) ++ "px")
+                    , style "height" (toString (model.windowSize.height - 60) ++ "px")
                     ]
                  <|
                     [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg ]
@@ -223,27 +217,27 @@ view model =
                                             ( x, y ) =
                                                 position
                                         in
-                                            [ div
-                                                [ style <|
-                                                    Styles.popup
-                                                        ++ [ ( "left", (toString x) ++ "px" )
-                                                           , ( "top", (toString y) ++ "px" )
-                                                           , ( "height", "320px" )
-                                                           , ( "width", "480px" )
-                                                           ]
-                                                ]
-                                                (case item of
-                                                    Just item ->
-                                                        [ textarea [ style textareaStyle, value item.code, onInput (\val -> SetActive { item | code = val }) ] []
-                                                        , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
-                                                        ]
-
-                                                    Nothing ->
-                                                        [ textarea [ style textareaStyle, value model.newNode.code, onInput EditNewNodeCode ] []
-                                                        , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
-                                                        ]
-                                                )
+                                        [ div
+                                            [ style <|
+                                                Styles.popup
+                                                    ++ [ ( "left", toString x ++ "px" )
+                                                       , ( "top", toString y ++ "px" )
+                                                       , ( "height", "320px" )
+                                                       , ( "width", "480px" )
+                                                       ]
                                             ]
+                                            (case item of
+                                                Just item ->
+                                                    [ textarea [ style textareaStyle, value item.code, onInput (\val -> SetActive { item | code = val }) ] []
+                                                    , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
+                                                    ]
+
+                                                Nothing ->
+                                                    [ textarea [ style textareaStyle, value model.newNode.code, onInput EditNewNodeCode ] []
+                                                    , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
+                                                    ]
+                                            )
+                                        ]
                                     )
                                 |> Maybe.withDefault []
                            )

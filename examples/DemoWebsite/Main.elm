@@ -1,17 +1,17 @@
-module DemoWebsite.Main exposing (..)
+module DemoWebsite.Main exposing (Model, Msg(..), Node, init, logo, main, setAnswer, setQuestion, update, view)
 
 {-| Code for the Arborist website.
 -}
 
 import Css exposing (..)
 import Css.Foreign as Foreign
-import Html exposing (program)
-import Html.Styled exposing (Html, div, node, h1, h2, h3, p, a, text, label, input, map, button, toUnstyled)
-import Html.Styled.Attributes exposing (class, style, value, type_, href, css)
-import Svg.Styled exposing (svg, path)
-import Svg.Styled.Attributes exposing (viewBox, d, stroke)
-import DemoWebsite.Styles as Styles
 import DemoWebsite.Conversation as Conversation
+import DemoWebsite.Styles as Styles
+import Html exposing (program)
+import Html.Styled exposing (Html, a, button, div, h1, h2, h3, input, label, map, node, p, text, toUnstyled)
+import Html.Styled.Attributes exposing (class, css, href, style, type_, value)
+import Svg.Styled exposing (path, svg)
+import Svg.Styled.Attributes exposing (d, stroke, viewBox)
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -45,9 +45,9 @@ init =
         ( conversation, conversationCmd ) =
             Conversation.init
     in
-        ( { conversation = conversation }
-        , Cmd.map ConversationMsg conversationCmd
-        )
+    ( { conversation = conversation }
+    , Cmd.map ConversationMsg conversationCmd
+    )
 
 
 {-| Program message
@@ -68,9 +68,9 @@ update msg model =
                 ( conversation, conversationCmd ) =
                     Conversation.update msg model.conversation
             in
-                ( { model | conversation = conversation }
-                , Cmd.map ConversationMsg conversationCmd
-                )
+            ( { model | conversation = conversation }
+            , Cmd.map ConversationMsg conversationCmd
+            )
 
 
 logo : Html msg
@@ -99,7 +99,7 @@ view model =
                 , property "z-index" "100"
                 , padding <| px 20
                 , borderRadius <| px 4
-                , backgroundColor <| (hex "fafafa")
+                , backgroundColor <| hex "fafafa"
                 , property "box-shadow" "0 2px 4px rgba(0, 0, 0, 0.1)"
                 , Foreign.descendants
                     [ Foreign.a
@@ -138,9 +138,8 @@ main =
         , update = update
         , view = view >> toUnstyled
         , subscriptions =
-            (\model ->
+            \model ->
                 Sub.batch
                     [ Conversation.subscriptions model.conversation |> Sub.map ConversationMsg
                     ]
-            )
         }

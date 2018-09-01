@@ -1,4 +1,8 @@
-module Arborist.Tree exposing (Tree(..), map, decoder, encoder, depth, flatten)
+module Arborist.Tree exposing
+    ( Tree(..)
+    , decoder, encoder
+    , depth, flatten, map
+    )
 
 {-| A tiny tiny tree module. Only a few utility methods are provided here - after all, if you want to manupilate the tree, you should probably do so using the interface 🤓.
 
@@ -53,7 +57,7 @@ encoder nodeEncoder tree =
         Node node children ->
             Encode.object
                 [ ( "value", nodeEncoder node )
-                , ( "children", List.map (encoder nodeEncoder) children |> Encode.list )
+                , ( "children", Encode.list (encoder nodeEncoder) children )
                 ]
 
 

@@ -1,14 +1,16 @@
-module Simple.Main exposing (..)
+module Simple.Main exposing (main)
 
 {-| A simple Arborist app modeling a conversation flow.
 -}
 
-import Html exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
-import Html.Attributes exposing (class, style, value, type_, href)
-import Html.Events exposing (onInput, onClick)
 import Arborist
 import Arborist.Settings as Settings
 import Arborist.Tree as Tree
+import Browser
+import Html exposing (Html, a, button, div, h1, h2, h3, input, label, map, node, p, text)
+import Html.Attributes exposing (class, href, style, type_, value)
+import Html.Events exposing (onClick, onInput)
+import Json.Encode as Encode
 import Simple.Styles as Styles
 
 
@@ -54,8 +56,8 @@ tree =
         ]
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Encode.Value -> ( Model, Cmd Msg )
+init flags =
     ( { arborist =
             Arborist.initWith
                 [ Settings.centerOffset 0 -150
@@ -133,15 +135,18 @@ view model =
         ]
             ++ [ -- For pop-up coordinates to work, include view in a container
                  div
-                    [ style
-                        [ ( "margin", "auto" )
-                        , ( "position", "absolute" )
-                        , ( "top", "0px" )
-                        , ( "left", "0px" )
-                        ]
+                    [ style "margin" "auto"
+                    , style "position" "absolute"
+                    , style "top" "0px"
+                    , style "left" "0px"
                     ]
                  <|
-                    [ Arborist.view nodeView [ style Styles.box ] model.arborist |> Html.map ArboristMsg
+                    [ Arborist.view nodeView
+                        (Styles.box
+                            |> List.map (\( property, value ) -> style property value)
+                        )
+                        model.arborist
+                        |> Html.map ArboristMsg
                     ]
                         ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
@@ -150,35 +155,57 @@ view model =
                                             ( x, y ) =
                                                 position
                                         in
-                                            [ div
-                                                [ style <|
-                                                    Styles.popup
-                                                        ++ [ ( "left", (toString x) ++ "px" )
-                                                           , ( "top", (toString y) ++ "px" )
-                                                           ]
-                                                ]
-                                                (case item of
-                                                    Just item ->
-                                                        [ label []
-                                                            [ text "Question"
-                                                            , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                        [ div
+                                            (List.map (\( property, value ) -> style property value) Styles.popup
+                                                ++ [ style "left" <| String.fromFloat x ++ "px"
+                                                   , style "top" <| String.fromFloat y ++ "px"
+                                                   ]
+                                            )
+                                            (case item of
+                                                Just justItem ->
+                                                    [ label []
+                                                        [ text "Question"
+                                                        , input
+                                                            [ value justItem.question
+                                                            , onInput (\val -> SetActive { justItem | question = val })
                                                             ]
-                                                        , label []
-                                                            [ text "Answer"
-                                                            , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
-                                                            ]
-                                                        , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
+                                                            []
                                                         ]
+                                                    , label []
+                                                        [ text "Answer"
+                                                        , input
+                                                            [ value justItem.answer
+                                                            , onInput (\val -> SetActive { justItem | answer = val })
+                                                            ]
+                                                            []
+                                                        ]
+                                                    , button
+                                                        ((Styles.button
+                                                            |> List.map (\( property, value ) -> style property value)
+                                                         )
+                                                            ++ [ onClick DeleteActive
+                                                               ]
+                                                        )
+                                                        [ text "Delete" ]
+                                                    ]
 
-                                                    Nothing ->
-                                                        [ label []
-                                                            [ text "Question", input [ value model.newNode.question, onInput EditNewNodeQuestion ] [] ]
-                                                        , label []
-                                                            [ text "Answer", input [ value model.newNode.answer, onInput EditNewNodeAnswer ] [] ]
-                                                        , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
-                                                        ]
-                                                )
-                                            ]
+                                                Nothing ->
+                                                    [ label []
+                                                        [ text "Question", input [ value model.newNode.question, onInput EditNewNodeQuestion ] [] ]
+                                                    , label []
+                                                        [ text "Answer", input [ value model.newNode.answer, onInput EditNewNodeAnswer ] [] ]
+                                                    , button
+                                                        ((Styles.button
+                                                            |> List.map (\( property, value ) -> style property value)
+                                                         )
+                                                            ++ [ type_ "submit"
+                                                               , onClick (SetActive model.newNode)
+                                                               ]
+                                                        )
+                                                        [ text "Add node" ]
+                                                    ]
+                                            )
+                                        ]
                                     )
                                 |> Maybe.withDefault []
                            )
@@ -188,95 +215,69 @@ view model =
 {-| Describe how a node should render inside the tree's layout.
 -}
 nodeView : Arborist.NodeView Node
-nodeView context item =
-    item
+nodeView context maybeNode =
+    maybeNode
         |> Maybe.map
-            (\item ->
+            (\node ->
                 div
-                    [ style <|
-                        Styles.nodeContainer
-                            ++ [ ( "background-color"
-                                 , case context.state of
-                                    Arborist.Active ->
-                                        Styles.green
+                    (Styles.nodeContainer
+                        ++ [ ( "background-color"
+                             , case context.state of
+                                Arborist.Active ->
+                                    Styles.green
 
-                                    Arborist.Hovered ->
-                                        Styles.lightBlue
+                                Arborist.Hovered ->
+                                    Styles.lightBlue
 
-                                    Arborist.DropTarget ->
-                                        Styles.orange
+                                Arborist.DropTarget ->
+                                    Styles.orange
 
-                                    Arborist.Normal ->
-                                        Styles.blue
-                                 )
-                               , ( "color", "white" )
-                               ]
-                    ]
+                                Arborist.Normal ->
+                                    Styles.blue
+                             )
+                           , ( "color", "white" )
+                           ]
+                        |> List.map (\( property, value ) -> style property value)
+                    )
                     [ div [] <|
-                        (if item.answer /= "" then
-                            [ p
-                                [ style <|
-                                    bubble
-                                        ++ []
-                                ]
-                                [ text item.answer ]
+                        (if node.answer /= "" then
+                            [ Styles.bubble node.answer
                             ]
+
                          else
                             []
                         )
-                            ++ [ p [ style <| Styles.text ] [ text item.question ]
+                            ++ [ Styles.bodyText node.question
                                ]
                     ]
             )
         |> Maybe.withDefault
             (div
-                [ style <|
-                    Styles.nodeContainer
-                        ++ (case context.state of
-                                Arborist.Active ->
-                                    [ ( "background-color", Styles.green )
-                                    , ( "color", "white" )
-                                    , ( "border", "0" )
-                                    ]
+                (Styles.nodeContainer
+                    ++ (case context.state of
+                            Arborist.Active ->
+                                [ ( "background-color", Styles.green )
+                                , ( "color", "white" )
+                                , ( "border", "0" )
+                                ]
 
-                                Arborist.DropTarget ->
-                                    [ ( "background-color", Styles.orange )
-                                    , ( "border", "0" )
-                                    , ( "color", "white" )
-                                    ]
+                            Arborist.DropTarget ->
+                                [ ( "background-color", Styles.orange )
+                                , ( "border", "0" )
+                                , ( "color", "white" )
+                                ]
 
-                                _ ->
-                                    [ ( "background-color", "transparent" )
-                                    , ( "border", "1px dashed #CECECE" )
-                                    , ( "color", "#898989" )
-                                    ]
-                           )
+                            _ ->
+                                [ ( "background-color", "transparent" )
+                                , ( "border", "1px dashed #CECECE" )
+                                , ( "color", "#898989" )
+                                ]
+                       )
+                    |> List.map (\( property, value ) -> style property value)
+                )
+                [ Styles.bodyText "New child"
                 ]
-                [ p [ style <| Styles.text ] [ text "New child" ] ]
             )
-
-
-bubble : List ( String, String )
-bubble =
-    [ ( "position", "absolute" )
-    , ( "box-sizing", "border-box" )
-    , ( "width", "fit-content" )
-    , ( "min-width", "48px" )
-    , ( "height", "28px" )
-    , ( "border-radius", "14px" )
-    , ( "border", "2px solid #E2E2E2" )
-    , ( "background-color", "#FFF" )
-    , ( "font-size", "0.75rem" )
-    , ( "padding", "0 12px" )
-    , ( "color", "black" )
-    , ( "display", "flex" )
-    , ( "align-items", "center" )
-    , ( "justify-content", "center" )
-    , ( "top", "-46px" )
-    , ( "left", "50%" )
-    , ( "transform", "translateX(-50%)" )
-    , ( "z-index", "200" )
-    ]
 
 
 subscriptions : Model -> Sub Msg
@@ -286,9 +287,9 @@ subscriptions model =
 
 {-| Entry point
 -}
-main : Program Never Model Msg
+main : Program Encode.Value Model Msg
 main =
-    program
+    Browser.element
         { init = init
         , update = update
         , view = view

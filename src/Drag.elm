@@ -1,11 +1,9 @@
-module Drag
-    exposing
-        ( Drag
-        , init
-        , start
-        , move
-        , state
-        )
+module Drag exposing
+    ( Drag
+    , init
+    , start, move
+    , state
+    )
 
 {-| This module holds the drag state.
 
@@ -17,7 +15,7 @@ module Drag
 
 # Constructors
 
-@docs init, start
+@docs init
 
 
 # Update utilities

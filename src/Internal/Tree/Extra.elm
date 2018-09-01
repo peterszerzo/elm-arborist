@@ -407,48 +407,51 @@ layout analysis =
 
 
 layoutLevelPass : Int -> NodeInfo -> Layout -> Layout
-layoutLevelPass level nodeInfo layout =
-    case level of
-        (-1) ->
-            layout
+layoutLevelPass level nodeInfo currentLayoutPass =
+    if level == -1 then
+        currentLayoutPass
 
-        properLevel ->
-            nodeInfo
-                |> Dict.filter (\path _ -> List.length path == properLevel)
-                |> Dict.toList
-                |> List.map
-                    (\( path, { children } ) ->
-                        ( path
-                        , List.map
-                            (\child ->
-                                Dict.get child layout
-                                    |> Maybe.withDefault
-                                        { center = ( 0, 0 )
-                                        , childCenters = []
-                                        }
-                            )
-                            children
-                            |> (\list ->
-                                    let
-                                        centers =
-                                            List.map (.center >> Tuple.first) list
-
-                                        centerX =
-                                            if List.length centers == 0 then
-                                                0
-
-                                            else
-                                                List.foldl (+) 0 centers
-                                                    / (List.length centers |> toFloat)
-                                    in
-                                    { center =
-                                        ( centerX
-                                        , toFloat properLevel
-                                        )
-                                    , childCenters = centers
+    else
+        let
+            properLevel =
+                level
+        in
+        nodeInfo
+            |> Dict.filter (\path _ -> List.length path == properLevel)
+            |> Dict.toList
+            |> List.map
+                (\( path, { children } ) ->
+                    ( path
+                    , List.map
+                        (\child ->
+                            Dict.get child currentLayoutPass
+                                |> Maybe.withDefault
+                                    { center = ( 0, 0 )
+                                    , childCenters = []
                                     }
-                               )
                         )
+                        children
+                        |> (\list ->
+                                let
+                                    centers =
+                                        List.map (.center >> Tuple.first) list
+
+                                    centerX =
+                                        if List.length centers == 0 then
+                                            0
+
+                                        else
+                                            List.foldl (+) 0 centers
+                                                / (List.length centers |> toFloat)
+                                in
+                                { center =
+                                    ( centerX
+                                    , toFloat properLevel
+                                    )
+                                , childCenters = centers
+                                }
+                           )
                     )
-                |> Dict.fromList
-                |> (\pass -> layoutLevelPass (properLevel - 1) nodeInfo (Dict.union layout pass))
+                )
+            |> Dict.fromList
+            |> (\pass -> layoutLevelPass (properLevel - 1) nodeInfo (Dict.union currentLayoutPass pass))

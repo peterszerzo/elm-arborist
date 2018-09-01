@@ -1,7 +1,5 @@
 module Internal.Settings exposing (Setting(..), Settings, ShowPlaceholderLeavesAdvanced, apply, defaults, showPlaceholderLeavesAdvanced)
 
-import Time
-
 
 type alias ShowPlaceholderLeavesAdvanced node =
     { node : node
@@ -25,7 +23,6 @@ type alias Settings node =
     , isDragAndDropEnabled : Bool
     , showPlaceholderLeaves : Bool
     , showPlaceholderLeavesAdvanced : Maybe (ShowPlaceholderLeavesAdvanced node)
-    , throttleMouseMoves : Maybe Time.Time
     , isSturdyMode : Bool
     , defaultNode : Maybe node
     }
@@ -45,7 +42,6 @@ defaults =
     , isDragAndDropEnabled = True
     , showPlaceholderLeaves = True
     , showPlaceholderLeavesAdvanced = Nothing
-    , throttleMouseMoves = Nothing
     , isSturdyMode = False
     , defaultNode = Nothing
     }
@@ -64,7 +60,6 @@ type Setting node
     | DragAndDrop Bool
     | ShowPlaceholderLeaves Bool
     | ShowPlaceholderLeavesAdvanced (ShowPlaceholderLeavesAdvanced node)
-    | ThrottleMouseMoves Time.Time
     | SturdyMode Bool
     | DefaultNode node
 
@@ -119,9 +114,6 @@ apply newSettings settings =
 
                     ShowPlaceholderLeavesAdvanced show ->
                         { settings | showPlaceholderLeavesAdvanced = Just show }
-
-                    ThrottleMouseMoves time ->
-                        { settings | throttleMouseMoves = Just time }
 
                     SturdyMode isSturdyMode ->
                         { settings | isSturdyMode = isSturdyMode }

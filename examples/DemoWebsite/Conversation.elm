@@ -1,18 +1,18 @@
-module DemoWebsite.Conversation exposing (..)
+module DemoWebsite.Conversation exposing (Model, Msg(..), Node, bubble, init, main, nodeView, setAnswer, setQuestion, subscriptions, tree, update, view)
 
 {-| A simple Arborist app modeling a conversation flow.
 -}
 
-import Task
-import Html.Styled exposing (Html, div, node, h1, h2, h3, p, a, text, program, label, input, map, button)
-import Html.Styled.Attributes exposing (class, style, value, type_, href)
-import Html.Styled.Events exposing (onInput, onClick)
 import Arborist
-import Arborist.Tree as Tree
 import Arborist.Settings as Settings
+import Arborist.Tree as Tree
 import DemoWebsite.Styles as Styles
-import Window exposing (size, resizes)
+import Html.Styled exposing (Html, a, button, div, h1, h2, h3, input, label, map, node, p, program, text)
+import Html.Styled.Attributes exposing (class, href, style, type_, value)
+import Html.Styled.Events exposing (onClick, onInput)
+import Task
 import Time
+import Window exposing (resizes, size)
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -159,8 +159,8 @@ view model =
                         , ( "position", "absolute" )
                         , ( "top", "0px" )
                         , ( "left", "0px" )
-                        , ( "width", (toString model.windowSize.width) ++ "px" )
-                        , ( "height", (toString model.windowSize.height) ++ "px" )
+                        , ( "width", toString model.windowSize.width ++ "px" )
+                        , ( "height", toString model.windowSize.height ++ "px" )
                         ]
                     ]
                  <|
@@ -173,35 +173,35 @@ view model =
                                             ( x, y ) =
                                                 position
                                         in
-                                            [ div
-                                                [ style <|
-                                                    Styles.popup
-                                                        ++ [ ( "left", (toString x) ++ "px" )
-                                                           , ( "top", (toString y) ++ "px" )
-                                                           ]
-                                                ]
-                                                (case item of
-                                                    Just item ->
-                                                        [ label []
-                                                            [ text "Question"
-                                                            , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
-                                                            ]
-                                                        , label []
-                                                            [ text "Answer"
-                                                            , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
-                                                            ]
-                                                        , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
-                                                        ]
-
-                                                    Nothing ->
-                                                        [ label []
-                                                            [ text "Question", input [ value model.newNode.question, onInput EditNewNodeQuestion ] [] ]
-                                                        , label []
-                                                            [ text "Answer", input [ value model.newNode.answer, onInput EditNewNodeAnswer ] [] ]
-                                                        , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
-                                                        ]
-                                                )
+                                        [ div
+                                            [ style <|
+                                                Styles.popup
+                                                    ++ [ ( "left", toString x ++ "px" )
+                                                       , ( "top", toString y ++ "px" )
+                                                       ]
                                             ]
+                                            (case item of
+                                                Just item ->
+                                                    [ label []
+                                                        [ text "Question"
+                                                        , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                                        ]
+                                                    , label []
+                                                        [ text "Answer"
+                                                        , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
+                                                        ]
+                                                    , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
+                                                    ]
+
+                                                Nothing ->
+                                                    [ label []
+                                                        [ text "Question", input [ value model.newNode.question, onInput EditNewNodeQuestion ] [] ]
+                                                    , label []
+                                                        [ text "Answer", input [ value model.newNode.answer, onInput EditNewNodeAnswer ] [] ]
+                                                    , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
+                                                    ]
+                                            )
+                                        ]
                                     )
                                 |> Maybe.withDefault []
                            )
@@ -244,6 +244,7 @@ nodeView context item =
                                 ]
                                 [ text item.answer ]
                             ]
+
                          else
                             []
                         )
