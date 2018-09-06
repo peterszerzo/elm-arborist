@@ -1,11 +1,11 @@
-module TreeTests exposing (..)
+module TreeTests exposing (suite, tree)
 
-import Json.Encode as Encode
-import Json.Decode as Decode
-import Expect exposing (Expectation)
-import Test exposing (..)
 import Arborist.Tree as Tree
-import Internal.Tree.Extra as TreeHelpers
+import Expect exposing (Expectation)
+import Internal.Tree.Extra as TreeExtra
+import Json.Decode as Decode
+import Json.Encode as Encode
+import Test exposing (..)
 
 
 tree : Tree.Tree String
@@ -24,7 +24,7 @@ suite =
         [ test "Deletes" <|
             \_ ->
                 Expect.equal
-                    (TreeHelpers.delete [ 1, 0 ]
+                    (TreeExtra.delete [ 1, 0 ]
                         (Tree.Node "Apple"
                             [ Tree.Node "Pear"
                                 [ Tree.Node "Pear2" []
@@ -42,7 +42,7 @@ suite =
                     )
         , test "Updates" <|
             \_ ->
-                Expect.equal (TreeHelpers.updateAt [ 1, 0 ] "Apricot2" tree)
+                Expect.equal (TreeExtra.updateAt [ 1, 0 ] "Apricot2" tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -52,7 +52,7 @@ suite =
                     )
         , test "Updates with children" <|
             \_ ->
-                Expect.equal (TreeHelpers.updateAtWithChildren [ 1, 0 ] "Apricot2" (Just [ "PeachChild1", "PeachChild2" ]) tree)
+                Expect.equal (TreeExtra.updateAtWithChildren [ 1, 0 ] "Apricot2" (Just [ "PeachChild1", "PeachChild2" ]) tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -65,7 +65,7 @@ suite =
                     )
         , test "Swaps" <|
             \_ ->
-                Expect.equal (TreeHelpers.swap [ 0 ] [ 1 ] tree)
+                Expect.equal (TreeExtra.swap [ 0 ] [ 1 ] tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Peach"
                             [ Tree.Node "Apricot" []
@@ -75,7 +75,7 @@ suite =
                     )
         , test "Inserts" <|
             \_ ->
-                Expect.equal (TreeHelpers.insert [] (Just "Banana") tree)
+                Expect.equal (TreeExtra.insert [] (Just "Banana") tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -90,7 +90,7 @@ suite =
         , test "Adds trailing empties" <|
             \_ ->
                 Expect.equal
-                    (TreeHelpers.addTrailingEmpties
+                    (TreeExtra.addTrailingEmpties
                         (Tree.Node "Apple"
                             [ Tree.Node "Pear" []
                             ]
@@ -104,17 +104,24 @@ suite =
         , test "Adds trailing conditionally" <|
             \_ ->
                 Expect.equal
-                    (TreeHelpers.addTrailingEmptiesAdvanced
+                    (TreeExtra.addTrailingEmptiesAdvanced
                         (\{ node, parent, siblings, children } ->
-                            node /= "Apple" && parent == Just "Apple" && siblings == [ "Pear" ] && children == [ "Peach" ]
+                            node
+                                == "Pear"
+                                && parent
+                                == Just "Apple"
+                                && children
+                                == [ "Peach" ]
                         )
                         (Tree.Node "Apple"
                             [ Tree.Node "Pear" [ Tree.Node "Peach" [] ]
+                            , Tree.Node "Pear2" [ Tree.Node "Peach2" [] ]
                             ]
                         )
                     )
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" [ Tree.Node "Peach" [], Tree.Empty ]
+                        , Tree.Node "Pear2" [ Tree.Node "Peach2" [] ]
                         ]
                     )
         , test "Encodes and decoders" <|

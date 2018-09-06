@@ -1,4 +1,4 @@
-module Internal.Tree.Extra exposing (Layout, NodeInfo, TreeAnalysis, TreeNodePath, addTrailingEmpties, addTrailingEmptiesAdvanced, addTrailingEmptiesAdvancedHelper, analyze, analyzeTail, delete, find, flatten, flattenTail, insert, layout, layoutLevelPass, removeEmpties, swap, updateAt, updateAtWithChildren, updateSubtree)
+module Internal.Tree.Extra exposing (Layout, NodeInfo, TreeAnalysis, TreeNodePath, addTrailingEmpties, addTrailingEmptiesAdvanced, analyze, delete, find, flatten, insert, layout, removeEmpties, swap, updateAt, updateAtWithChildren, updateSubtree)
 
 import Arborist.Tree exposing (..)
 import Dict
@@ -38,15 +38,13 @@ type alias TreeAnalysis =
     }
 
 
-{-| Add an empty element every
+{-| Add a placeholder element used to add new nodes to the tree
 -}
 addTrailingEmpties : Tree a -> Tree a
 addTrailingEmpties =
     addTrailingEmptiesAdvanced (\_ -> True)
 
 
-{-| Add an empty element every
--}
 addTrailingEmptiesAdvancedHelper :
     { parent : Maybe a, siblings : List a }
     -> ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool)
