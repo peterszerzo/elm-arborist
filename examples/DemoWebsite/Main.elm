@@ -1,4 +1,15 @@
-module DemoWebsite.Main exposing (Model, Msg(..), Node, init, logo, main, setAnswer, setQuestion, update, view)
+module DemoWebsite.Main exposing
+    ( Model
+    , Msg(..)
+    , Node
+    , init
+    , logo
+    , main
+    , setAnswer
+    , setQuestion
+    , update
+    , view
+    )
 
 {-| Code for the Arborist website.
 -}

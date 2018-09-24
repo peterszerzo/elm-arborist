@@ -1,4 +1,22 @@
-module Internal.Tree.Extra exposing (Layout, NodeInfo, TreeAnalysis, TreeNodePath, addTrailingEmpties, addTrailingEmptiesAdvanced, analyze, delete, find, flatten, insert, layout, removeEmpties, swap, updateAt, updateAtWithChildren, updateSubtree)
+module Internal.Tree.Extra exposing
+    ( Layout
+    , NodeInfo
+    , TreeAnalysis
+    , TreeNodePath
+    , addTrailingEmpties
+    , addTrailingEmptiesAdvanced
+    , analyze
+    , delete
+    , find
+    , flatten
+    , insert
+    , layout
+    , removeEmpties
+    , swap
+    , updateAt
+    , updateAtWithChildren
+    , updateSubtree
+    )
 
 import Arborist.Tree exposing (..)
 import Dict
@@ -50,7 +68,7 @@ addTrailingEmptiesAdvancedHelper :
     -> ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool)
     -> Tree a
     -> Tree a
-addTrailingEmptiesAdvancedHelper context addEmpty tree =
+addTrailingEmptiesAdvancedHelper context shouldAddEmpty tree =
     case tree of
         Empty ->
             Empty
@@ -76,11 +94,11 @@ addTrailingEmptiesAdvancedHelper context addEmpty tree =
                         { parent = Just item
                         , siblings = childNodes
                         }
-                        addEmpty
+                        shouldAddEmpty
                     )
                     children
                     ++ (if
-                            addEmpty
+                            shouldAddEmpty
                                 { parent = context.parent
                                 , siblings = context.siblings
                                 , node = item
@@ -94,7 +112,16 @@ addTrailingEmptiesAdvancedHelper context addEmpty tree =
                        )
 
 
-addTrailingEmptiesAdvanced : ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool) -> Tree a -> Tree a
+addTrailingEmptiesAdvanced :
+    ({ node : a
+     , parent : Maybe a
+     , siblings : List a
+     , children : List a
+     }
+     -> Bool
+    )
+    -> Tree a
+    -> Tree a
 addTrailingEmptiesAdvanced =
     addTrailingEmptiesAdvancedHelper { parent = Nothing, siblings = [] }
 
@@ -106,7 +133,11 @@ removeEmpties tree =
             Empty
 
         Node item children ->
-            Node item <| (List.filter (\childTree -> childTree /= Empty) children |> List.map removeEmpties)
+            Node item
+                (children
+                    |> List.filter (\childTree -> childTree /= Empty)
+                    |> List.map removeEmpties
+                )
 
 
 {-| Find item by path

@@ -991,6 +991,7 @@ styledView viewNode attrs (Model model) =
                                     key =
                                         List.map String.fromInt path
                                             |> String.join "-"
+                                            |> (\pathKey -> "node-" ++ pathKey)
 
                                     ( isDragged, ( xDrag, yDrag ) ) =
                                         nodeDragInfo path (Model model)

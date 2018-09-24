@@ -1,4 +1,18 @@
-module DemoWebsite.Styles exposing (black, blue, box, button, faintGray, gray, green, lightBlue, nodeContainer, orange, popup, raw, text)
+module DemoWebsite.Styles exposing
+    ( black
+    , blue
+    , box
+    , button
+    , faintGray
+    , gray
+    , green
+    , lightBlue
+    , nodeContainer
+    , orange
+    , popup
+    , raw
+    , text
+    )
 
 {-| Program styling
 -}

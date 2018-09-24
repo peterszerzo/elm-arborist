@@ -1,2 +1,2 @@
 cd examples
-elm-reactor
+elm reactor

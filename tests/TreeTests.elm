@@ -108,20 +108,26 @@ suite =
                         (\{ node, parent, siblings, children } ->
                             node
                                 == "Pear"
-                                && parent
-                                == Just "Apple"
-                                && children
-                                == [ "Peach" ]
+                                && (List.length children == 1)
                         )
                         (Tree.Node "Apple"
                             [ Tree.Node "Pear" [ Tree.Node "Peach" [] ]
-                            , Tree.Node "Pear2" [ Tree.Node "Peach2" [] ]
+                            , Tree.Node "Pear2"
+                                [ Tree.Node "Peach2"
+                                    [ Tree.Node "Pear" [ Tree.Node "Peach" [] ]
+                                    ]
+                                ]
                             ]
                         )
                     )
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" [ Tree.Node "Peach" [], Tree.Empty ]
-                        , Tree.Node "Pear2" [ Tree.Node "Peach2" [] ]
+                        , Tree.Node "Pear2"
+                            [ Tree.Node "Peach2"
+                                [ Tree.Node "Pear"
+                                    [ Tree.Node "Peach" [], Tree.Empty ]
+                                ]
+                            ]
                         ]
                     )
         , test "Encodes and decoders" <|
