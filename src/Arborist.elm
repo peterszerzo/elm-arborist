@@ -42,9 +42,8 @@ import Dict
 import Drag exposing (Drag)
 import Html
 import Html.Styled exposing (div, fromUnstyled, text, toUnstyled)
-import Html.Styled.Attributes exposing (css, style)
+import Html.Styled.Attributes exposing (style)
 import Html.Styled.Events exposing (on, stopPropagationOn)
-import Html.Styled.Keyed
 import Internal.Settings as Settings
 import Internal.Tree.Extra as TreeExtra exposing (TreeNodePath)
 import Json.Decode as Decode
@@ -955,20 +954,16 @@ styledView viewNode attrs (Model model) =
 
             else
                 "auto"
-         , css
-            [ overflow hidden
-            , boxSizing borderBox
-            , position relative
-            ]
+         , style "overflow" "hidden"
+         , style "box-sizing" "border-box"
+         , style "position" "relative"
          ]
             ++ attrs
         )
-        [ Html.Styled.Keyed.node "div"
-            [ css
-                [ width (pct 100)
-                , height (pct 100)
-                , position relative
-                ]
+        [ div
+            [ style "width" "100%"
+            , style "height" "100%"
+            , style "position" "relative"
             , style
                 "transform"
               <|
@@ -1005,64 +1000,58 @@ styledView viewNode attrs (Model model) =
                                     nodeViewContext =
                                         viewContext (Model model) path
                                 in
-                                [ ( key
-                                  , div
-                                        ((nodeBaseStyle
-                                            ++ coordStyle ( xWithDrag, yWithDrag )
-                                            ++ (if isDragged then
-                                                    [ ( "z-index", "100" )
-                                                    , ( "cursor", "move" )
-                                                    ]
+                                [ div
+                                    ((nodeBaseStyle
+                                        ++ coordStyle ( xWithDrag, yWithDrag )
+                                        ++ (if isDragged then
+                                                [ ( "z-index", "100" )
+                                                , ( "cursor", "move" )
+                                                ]
 
-                                                else
-                                                    []
-                                               )
-                                            |> List.map (\( property, value ) -> style property value)
-                                         )
-                                            ++ [ stopPropagationOn "mousedown"
-                                                    (Decode.map2 (NodeMouseDown path)
-                                                        (Decode.field "screenX" Decode.float)
-                                                        (Decode.field "screenY" Decode.float)
-                                                        |> Decode.map (\msg -> ( msg, True ))
-                                                    )
-                                               , stopPropagationOn "mouseup"
-                                                    (Decode.map2 NodeMouseUp
-                                                        (Decode.field "screenX" Decode.float)
-                                                        (Decode.field "screenY" Decode.float)
-                                                        |> Decode.map (\msg -> ( msg, True ))
-                                                    )
-                                               , on "mouseenter" (Decode.succeed (NodeMouseEnter path))
-                                               , on "mouseleave" (Decode.succeed (NodeMouseLeave path))
-                                               ]
-                                        )
-                                        [ viewNode nodeViewContext node
-                                        ]
-                                  )
+                                            else
+                                                []
+                                           )
+                                        |> List.map (\( property, value ) -> style property value)
+                                     )
+                                        ++ [ stopPropagationOn "mousedown"
+                                                (Decode.map2 (NodeMouseDown path)
+                                                    (Decode.field "screenX" Decode.float)
+                                                    (Decode.field "screenY" Decode.float)
+                                                    |> Decode.map (\msg -> ( msg, True ))
+                                                )
+                                           , stopPropagationOn "mouseup"
+                                                (Decode.map2 NodeMouseUp
+                                                    (Decode.field "screenX" Decode.float)
+                                                    (Decode.field "screenY" Decode.float)
+                                                    |> Decode.map (\msg -> ( msg, True ))
+                                                )
+                                           , on "mouseenter" (Decode.succeed (NodeMouseEnter path))
+                                           , on "mouseleave" (Decode.succeed (NodeMouseLeave path))
+                                           ]
+                                    )
+                                    [ viewNode nodeViewContext node
+                                    ]
                                 , if node == Nothing then
-                                    ( key ++ "connector2", text "" )
+                                    text ""
 
                                   else
-                                    ( key ++ "connector2", Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.Styled.map (always NoOp) )
+                                    Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.Styled.map (always NoOp)
                                 ]
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
-                                            ( key ++ "shadow"
-                                            , div
+                                            div
                                                 ((nodeBaseStyle
                                                     ++ coordStyle ( x, y )
                                                     |> List.map (\( property, value ) -> style property value)
                                                  )
-                                                    ++ [ css
-                                                            [ backgroundColor <| rgba 0 0 0 0.05
-                                                            ]
+                                                    ++ [ style "background-color" "rgba(0, 0, 0, 0.05)"
                                                        ]
                                                 )
                                                 []
-                                            )
                                                 :: (if node == Nothing then
                                                         []
 
                                                     else
-                                                        [ ( key ++ "connector1", Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters |> Html.Styled.map (always NoOp) ) ]
+                                                        [ Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters |> Html.Styled.map (always NoOp) ]
                                                    )
 
                                         else

@@ -1,12 +1,9 @@
 module DemoWebsite.Main exposing
     ( Model
     , Msg(..)
-    , Node
     , init
     , logo
     , main
-    , setAnswer
-    , setQuestion
     , update
     , view
     )
@@ -14,33 +11,20 @@ module DemoWebsite.Main exposing
 {-| Code for the Arborist website.
 -}
 
+import Browser
 import Css exposing (..)
-import Css.Foreign as Foreign
+import Css.Global as Global
 import DemoWebsite.Conversation as Conversation
 import DemoWebsite.Styles as Styles
-import Html exposing (program)
 import Html.Styled exposing (Html, a, button, div, h1, h2, h3, input, label, map, node, p, text, toUnstyled)
 import Html.Styled.Attributes exposing (class, css, href, style, type_, value)
+import Json.Encode as Encode
 import Svg.Styled exposing (path, svg)
 import Svg.Styled.Attributes exposing (d, stroke, viewBox)
 
 
-{-| The Node data type held in each of the tree's nodes.
--}
-type alias Node =
-    { question : String
-    , answer : String
-    }
-
-
-setQuestion : String -> Node -> Node
-setQuestion val item =
-    { item | question = val }
-
-
-setAnswer : String -> Node -> Node
-setAnswer val item =
-    { item | answer = val }
+type alias Flags =
+    Encode.Value
 
 
 {-| Program model.
@@ -50,11 +34,11 @@ type alias Model =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Flags -> ( Model, Cmd Msg )
+init _ =
     let
         ( conversation, conversationCmd ) =
-            Conversation.init
+            Conversation.init Encode.null
     in
     ( { conversation = conversation }
     , Cmd.map ConversationMsg conversationCmd
@@ -74,10 +58,10 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ConversationMsg msg ->
+        ConversationMsg conversationMsg ->
             let
                 ( conversation, conversationCmd ) =
-                    Conversation.update msg model.conversation
+                    Conversation.update conversationMsg model.conversation
             in
             ( { model | conversation = conversation }
             , Cmd.map ConversationMsg conversationCmd
@@ -112,8 +96,8 @@ view model =
                 , borderRadius <| px 4
                 , backgroundColor <| hex "fafafa"
                 , property "box-shadow" "0 2px 4px rgba(0, 0, 0, 0.1)"
-                , Foreign.descendants
-                    [ Foreign.a
+                , Global.descendants
+                    [ Global.a
                         [ display inlineBlock
                         , margin2 (px 0) (px 8)
                         ]
@@ -131,9 +115,8 @@ view model =
                 [ logo ]
             , h1 [] [ text "elm-arborist" ]
             , p []
-                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v4.0 Docs" ]
+                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v6.0.0" ]
                 , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
-                , a [ href "Egg/index.html" ] [ text "* Fun stuff!" ]
                 ]
             ]
         , Conversation.view model.conversation |> Html.Styled.map ConversationMsg
@@ -142,9 +125,9 @@ view model =
 
 {-| Entry point
 -}
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
-    program
+    Browser.element
         { init = init
         , update = update
         , view = view >> toUnstyled

@@ -1,4 +1,14 @@
-module DemoWebsite.Conversation exposing (Model, Msg(..), Node, bubble, init, main, nodeView, setAnswer, setQuestion, subscriptions, tree, update, view)
+module DemoWebsite.Conversation exposing
+    ( Model
+    , Msg(..)
+    , Node
+    , init
+    , main
+    , subscriptions
+    , tree
+    , update
+    , view
+    )
 
 {-| A simple Arborist app modeling a conversation flow.
 -}
@@ -6,13 +16,20 @@ module DemoWebsite.Conversation exposing (Model, Msg(..), Node, bubble, init, ma
 import Arborist
 import Arborist.Settings as Settings
 import Arborist.Tree as Tree
+import Browser
+import Browser.Dom as Dom
+import Browser.Events as Events
 import DemoWebsite.Styles as Styles
-import Html.Styled exposing (Html, a, button, div, h1, h2, h3, input, label, map, node, p, program, text)
+import Html.Styled exposing (Html, a, button, div, h1, h2, h3, input, label, map, node, p, text, toUnstyled)
 import Html.Styled.Attributes exposing (class, href, style, type_, value)
 import Html.Styled.Events exposing (onClick, onInput)
+import Json.Encode as Encode
 import Task
 import Time
-import Window exposing (resizes, size)
+
+
+type alias Flags =
+    Encode.Value
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -40,7 +57,7 @@ type alias Model =
 
     -- Keep track of a to-be-inserted node
     , newNode : Node
-    , windowSize : Window.Size
+    , windowSize : { width : Int, height : Int }
     }
 
 
@@ -58,15 +75,14 @@ tree =
         ]
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Flags -> ( Model, Cmd Msg )
+init _ =
     ( { arborist =
             Arborist.initWith
                 [ Settings.centerOffset 0 -150
                 , Settings.nodeHeight 45
                 , Settings.level 100
                 , Settings.nodeWidth 160
-                , Settings.throttleMouseMoves (100 * Time.millisecond)
 
                 --, Settings.sturdyMode True
                 ]
@@ -74,7 +90,8 @@ init =
       , newNode = { question = "", answer = "" }
       , windowSize = { width = 0, height = 0 }
       }
-    , Task.perform Resize Window.size
+    , Dom.getViewport
+        |> Task.perform (\viewport -> Resize (floor viewport.viewport.width) (floor viewport.viewport.height))
     )
 
 
@@ -88,7 +105,7 @@ type Msg
     | DeleteActive
     | Reposition
     | Deactivate
-    | Resize Window.Size
+    | Resize Int Int
 
 
 
@@ -127,8 +144,14 @@ update msg model =
             , Cmd.none
             )
 
-        Resize { width, height } ->
-            ( { model | arborist = Arborist.resize width height model.arborist, windowSize = { width = width, height = height } }
+        Resize width height ->
+            ( { model
+                | arborist = Arborist.resize width height model.arborist
+                , windowSize =
+                    { width = width
+                    , height = height
+                    }
+              }
             , Cmd.none
             )
 
@@ -154,17 +177,15 @@ view model =
         ]
             ++ [ -- For pop-up coordinates to work, include view in a container
                  div
-                    [ style
-                        [ ( "margin", "auto" )
-                        , ( "position", "absolute" )
-                        , ( "top", "0px" )
-                        , ( "left", "0px" )
-                        , ( "width", toString model.windowSize.width ++ "px" )
-                        , ( "height", toString model.windowSize.height ++ "px" )
-                        ]
+                    [ style "margin" "auto"
+                    , style "position" "absolute"
+                    , style "top" "0px"
+                    , style "left" "0px"
+                    , style "width" <| String.fromInt model.windowSize.width ++ "px"
+                    , style "height" <| String.fromInt model.windowSize.height ++ "px"
                     ]
                  <|
-                    [ Arborist.styledView nodeView [ style Styles.box ] model.arborist |> Html.Styled.map ArboristMsg
+                    [ Arborist.styledView nodeView Styles.box model.arborist |> Html.Styled.map ArboristMsg
                     ]
                         ++ (Arborist.activeNode model.arborist
                                 |> Maybe.map
@@ -174,23 +195,27 @@ view model =
                                                 position
                                         in
                                         [ div
-                                            [ style <|
-                                                Styles.popup
-                                                    ++ [ ( "left", toString x ++ "px" )
-                                                       , ( "top", toString y ++ "px" )
-                                                       ]
-                                            ]
+                                            (Styles.popup
+                                                ++ [ style "left" <| String.fromFloat x ++ "px"
+                                                   , style "top" <| String.fromFloat y ++ "px"
+                                                   ]
+                                            )
                                             (case item of
-                                                Just item ->
+                                                Just justItem ->
                                                     [ label []
                                                         [ text "Question"
-                                                        , input [ value item.question, onInput (\val -> SetActive { item | question = val }) ] []
+                                                        , input
+                                                            [ value justItem.question
+                                                            , onInput
+                                                                (\val -> SetActive { justItem | question = val })
+                                                            ]
+                                                            []
                                                         ]
                                                     , label []
                                                         [ text "Answer"
-                                                        , input [ value item.answer, onInput (\val -> SetActive { item | answer = val }) ] []
+                                                        , input [ value justItem.answer, onInput (\val -> SetActive { justItem | answer = val }) ] []
                                                         ]
-                                                    , button [ style Styles.button, onClick DeleteActive ] [ text "Delete" ]
+                                                    , button (Styles.button ++ [ onClick DeleteActive ]) [ text "Delete" ]
                                                     ]
 
                                                 Nothing ->
@@ -198,7 +223,7 @@ view model =
                                                         [ text "Question", input [ value model.newNode.question, onInput EditNewNodeQuestion ] [] ]
                                                     , label []
                                                         [ text "Answer", input [ value model.newNode.answer, onInput EditNewNodeAnswer ] [] ]
-                                                    , button [ style Styles.button, type_ "submit", onClick (SetActive model.newNode) ] [ text "Add node" ]
+                                                    , button (Styles.button ++ [ type_ "submit", onClick (SetActive model.newNode) ]) [ text "Add node" ]
                                                     ]
                                             )
                                         ]
@@ -214,12 +239,12 @@ nodeView : Arborist.StyledNodeView Node
 nodeView context item =
     item
         |> Maybe.map
-            (\item ->
+            (\justItem ->
                 div
-                    [ style <|
-                        Styles.nodeContainer
-                            ++ [ ( "background-color"
-                                 , case context.state of
+                    (Styles.nodeContainer
+                        ++ [ style
+                                "background-color"
+                                (case context.state of
                                     Arborist.Active ->
                                         Styles.green
 
@@ -231,52 +256,53 @@ nodeView context item =
 
                                     Arborist.Normal ->
                                         Styles.blue
-                                 )
-                               , ( "color", "white" )
-                               ]
-                    ]
+                                )
+                           , style "color" "white"
+                           ]
+                    )
                     [ div [] <|
-                        (if item.answer /= "" then
+                        (if justItem.answer /= "" then
                             [ p
-                                [ style <|
-                                    bubble
-                                        ++ []
-                                ]
-                                [ text item.answer ]
+                                (bubble
+                                    |> List.map
+                                        (\( property, value ) ->
+                                            style property value
+                                        )
+                                )
+                                [ text justItem.answer ]
                             ]
 
                          else
                             []
                         )
-                            ++ [ p [ style <| Styles.text ] [ text item.question ]
+                            ++ [ p Styles.text [ text justItem.question ]
                                ]
                     ]
             )
         |> Maybe.withDefault
             (div
-                [ style <|
-                    Styles.nodeContainer
-                        ++ (case context.state of
-                                Arborist.Active ->
-                                    [ ( "background-color", Styles.green )
-                                    , ( "color", "white" )
-                                    , ( "border", "0" )
-                                    ]
+                (Styles.nodeContainer
+                    ++ (case context.state of
+                            Arborist.Active ->
+                                [ style "background-color" Styles.green
+                                , style "color" "white"
+                                , style "border" "0"
+                                ]
 
-                                Arborist.DropTarget ->
-                                    [ ( "background-color", Styles.orange )
-                                    , ( "border", "0" )
-                                    , ( "color", "white" )
-                                    ]
+                            Arborist.DropTarget ->
+                                [ style "background-color" Styles.orange
+                                , style "border" "0"
+                                , style "color" "white"
+                                ]
 
-                                _ ->
-                                    [ ( "background-color", "transparent" )
-                                    , ( "border", "1px dashed #CECECE" )
-                                    , ( "color", "#898989" )
-                                    ]
-                           )
-                ]
-                [ p [ style <| Styles.text ] [ text "New child" ] ]
+                            _ ->
+                                [ style "background-color" "transparent"
+                                , style "border" "1px dashed #CECECE"
+                                , style "color" "#898989"
+                                ]
+                       )
+                )
+                [ p Styles.text [ text "New child" ] ]
             )
 
 
@@ -307,17 +333,17 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Arborist.subscriptions model.arborist |> Sub.map ArboristMsg
-        , Window.resizes Resize
+        , Events.onResize (\width height -> Resize width height)
         ]
 
 
 {-| Entry point
 -}
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
-    program
+    Browser.element
         { init = init
         , update = update
-        , view = view
+        , view = view >> toUnstyled
         , subscriptions = subscriptions
         }

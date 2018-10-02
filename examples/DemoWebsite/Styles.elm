@@ -14,10 +14,12 @@ module DemoWebsite.Styles exposing
     , text
     )
 
+import Html.Styled exposing (Attribute)
+import Html.Styled.Attributes exposing (style)
+
+
 {-| Program styling
 -}
-
-
 blue : String
 blue =
     "#046896"
@@ -144,56 +146,56 @@ button:focus {
 """
 
 
-box : List ( String, String )
+box : List (Attribute msg)
 box =
-    [ ( "margin", "auto" )
+    [ style "margin" "auto"
     ]
 
 
-popup : List ( String, String )
+popup : List (Attribute msg)
 popup =
-    [ ( "width", "320px" )
-    , ( "background-color", "white" )
-    , ( "height", "240px" )
-    , ( "border-top", "4px solid " ++ green )
-    , ( "padding", "20px 20px 0 20px" )
-    , ( "border-radius", "4px" )
-    , ( "overflow", "auto" )
-    , ( "position", "absolute" )
-    , ( "transform", "translate3d(-50%, 50px, 0)" )
-    , ( "box-shadow", "0 2px 4px rgba(0, 0, 0, 0.15)" )
+    [ style "width" "320px"
+    , style "background-color" "white"
+    , style "height" "240px"
+    , style "border-top" <| "4px solid " ++ green
+    , style "padding" "20px 20px 0 20px"
+    , style "border-radius" "4px"
+    , style "overflow" "auto"
+    , style "position" "absolute"
+    , style "transform" "translate3d(-50%, 50px, 0)"
+    , style "box-shadow" "0 2px 4px rgba(0, 0, 0, 0.15)"
     ]
 
 
-nodeContainer : List ( String, String )
+nodeContainer : List (Attribute msg)
 nodeContainer =
-    [ ( "width", "100%" )
-    , ( "height", "45px" )
-    , ( "font-size", "0.875rem" )
-    , ( "padding", "4px 20px" )
-    , ( "border-radius", "4px" )
-    , ( "box-sizing", "border-box" )
-    , ( "padding", "0 12px" )
-    , ( "display", "flex" )
-    , ( "align-items", "center" )
-    , ( "justify-content", "center" )
+    [ style "width" "100%"
+    , style "height" "45px"
+    , style "font-size" "0.875rem"
+    , style "padding" "4px 20px"
+    , style "border-radius" "4px"
+    , style "box-sizing" "border-box"
+    , style "padding" "0 12px"
+    , style "display" "flex"
+    , style "align-items" "center"
+    , style "justify-content" "center"
     ]
 
 
-text : List ( String, String )
+text : List (Attribute msg)
 text =
-    [ ( "margin", "0" )
-    , ( "font-size", "0.875rem" )
-    , ( "line-height", "1.2" )
-    , ( "text-align", "center" )
+    [ style "margin" "0"
+    , style "font-size" "0.875rem"
+    , style "line-height" "1.2"
+    , style "text-align" "center"
     ]
 
 
-button : List ( String, String )
+button : List (Attribute msg)
 button =
-    [ ( "background-color", green )
-    , ( "border", "0" )
-    , ( "padding", "6px 12px" )
-    , ( "margin", "20px auto" )
-    , ( "color", "#FFFFFF" )
+    [ style "background-color" green
+    , style "border" "0"
+    , style "padding" "6px 12px"
+    , style "margin" "20px auto"
+    , style "color" "#FFFFFF"
     ]
