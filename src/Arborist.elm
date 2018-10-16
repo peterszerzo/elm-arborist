@@ -68,9 +68,7 @@ type Model node
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
         , isReceivingSubscriptions : Bool
-        , focus : Maybe TreeNodePath
         , drag : Drag (Maybe TreeNodePath)
-        , displayRoot : Maybe TreeNodePath
         , panOffset : ( Float, Float )
         , targetPanOffset : Maybe ( Float, Float )
         }
@@ -102,9 +100,7 @@ initWith settings initTree =
                 Nothing
         , hovered = Nothing
         , isReceivingSubscriptions = False
-        , focus = Nothing
         , drag = Drag.init
-        , displayRoot = Nothing
         , panOffset = ( 0, 0 )
         , targetPanOffset = Nothing
         }
@@ -174,7 +170,6 @@ computeTree (Model model) =
 
         layout =
             withPlaceholders
-                |> TreeExtra.analyze
                 |> TreeExtra.layout
     in
     { layout = layout
@@ -592,6 +587,7 @@ update msg (Model model) =
             Model
                 { model
                     | drag = Drag.start Nothing x y
+                    , targetPanOffset = Nothing
                 }
 
         CanvasMouseUp _ _ ->

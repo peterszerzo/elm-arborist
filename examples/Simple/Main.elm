@@ -67,8 +67,7 @@ init flags =
                 , Settings.sturdyMode False
                 , Settings.canvasWidth 1000
                 , Settings.canvasHeight 600
-                , Settings.defaultNode { question = "abc", answer = "def" }
-                , Settings.showPlaceholderLeaves True
+                , Settings.showPlaceholderLeavesAdvanced (\{ node, parent, children, siblings } -> node.answer == "yes")
                 ]
                 tree
       , newNode = { question = "", answer = "" }

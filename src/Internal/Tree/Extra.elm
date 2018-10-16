@@ -5,7 +5,6 @@ module Internal.Tree.Extra exposing
     , TreeNodePath
     , addTrailingEmpties
     , addTrailingEmptiesAdvanced
-    , analyze
     , delete
     , find
     , flatten
@@ -306,6 +305,11 @@ flattenTail path tree =
                    )
 
 
+layout : Tree a -> Layout
+layout =
+    analyze >> analysisToLayout
+
+
 {-| Analyze tree.
 -}
 analyze : Tree a -> TreeAnalysis
@@ -357,8 +361,8 @@ analyzeTail { depth, current } tree =
 
 {-| Lays out elements.
 -}
-layout : TreeAnalysis -> Layout
-layout analysis =
+analysisToLayout : TreeAnalysis -> Layout
+analysisToLayout analysis =
     let
         showLevels =
             analysis.depth
@@ -432,11 +436,11 @@ layout analysis =
                 )
             )
         |> Dict.fromList
-        |> layoutLevelPass (showLevels - 2) nodeInfo
+        |> analysisToLayoutLevelPass (showLevels - 2) nodeInfo
 
 
-layoutLevelPass : Int -> NodeInfo -> Layout -> Layout
-layoutLevelPass level nodeInfo currentLayoutPass =
+analysisToLayoutLevelPass : Int -> NodeInfo -> Layout -> Layout
+analysisToLayoutLevelPass level nodeInfo currentLayoutPass =
     if level == -1 then
         currentLayoutPass
 
@@ -483,4 +487,4 @@ layoutLevelPass level nodeInfo currentLayoutPass =
                     )
                 )
             |> Dict.fromList
-            |> (\pass -> layoutLevelPass (properLevel - 1) nodeInfo (Dict.union currentLayoutPass pass))
+            |> (\pass -> analysisToLayoutLevelPass (properLevel - 1) nodeInfo (Dict.union currentLayoutPass pass))

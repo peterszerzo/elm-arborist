@@ -133,4 +133,15 @@ suite =
         , test "Encodes and decoders" <|
             \_ ->
                 Expect.equal (tree |> Tree.encoder Encode.string |> Decode.decodeValue (Tree.decoder Decode.string)) (Ok tree)
+        , test "Layout" <|
+            \_ ->
+                Node
+                    ""
+                    [ Node "" []
+                    , Node ""
+                        [ Node "" []
+                        ]
+                    ]
+                    |> TreeExtra.layout
+                    |> Expect.equal (Dict.fromList [ ( [], { center = ( 0, 0 ), childCenters = [ 0, 0 ] } ), ( [ 0 ], { center = ( 0, 1 ), childCenters = [] } ), ( [ 1 ], { center = ( 0, 1 ), childCenters = [ 0 ] } ), ( [ 1, 0 ], { center = ( 0, 2 ), childCenters = [] } ) ])
         ]
