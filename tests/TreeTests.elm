@@ -1,6 +1,7 @@
 module TreeTests exposing (suite, tree)
 
 import Arborist.Tree as Tree
+import Dict
 import Expect exposing (Expectation)
 import Internal.Tree.Extra as TreeExtra
 import Json.Decode as Decode
@@ -133,15 +134,74 @@ suite =
         , test "Encodes and decoders" <|
             \_ ->
                 Expect.equal (tree |> Tree.encoder Encode.string |> Decode.decodeValue (Tree.decoder Decode.string)) (Ok tree)
-        , test "Layout" <|
+        , test "Simple layout" <|
             \_ ->
-                Node
-                    ""
-                    [ Node "" []
-                    , Node ""
-                        [ Node "" []
+                Tree.Node ""
+                    [ Tree.Node "" []
+                    , Tree.Node "" []
+                    ]
+                    |> TreeExtra.layout
+                    |> Expect.equal
+                        (Dict.fromList
+                            [ ( [], { center = ( 0, 0 ), childCenters = [ -0.5, 0.5 ] } )
+                            , ( [ 0 ], { center = ( -0.5, 1 ), childCenters = [] } )
+                            , ( [ 1 ], { center = ( 0.5, 1 ), childCenters = [] } )
+                            ]
+                        )
+        , test "Tree analysis" <|
+            \_ ->
+                Tree.Node ""
+                    [ Tree.Node "" []
+                    , Tree.Node ""
+                        [ Tree.Node "" []
+                        ]
+                    ]
+                    |> TreeExtra.analyze
+                    |> Expect.equal
+                        { depth = 3
+                        , shortNodes = [ [ 0 ] ]
+                        , nodeInfo =
+                            Dict.fromList
+                                [ ( []
+                                  , { children = [ [ 0 ], [ 1 ] ]
+                                    , siblings = 0
+                                    }
+                                  )
+                                , ( [ 0 ]
+                                  , { children = []
+                                    , siblings = 1
+                                    }
+                                  )
+                                , ( [ 1 ]
+                                  , { children = [ [ 1, 0 ] ]
+                                    , siblings = 1
+                                    }
+                                  )
+                                , ( [ 1, 0 ]
+                                  , { children = []
+                                    , siblings = 0
+                                    }
+                                  )
+                                ]
+                        }
+        , test "Complex layout" <|
+            \_ ->
+                Tree.Node ""
+                    [ Tree.Node "" []
+                    , Tree.Node ""
+                        [ Tree.Node "" []
                         ]
                     ]
                     |> TreeExtra.layout
-                    |> Expect.equal (Dict.fromList [ ( [], { center = ( 0, 0 ), childCenters = [ 0, 0 ] } ), ( [ 0 ], { center = ( 0, 1 ), childCenters = [] } ), ( [ 1 ], { center = ( 0, 1 ), childCenters = [ 0 ] } ), ( [ 1, 0 ], { center = ( 0, 2 ), childCenters = [] } ) ])
+                    |> Expect.equal
+                        (Dict.fromList
+                            [ ( [], { center = ( 0, 0 ), childCenters = [ -0.5, 0.5 ] } )
+                            , ( [ 0 ], { center = ( -0.5, 1 ), childCenters = [ -0.5 ] } )
+
+                            -- This is a filler node
+                            , ( [ 0, 0 ], { center = ( -0.5, 2 ), childCenters = [] } )
+                            , ( [ 1 ], { center = ( 0.5, 1 ), childCenters = [ 0.5 ] } )
+                            , ( [ 1, 0 ], { center = ( 0.5, 2 ), childCenters = [] } )
+                            ]
+                        )
         ]

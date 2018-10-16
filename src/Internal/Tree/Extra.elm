@@ -5,6 +5,7 @@ module Internal.Tree.Extra exposing
     , TreeNodePath
     , addTrailingEmpties
     , addTrailingEmptiesAdvanced
+    , analyze
     , delete
     , find
     , flatten
@@ -314,7 +315,11 @@ layout =
 -}
 analyze : Tree a -> TreeAnalysis
 analyze tree =
-    analyzeTail { depth = depth tree, current = { path = [], siblings = 0 } } tree
+    analyzeTail
+        { depth = depth tree
+        , current = { path = [], siblings = 0 }
+        }
+        tree
 
 
 analyzeTail : { depth : Int, current : { path : TreeNodePath, siblings : Int } } -> Tree a -> TreeAnalysis
@@ -355,7 +360,17 @@ analyzeTail { depth, current } tree =
                     }
                     :: List.map .nodeInfo childrenAnalysis
                     |> List.foldl Dict.union Dict.empty
-            , shortNodes = childrenAnalysis |> List.map .shortNodes |> List.foldl (++) []
+            , shortNodes =
+                (if List.length children == 0 && List.length current.path < depth - 1 then
+                    [ current.path ]
+
+                 else
+                    []
+                )
+                    ++ (childrenAnalysis
+                            |> List.map .shortNodes
+                            |> List.foldl (++) []
+                       )
             }
 
 

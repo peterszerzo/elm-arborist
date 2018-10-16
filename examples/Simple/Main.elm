@@ -99,7 +99,7 @@ update msg model =
             )
 
         SetActive newNode ->
-            ( { model | arborist = Arborist.setActiveNodeWithChildren newNode (Just []) model.arborist }
+            ( { model | arborist = Arborist.setActiveNodeWithChildren newNode Nothing model.arborist }
             , Cmd.none
             )
 
