@@ -67,10 +67,8 @@ type Model node
         , tree : Tree.Tree node
         , active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
-        , isReceivingSubscriptions : Bool
         , drag : Drag (Maybe TreeNodePath)
         , panOffset : ( Float, Float )
-        , targetPanOffset : Maybe ( Float, Float )
         }
 
 
@@ -99,10 +97,8 @@ initWith settings initTree =
             else
                 Nothing
         , hovered = Nothing
-        , isReceivingSubscriptions = False
         , drag = Drag.init
         , panOffset = ( 0, 0 )
-        , targetPanOffset = Nothing
         }
 
 
@@ -136,7 +132,6 @@ reposition (Model model) =
     Model
         { model
             | panOffset = ( 0, 0 )
-            , targetPanOffset = Nothing
             , drag = Drag.init
         }
 
@@ -303,15 +298,14 @@ deleteActiveNode (Model model) =
 
 
 {-| Subscriptions responsible for obtaining animation frames used to smoothly center an activated tree node. Using these subscriptions is completely optional - if they aren't wired up in your app, the editor will simply jump to the activated node without an animation. We recommend adding these subscriptions as you familiarize yourself with the package, as it is a significant user experience improvement.
+
+DEPRECATED: transitions are taken care of by CSS, so there is no need to hook up subscriptions for animation frames.
+
 -}
 subscriptions : Model node -> Sub Msg
 subscriptions (Model model) =
     Sub.batch
-        [ if model.isReceivingSubscriptions && model.targetPanOffset == Nothing then
-            Sub.none
-
-          else
-            Browser.Events.onAnimationFrame AnimationFrameTick
+        [ Sub.none
         ]
 
 
@@ -325,8 +319,7 @@ tree (Model model) =
 {-| Module messages
 -}
 type Msg
-    = AnimationFrameTick Time.Posix
-    | NodeMouseDown TreeNodePath Float Float
+    = NodeMouseDown TreeNodePath Float Float
     | NodeMouseUp Float Float
     | NodeMouseEnter TreeNodePath
     | NodeMouseLeave TreeNodePath
@@ -335,29 +328,6 @@ type Msg
     | CanvasMouseUp Float Float
     | CanvasMouseLeave
     | NoOp
-
-
-moveTowards : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
-moveTowards ( x, y ) ( targetX, targetY ) =
-    let
-        d =
-            ((targetX - x) ^ 2 + (targetY - y) ^ 2) ^ 0.5
-
-        dx =
-            if targetX == x then
-                0
-
-            else
-                (d / 10) * (targetX - x) / d
-
-        dy =
-            if targetY == y then
-                0
-
-            else
-                (d / 10) * (targetY - y) / d
-    in
-    ( x + dx, y + dy )
 
 
 resolveDrop : Model node -> Tree.Tree node
@@ -410,33 +380,6 @@ resolveDrop (Model model) =
 update : Msg -> Model node -> Model node
 update msg (Model model) =
     case msg of
-        AnimationFrameTick _ ->
-            Model
-                { model
-                    | isReceivingSubscriptions = True
-                    , panOffset =
-                        model.targetPanOffset
-                            |> Maybe.map
-                                (\targetPanOffset ->
-                                    moveTowards model.panOffset targetPanOffset
-                                )
-                            |> Maybe.withDefault model.panOffset
-                    , targetPanOffset =
-                        model.targetPanOffset
-                            |> Maybe.andThen
-                                (\( targetX, targetY ) ->
-                                    let
-                                        ( x, y ) =
-                                            model.panOffset
-                                    in
-                                    if abs (targetX - x) + abs (targetY - y) < 5 then
-                                        Nothing
-
-                                    else
-                                        Just ( targetX, targetY )
-                                )
-                }
-
         NodeMouseDown path x y ->
             let
                 active_ =
@@ -534,22 +477,8 @@ update msg (Model model) =
                     | drag =
                         Drag.init
                     , tree = newTree
-
-                    -- If the client wired up the subscriptions, set the target pan offset to trigger the animation.
-                    , targetPanOffset =
-                        if model.isReceivingSubscriptions then
-                            newPanOffset
-
-                        else
-                            Nothing
-
-                    -- Otherwise, center the view directly
                     , panOffset =
-                        if model.isReceivingSubscriptions then
-                            model.panOffset
-
-                        else
-                            newPanOffset |> Maybe.withDefault model.panOffset
+                        newPanOffset |> Maybe.withDefault model.panOffset
                     , active =
                         if active_ == Nothing && model.settings.isSturdyMode == True then
                             model.active
@@ -587,7 +516,6 @@ update msg (Model model) =
             Model
                 { model
                     | drag = Drag.start Nothing x y
-                    , targetPanOffset = Nothing
                 }
 
         CanvasMouseUp _ _ ->
@@ -960,6 +888,12 @@ styledView viewNode attrs (Model model) =
             [ style "width" "100%"
             , style "height" "100%"
             , style "position" "relative"
+            , style "transition" <|
+                if Drag.state model.drag == Nothing then
+                    "transform 0.3s ease-in-out"
+
+                else
+                    "none"
             , style
                 "transform"
               <|
@@ -1031,7 +965,13 @@ styledView viewNode attrs (Model model) =
                                     text ""
 
                                   else
-                                    Views.NodeConnectors.view model.settings 1.0 ( xDrag, yDrag ) center childCenters |> Html.Styled.map (always NoOp)
+                                    Views.NodeConnectors.view
+                                        model.settings
+                                        1.0
+                                        ( xDrag, yDrag )
+                                        center
+                                        childCenters
+                                        |> Html.Styled.map (always NoOp)
                                 ]
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
                                             div

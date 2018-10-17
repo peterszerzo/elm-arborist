@@ -307,8 +307,29 @@ flattenTail path tree =
 
 
 layout : Tree a -> Layout
-layout =
-    analyze >> analysisToLayout
+layout tree =
+    let
+        analysis =
+            analyze tree
+
+        shortNodes =
+            analysis.shortNodes
+
+        dirtyLayout =
+            dirtyAnalysisToLayout analysis
+    in
+    dirtyLayout
+        |> Dict.map
+            (\path { center, childCenters } ->
+                { center = center
+                , childCenters =
+                    if List.member path shortNodes then
+                        []
+
+                    else
+                        childCenters
+                }
+            )
 
 
 {-| Analyze tree.
@@ -374,10 +395,10 @@ analyzeTail { depth, current } tree =
             }
 
 
-{-| Lays out elements.
+{-| Lays out elements. The dirty prefix refers to the fact that this algorithm leaves in data related to filler nodes, cleaned up in the main `layout` method
 -}
-analysisToLayout : TreeAnalysis -> Layout
-analysisToLayout analysis =
+dirtyAnalysisToLayout : TreeAnalysis -> Layout
+dirtyAnalysisToLayout analysis =
     let
         showLevels =
             analysis.depth
@@ -451,11 +472,11 @@ analysisToLayout analysis =
                 )
             )
         |> Dict.fromList
-        |> analysisToLayoutLevelPass (showLevels - 2) nodeInfo
+        |> dirtyAnalysisToLayoutLevelPass (showLevels - 2) nodeInfo
 
 
-analysisToLayoutLevelPass : Int -> NodeInfo -> Layout -> Layout
-analysisToLayoutLevelPass level nodeInfo currentLayoutPass =
+dirtyAnalysisToLayoutLevelPass : Int -> NodeInfo -> Layout -> Layout
+dirtyAnalysisToLayoutLevelPass level nodeInfo currentLayoutPass =
     if level == -1 then
         currentLayoutPass
 
@@ -502,4 +523,4 @@ analysisToLayoutLevelPass level nodeInfo currentLayoutPass =
                     )
                 )
             |> Dict.fromList
-            |> (\pass -> analysisToLayoutLevelPass (properLevel - 1) nodeInfo (Dict.union currentLayoutPass pass))
+            |> (\pass -> dirtyAnalysisToLayoutLevelPass (properLevel - 1) nodeInfo (Dict.union currentLayoutPass pass))
