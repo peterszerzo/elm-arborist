@@ -115,7 +115,7 @@ view model =
                 [ logo ]
             , h1 [] [ text "elm-arborist" ]
             , p []
-                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v6.0.0" ]
+                [ a [ href "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest" ] [ text "v6.0.3" ]
                 , a [ href "https://github.com/peterszerzo/elm-arborist" ] [ text "GitHub" ]
                 ]
             ]
