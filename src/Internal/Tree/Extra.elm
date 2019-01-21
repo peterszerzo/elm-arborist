@@ -105,7 +105,8 @@ addTrailingEmptiesAdvancedHelper context shouldAddEmpty tree =
                                 , children = childNodes
                                 }
                         then
-                            [ Empty ]
+                            [ Empty
+                            ]
 
                         else
                             []

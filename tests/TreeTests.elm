@@ -184,6 +184,16 @@ suite =
                                   )
                                 ]
                         }
+        , test "Trivial layout" <|
+            \_ ->
+                Tree.Node ""
+                    []
+                    |> TreeExtra.layout
+                    |> Expect.equal
+                        (Dict.fromList
+                            [ ( [], { center = ( 0, 0 ), childCenters = [] } )
+                            ]
+                        )
         , test "Complex layout" <|
             \_ ->
                 Tree.Node ""
@@ -196,7 +206,7 @@ suite =
                     |> Expect.equal
                         (Dict.fromList
                             [ ( [], { center = ( 0, 0 ), childCenters = [ -0.5, 0.5 ] } )
-                            , ( [ 0 ], { center = ( -0.5, 1 ), childCenters = [ -0.5 ] } )
+                            , ( [ 0 ], { center = ( -0.5, 1 ), childCenters = [] } )
 
                             -- This is a filler node
                             , ( [ 0, 0 ], { center = ( -0.5, 2 ), childCenters = [] } )

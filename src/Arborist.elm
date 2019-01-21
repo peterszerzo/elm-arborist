@@ -36,7 +36,6 @@ module Arborist exposing
 -}
 
 import Arborist.Tree as Tree
-import Browser.Events
 import Css exposing (..)
 import Dict
 import Drag exposing (Drag)
@@ -47,7 +46,6 @@ import Html.Styled.Events exposing (on, stopPropagationOn)
 import Internal.Settings as Settings
 import Internal.Tree.Extra as TreeExtra exposing (TreeNodePath)
 import Json.Decode as Decode
-import Time
 import Utils
 import Views.NodeConnectors
 import Views.Styles as Styles
@@ -303,10 +301,8 @@ DEPRECATED: transitions are taken care of by CSS, so there is no need to hook up
 
 -}
 subscriptions : Model node -> Sub Msg
-subscriptions (Model model) =
-    Sub.batch
-        [ Sub.none
-        ]
+subscriptions _ =
+    Sub.none
 
 
 {-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
@@ -356,12 +352,11 @@ resolveDrop (Model model) =
                     |> List.head
                     |> Maybe.andThen
                         (\( currentPath, currentNode ) ->
-                            case currentNode of
-                                Just realNode ->
-                                    Just ( currentPath, realNode )
-
-                                Nothing ->
-                                    Nothing
+                            Maybe.map
+                                (\realNode ->
+                                    ( currentPath, realNode )
+                                )
+                                currentNode
                         )
                     |> Maybe.map (\_ -> TreeExtra.swap path dropTargetPath model.tree)
                     |> Maybe.withDefault
@@ -645,7 +640,7 @@ getDropTarget path ( dragX, dragY ) (Model model) =
 nodeGeometry : Settings.Settings node -> List Int -> TreeExtra.Layout -> Maybe NodeGeometry
 nodeGeometry settings path layout =
     layout
-        |> Dict.get path
+        |> Utils.dictGetWithListKeys path
         |> Maybe.map
             (\{ center, childCenters } ->
                 let
@@ -913,11 +908,6 @@ styledView viewNode attrs (Model model) =
                                     ( x, y ) =
                                         center
 
-                                    key =
-                                        List.map String.fromInt path
-                                            |> String.join "-"
-                                            |> (\pathKey -> "node-" ++ pathKey)
-
                                     ( isDragged, ( xDrag, yDrag ) ) =
                                         nodeDragInfo path (Model model)
 
@@ -971,6 +961,7 @@ styledView viewNode attrs (Model model) =
                                         ( xDrag, yDrag )
                                         center
                                         childCenters
+                                        |> fromUnstyled
                                         |> Html.Styled.map (always NoOp)
                                 ]
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
@@ -987,7 +978,15 @@ styledView viewNode attrs (Model model) =
                                                         []
 
                                                     else
-                                                        [ Views.NodeConnectors.view model.settings 0.3 ( 0, 0 ) center childCenters |> Html.Styled.map (always NoOp) ]
+                                                        [ Views.NodeConnectors.view
+                                                            model.settings
+                                                            0.3
+                                                            ( 0, 0 )
+                                                            center
+                                                            childCenters
+                                                            |> fromUnstyled
+                                                            |> Html.Styled.map (always NoOp)
+                                                        ]
                                                    )
 
                                         else

@@ -1,11 +1,10 @@
 module Views.NodeConnectors exposing (pad, strokeWeight, toCoord, view)
 
-import Html.Styled exposing (Html)
-import Html.Styled.Attributes exposing (style)
+import Html exposing (Html)
+import Html.Attributes exposing (style)
 import Internal.Settings as Settings
-import Svg.Styled exposing (line, svg)
-import Svg.Styled.Attributes exposing (height, stroke, strokeLinecap, strokeLinejoin, strokeWidth, viewBox, width, x1, x2, y1, y2)
-import Utils
+import Svg exposing (line, svg)
+import Svg.Attributes exposing (height, stroke, strokeLinecap, strokeLinejoin, strokeWidth, viewBox, width, x1, x2, y1, y2)
 import Views.Styles as Styles
 
 

@@ -1,14 +1,53 @@
-module Utils exposing (addFloatTuples, compareLists, convertElm018Styles, floatToPxString, onClickStopPropagation, startsWith)
+module Utils exposing
+    ( addFloatTuples
+    , compareLists
+    , convertElm018Styles
+    , dictGetWithListKeys
+    , floatToPxString
+    , onClickStopPropagation
+    , startsWith
+    )
 
+import Dict
 import Html exposing (Attribute)
 import Html.Attributes exposing (style)
 import Html.Events exposing (stopPropagationOn)
 import Json.Decode as Decode
 
 
+areListsEqual : List comparable -> List comparable -> Bool
+areListsEqual list1 list2 =
+    case ( list1, list2 ) of
+        ( [], [] ) ->
+            True
+
+        ( [], _ :: _ ) ->
+            False
+
+        ( _ :: _, [] ) ->
+            False
+
+        ( head1 :: tail1, head2 :: tail2 ) ->
+            if head1 == head2 then
+                areListsEqual tail1 tail2
+
+            else
+                False
+
+
+{-| This is used instead of `Dict.get` because of an issue described in <https://github.com/elm/core/issues/1013>
+-}
+dictGetWithListKeys : List comparable -> Dict.Dict (List comparable) a -> Maybe a
+dictGetWithListKeys key dict =
+    Dict.toList dict
+        |> List.filter (\( currentKey, currentValue ) -> areListsEqual key currentKey)
+        |> List.head
+        |> Maybe.map Tuple.second
+
+
 floatToPxString : Float -> String
 floatToPxString =
-    (\a -> (++) a "px") << String.fromInt << floor
+    (\a -> a ++ "px") << String.fromInt << floor
 
 
 addFloatTuples : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
