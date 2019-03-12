@@ -1,6 +1,6 @@
 module Arborist exposing
     ( Model, Msg, init, initWith, update, NodeView, StyledNodeView, view, styledView, subscriptions
-    , applySettings, resize
+    , applySettings, resize, Setting
     , tree, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
     , reposition, deactivate
     , NodeState(..), Context
@@ -16,7 +16,7 @@ module Arborist exposing
 
 # Configuration
 
-@docs applySettings, resize
+@docs applySettings, resize, Setting
 
 
 # Arborist tree getters and modifiers
@@ -121,6 +121,12 @@ resize width height =
         [ Settings.CanvasWidth width
         , Settings.CanvasHeight height
         ]
+
+
+{-| Type definition for the settings object
+-}
+type alias Setting node =
+    Settings.Setting node
 
 
 {-| Restores the original pan position of the tree.
