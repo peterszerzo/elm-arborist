@@ -1,7 +1,7 @@
 module Arborist exposing
-    ( Model, Msg, init, initWith, update, NodeView, StyledNodeView, view, styledView, subscriptions
-    , applySettings, resize, Setting
-    , tree, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
+    ( State, init, NodeView, view
+    , Setting
+    , activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
     , reposition, deactivate
     , NodeState(..), Context
     )
@@ -11,17 +11,17 @@ module Arborist exposing
 
 # Module setup
 
-@docs Model, Msg, init, initWith, update, NodeView, StyledNodeView, view, styledView, subscriptions
+@docs State, init, NodeView, view
 
 
 # Configuration
 
-@docs applySettings, resize, Setting
+@docs Setting
 
 
 # Arborist tree getters and modifiers
 
-@docs tree, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
+@docs activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
 
 
 # Display modifiers
@@ -39,10 +39,9 @@ import Arborist.Tree as Tree
 import Css exposing (..)
 import Dict
 import Drag exposing (Drag)
-import Html
-import Html.Styled exposing (div, fromUnstyled, text, toUnstyled)
-import Html.Styled.Attributes exposing (style)
-import Html.Styled.Events exposing (on, stopPropagationOn)
+import Html exposing (div, text)
+import Html.Attributes exposing (style)
+import Html.Events exposing (on, stopPropagationOn)
 import Internal.Settings as Settings
 import Internal.Tree.Extra as TreeExtra exposing (TreeNodePath)
 import Json.Decode as Decode
@@ -59,68 +58,25 @@ type alias NodeGeometry =
 
 {-| Opaque type for the editor's model, dependent on a node type variable. You can only use this for type annotation - to initialize a new model, see [init](#init).
 -}
-type Model node
-    = Model
-        { settings : Settings.Settings node
-        , tree : Tree.Tree node
-        , active : Maybe TreeNodePath
+type State node
+    = State
+        { active : Maybe TreeNodePath
         , hovered : Maybe TreeNodePath
         , drag : Drag (Maybe TreeNodePath)
         , panOffset : ( Float, Float )
         }
 
 
-{-| Initialize model from a [tree](Tree).
+{-| Initialize state.
 -}
-init : Tree.Tree node -> Model node
+init : State node
 init =
-    initWith []
-
-
-{-| Initialize model from a [tree](Tree), using a list of [settings](Settings).
--}
-initWith : List (Settings.Setting node) -> Tree.Tree node -> Model node
-initWith settings initTree =
-    let
-        settings_ =
-            Settings.apply settings Settings.defaults
-    in
-    Model
-        { settings = settings_
-        , tree = initTree
-        , active =
-            if settings_.isSturdyMode && initTree /= Tree.Empty then
-                Just []
-
-            else
-                Nothing
+    State
+        { active = Nothing
         , hovered = Nothing
         , drag = Drag.init
         , panOffset = ( 0, 0 )
         }
-
-
-{-| Apply a new list of settings to the model.
--}
-applySettings : List (Settings.Setting node) -> Model node -> Model node
-applySettings settings (Model model) =
-    Model
-        { model
-            | settings = Settings.apply settings model.settings
-        }
-
-
-{-| Resize the canvas by passing a new width and a new height. Note that you can reproduce this using [applySettings](#applySettings) as follows:
-
-    resize 600 400 arborist == applySettings [ Settings.canvasWidth 600, Settings.canvasHeight 400 ] arborist
-
--}
-resize : Int -> Int -> Model node -> Model node
-resize width height =
-    applySettings
-        [ Settings.CanvasWidth width
-        , Settings.CanvasHeight height
-        ]
 
 
 {-| Type definition for the settings object
@@ -131,9 +87,9 @@ type alias Setting node =
 
 {-| Restores the original pan position of the tree.
 -}
-reposition : Model node -> Model node
-reposition (Model model) =
-    Model
+reposition : State node -> State node
+reposition (State model) =
+    State
         { model
             | panOffset = ( 0, 0 )
             , drag = Drag.init
@@ -142,27 +98,27 @@ reposition (Model model) =
 
 {-| Remove active node
 -}
-deactivate : Model node -> Model node
-deactivate (Model model) =
-    Model
+deactivate : State node -> State node
+deactivate (State model) =
+    State
         { model
             | active = Nothing
         }
 
 
-computeTree : Model node -> { flat : List ( List Int, Maybe node ), layout : TreeExtra.Layout }
-computeTree (Model model) =
+computeTree : Settings.Settings node -> Tree.Tree node -> { flat : List ( List Int, Maybe node ), layout : TreeExtra.Layout }
+computeTree settings tree =
     let
         withPlaceholders =
-            case ( model.settings.showPlaceholderLeaves, model.settings.showPlaceholderLeavesAdvanced ) of
+            case ( settings.showPlaceholderLeaves, settings.showPlaceholderLeavesAdvanced ) of
                 ( _, Just addEmpties ) ->
-                    TreeExtra.addTrailingEmptiesAdvanced addEmpties model.tree
+                    TreeExtra.addTrailingEmptiesAdvanced addEmpties tree
 
                 ( True, _ ) ->
-                    TreeExtra.addTrailingEmpties model.tree
+                    TreeExtra.addTrailingEmpties tree
 
                 ( _, _ ) ->
-                    model.tree
+                    tree
 
         flat =
             TreeExtra.flatten withPlaceholders
@@ -182,17 +138,21 @@ computeTree (Model model) =
   - `context`: view context, identical to the one provided in [NodeView](#NodeView).
 
 -}
-activeNode : Model node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context node } )
-activeNode (Model model) =
+activeNode : List (Setting node) -> State node -> Tree.Tree node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context node } )
+activeNode settingsOverrides (State model) tree =
+    let
+        settings =
+            Settings.apply settingsOverrides Settings.defaults
+    in
     model.active
         |> Maybe.map
             (\active ->
                 let
                     { layout, flat } =
-                        computeTree (Model model)
+                        computeTree settings tree
 
                     geo =
-                        nodeGeometry model.settings active layout
+                        nodeGeometry settings active layout
                             |> Maybe.map .center
                             |> Maybe.withDefault ( 0, 0 )
 
@@ -211,7 +171,7 @@ activeNode (Model model) =
                         , dragOffset
                         ]
                             |> List.foldl Utils.addFloatTuples ( 0, 0 )
-                  , context = viewContext (Model model) active
+                  , context = viewContext settings (State model) tree active
                   }
                 )
             )
@@ -219,103 +179,70 @@ activeNode (Model model) =
 
 {-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNodeWithContext](#activeNodeWithContext) method.
 -}
-setActiveNode : node -> Model node -> Model node
-setActiveNode newNode (Model model) =
-    setActiveNodeWithChildren newNode Nothing (Model model)
+setActiveNode : node -> State node -> Tree.Tree node -> Tree.Tree node
+setActiveNode newNode (State model) tree =
+    setActiveNodeWithChildren newNode Nothing (State model) tree
 
 
-setActiveNodeWithChildrenHelper : List Int -> node -> Maybe (List node) -> Model node -> Model node
-setActiveNodeWithChildrenHelper active newNode newChildren (Model model) =
+setActiveNodeWithChildrenHelper : List Int -> node -> Maybe (List node) -> Tree.Tree node -> Tree.Tree node
+setActiveNodeWithChildrenHelper active newNode newChildren tree =
     let
         { flat } =
-            computeTree (Model model)
-
-        -- Handle special case when the tree is completely empty
-        -- and a new node is added at the root.
-        newTree =
-            if model.tree == Tree.Empty && active == [] then
-                Tree.Node newNode []
-
-            else
-                let
-                    node =
-                        flat
-                            |> List.filter (\( path, _ ) -> active == path)
-                            |> List.head
-                            |> Maybe.map Tuple.second
-                in
-                case node of
-                    Just (Just _) ->
-                        TreeExtra.updateAtWithChildren active newNode newChildren model.tree
-
-                    Just Nothing ->
-                        TreeExtra.insert (List.take (List.length active - 1) active) (Just newNode) model.tree
-
-                    _ ->
-                        -- Impossible state
-                        model.tree
+            computeTree Settings.defaults tree
     in
-    Model { model | tree = newTree }
+    -- Handle special case when the tree is completely empty
+    -- and a new node is added at the root.
+    if tree == Tree.Empty && active == [] then
+        Tree.Node newNode []
+
+    else
+        let
+            node =
+                flat
+                    |> List.filter (\( path, _ ) -> active == path)
+                    |> List.head
+                    |> Maybe.map Tuple.second
+        in
+        case node of
+            Just (Just _) ->
+                TreeExtra.updateAtWithChildren active newNode newChildren tree
+
+            Just Nothing ->
+                TreeExtra.insert (List.take (List.length active - 1) active) (Just newNode) tree
+
+            _ ->
+                -- Impossible state
+                tree
 
 
 {-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
 -}
-setActiveNodeWithChildren : node -> Maybe (List node) -> Model node -> Model node
-setActiveNodeWithChildren newNode newChildren (Model model) =
-    let
-        newTree =
-            model.active
-                |> Maybe.map
-                    (\active ->
-                        setActiveNodeWithChildrenHelper active newNode newChildren (Model model)
-                            |> (\(Model newModel) -> newModel.tree)
-                    )
-                |> Maybe.withDefault model.tree
-    in
-    Model
-        { model
-            | tree = newTree
-        }
+setActiveNodeWithChildren : node -> Maybe (List node) -> State node -> Tree.Tree node -> Tree.Tree node
+setActiveNodeWithChildren newNode newChildren (State model) tree =
+    model.active
+        |> Maybe.map
+            (\active ->
+                setActiveNodeWithChildrenHelper active newNode newChildren tree
+            )
+        |> Maybe.withDefault tree
 
 
 {-| Delete the active node from a tree, including all of its children. If a placeholder is active, this method does nothing.
 -}
-deleteActiveNode : Model node -> Model node
-deleteActiveNode (Model model) =
-    Model
+deleteActiveNode : State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+deleteActiveNode (State model) tree =
+    ( State
         { model
-            | tree =
-                model.active
-                    |> Maybe.map
-                        (\active ->
-                            TreeExtra.delete active
-                                model.tree
-                        )
-                    |> Maybe.withDefault model.tree
-            , active =
-                if model.settings.isSturdyMode then
-                    Just [ 0 ]
-
-                else
-                    Nothing
+            | active = Nothing
         }
-
-
-{-| Subscriptions responsible for obtaining animation frames used to smoothly center an activated tree node. Using these subscriptions is completely optional - if they aren't wired up in your app, the editor will simply jump to the activated node without an animation. We recommend adding these subscriptions as you familiarize yourself with the package, as it is a significant user experience improvement.
-
-DEPRECATED: transitions are taken care of by CSS, so there is no need to hook up subscriptions for animation frames.
-
--}
-subscriptions : Model node -> Sub Msg
-subscriptions _ =
-    Sub.none
-
-
-{-| Access the current state of the tree through this getter (returns structure defined in the `Arborist.Tree` module). The result reflects all changes since it was [initialized](#init).
--}
-tree : Model node -> Tree.Tree node
-tree (Model model) =
-    model.tree
+    , model.active
+        |> Maybe.map
+            (\active ->
+                TreeExtra.delete active
+                    tree
+            )
+        |> Maybe.withDefault tree
+    )
 
 
 {-| Module messages
@@ -332,11 +259,11 @@ type Msg
     | NoOp
 
 
-resolveDrop : Model node -> Tree.Tree node
-resolveDrop (Model model) =
+resolveDrop : Settings.Settings node -> State node -> Tree.Tree node -> Tree.Tree node
+resolveDrop settings (State model) tree =
     let
         { flat } =
-            computeTree (Model model)
+            computeTree settings tree
 
         stuff =
             Drag.state model.drag
@@ -346,7 +273,7 @@ resolveDrop (Model model) =
                     )
                 |> Maybe.andThen
                     (\( path, dragOffset ) ->
-                        getDropTarget path dragOffset (Model model)
+                        getDropTarget settings path dragOffset tree
                             |> Maybe.map (\dropTargetPath -> ( path, dropTargetPath ))
                     )
     in
@@ -364,139 +291,147 @@ resolveDrop (Model model) =
                                 )
                                 currentNode
                         )
-                    |> Maybe.map (\_ -> TreeExtra.swap path dropTargetPath model.tree)
+                    |> Maybe.map (\_ -> TreeExtra.swap path dropTargetPath tree)
                     |> Maybe.withDefault
                         -- If the drop target is a placeholder, first add an Empty node in the original tree
                         -- so the swap method actually finds a node.
-                        (TreeExtra.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing model.tree
+                        (TreeExtra.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
                             |> TreeExtra.swap path dropTargetPath
                             |> TreeExtra.removeEmpties
                         )
             )
-        |> Maybe.withDefault model.tree
+        |> Maybe.withDefault tree
 
 
 {-| Update function handling changes in the model.
 -}
-update : Msg -> Model node -> Model node
-update msg (Model model) =
+update : Settings.Settings node -> Msg -> State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+update settings msg (State model) tree =
     case msg of
         NodeMouseDown path x y ->
             let
                 active_ =
-                    if not model.settings.isDragAndDropEnabled then
+                    if not settings.isDragAndDropEnabled then
                         Just path
 
                     else
                         Nothing
             in
-            Model
+            ( State
                 { model
                     | drag =
-                        if not model.settings.isDragAndDropEnabled then
+                        if not settings.isDragAndDropEnabled then
                             Drag.init
 
                         else
                             Drag.start (Just path) x y
                     , active =
-                        if active_ == Nothing && model.settings.isSturdyMode == True then
+                        if active_ == Nothing && (settings.isSturdyMode == True || not settings.isDragAndDropEnabled) then
                             model.active
 
                         else
                             active_
                 }
+            , tree
+            )
 
         NodeMouseUp _ _ ->
             let
                 active_ =
-                    Drag.state model.drag
-                        |> Maybe.andThen
-                            (\( path, ( offsetX, offsetY ) ) ->
-                                case path of
-                                    Just _ ->
-                                        -- If the node was dragged far enough already, it is not activated
-                                        -- This case also protects from reading a slightly sloppy click as a drag
-                                        if abs offsetX + abs offsetY > 20 then
+                    if not settings.isDragAndDropEnabled then
+                        model.active
+
+                    else
+                        Drag.state model.drag
+                            |> Maybe.andThen
+                                (\( path, ( offsetX, offsetY ) ) ->
+                                    case path of
+                                        Just _ ->
+                                            -- If the node was dragged far enough already, it is not activated
+                                            -- This case also protects from reading a slightly sloppy click as a drag
+                                            if abs offsetX + abs offsetY > 20 then
+                                                Nothing
+
+                                            else
+                                                path
+
+                                        Nothing ->
                                             Nothing
-
-                                        else
-                                            path
-
-                                    Nothing ->
-                                        Nothing
-                            )
+                                )
 
                 { flat } =
-                    computeTree (Model model)
+                    computeTree settings tree
 
                 newTree =
                     case active_ of
                         Just path ->
                             case Dict.get path (Dict.fromList flat) of
                                 Just (Just _) ->
-                                    model.tree
+                                    tree
 
                                 -- A placeholder has been clicked. Add new node to the tree
                                 Just Nothing ->
-                                    case model.settings.defaultNode of
+                                    case settings.defaultNode of
                                         Just defaultNode ->
-                                            setActiveNodeWithChildrenHelper path defaultNode Nothing (Model model)
-                                                |> (\(Model unwrappedModel) -> unwrappedModel.tree)
+                                            setActiveNodeWithChildrenHelper path defaultNode Nothing tree
 
                                         Nothing ->
-                                            model.tree
+                                            tree
 
                                 Nothing ->
-                                    model.tree
+                                    tree
 
                         Nothing ->
-                            resolveDrop (Model model)
+                            resolveDrop settings (State model) tree
 
                 { layout } =
-                    computeTree (Model { model | tree = newTree })
+                    computeTree settings newTree
 
                 newPanOffset =
                     active_
                         |> Maybe.andThen
                             (\justActive ->
-                                nodeGeometry model.settings justActive layout
+                                nodeGeometry settings justActive layout
                                     |> Maybe.map .center
                                     |> Maybe.map
                                         (\( cx, cy ) ->
-                                            [ model.settings.centerOffset
-                                            , ( model.settings.canvasWidth / 2
-                                              , model.settings.canvasHeight / 2
+                                            [ settings.centerOffset
+                                            , ( settings.canvasWidth / 2
+                                              , settings.canvasHeight / 2
                                               )
-                                            , ( -cx, -model.settings.nodeHeight / 2 - cy )
+                                            , ( -cx, -settings.nodeHeight / 2 - cy )
                                             ]
                                                 |> List.foldl Utils.addFloatTuples ( 0, 0 )
                                         )
                             )
             in
-            Model
+            ( State
                 { model
                     | drag =
                         Drag.init
-                    , tree = newTree
                     , panOffset =
                         newPanOffset |> Maybe.withDefault model.panOffset
                     , active =
-                        if active_ == Nothing && model.settings.isSturdyMode == True then
+                        if active_ == Nothing && settings.isSturdyMode == True then
                             model.active
 
                         else
                             active_
                 }
+            , newTree
+            )
 
         NodeMouseEnter path ->
-            Model
+            ( State
                 { model
                     | hovered =
                         Just path
                 }
+            , tree
+            )
 
         NodeMouseLeave path ->
-            Model
+            ( State
                 { model
                     | hovered =
                         if model.hovered == Just path then
@@ -505,19 +440,25 @@ update msg (Model model) =
                         else
                             model.hovered
                 }
+            , tree
+            )
 
         CanvasMouseMove xm ym ->
-            Model
+            ( State
                 { model
                     | drag =
                         Drag.move xm ym model.drag
                 }
+            , tree
+            )
 
         CanvasMouseDown x y ->
-            Model
+            ( State
                 { model
                     | drag = Drag.start Nothing x y
                 }
+            , tree
+            )
 
         CanvasMouseUp _ _ ->
             let
@@ -533,7 +474,7 @@ update msg (Model model) =
                             )
                         |> Maybe.withDefault Nothing
             in
-            Model
+            ( State
                 { model
                     | drag = Drag.init
                     , panOffset =
@@ -555,32 +496,39 @@ update msg (Model model) =
                                 )
                             |> Maybe.withDefault model.panOffset
                     , active =
-                        if active_ == Nothing && model.settings.isSturdyMode == True then
+                        if active_ == Nothing && settings.isSturdyMode == True then
                             model.active
 
                         else
                             active_
                 }
+            , tree
+            )
 
         CanvasMouseLeave ->
-            Model { model | drag = Drag.init }
+            ( State { model | drag = Drag.init }
+            , tree
+            )
 
         NoOp ->
-            Model model
+            ( State model
+            , tree
+            )
 
 
 getDropTarget :
-    TreeNodePath
+    Settings.Settings node
+    -> TreeNodePath
     -> ( Float, Float )
-    -> Model node
+    -> Tree.Tree node
     -> Maybe TreeNodePath
-getDropTarget path ( dragX, dragY ) (Model model) =
+getDropTarget settings path ( dragX, dragY ) tree =
     let
         { flat, layout } =
-            computeTree (Model model)
+            computeTree settings tree
 
         ( x0, y0 ) =
-            nodeGeometry model.settings path layout
+            nodeGeometry settings path layout
                 |> Maybe.map .center
                 |> Maybe.withDefault ( 0, 0 )
 
@@ -594,7 +542,7 @@ getDropTarget path ( dragX, dragY ) (Model model) =
             (\( path_, node ) ->
                 let
                     ( xo, yo ) =
-                        nodeGeometry model.settings path_ layout
+                        nodeGeometry settings path_ layout
                             |> Maybe.map .center
                             |> Maybe.withDefault ( 0, 0 )
 
@@ -608,8 +556,8 @@ getDropTarget path ( dragX, dragY ) (Model model) =
                     List.all identity
                         [ not (Utils.startsWith path path_)
                         , not (Utils.startsWith path_ path)
-                        , dx < model.settings.nodeWidth
-                        , dy < model.settings.nodeHeight
+                        , dx < settings.nodeWidth
+                        , dy < settings.nodeHeight
                         ]
                 then
                     Just ( path_, dx + dy, node )
@@ -675,12 +623,6 @@ type alias NodeView node =
     Context node -> Maybe node -> Html.Html Msg
 
 
-{-| Styled version of [NodeView](#NodeView), using `elm-css`.
--}
-type alias StyledNodeView node =
-    Context node -> Maybe node -> Html.Styled.Html Msg
-
-
 isSibling : List Int -> List Int -> Bool
 isSibling nodePath1 nodePath2 =
     nodePath1
@@ -691,11 +633,11 @@ isSibling nodePath1 nodePath2 =
         == List.take (List.length nodePath1 - 1) nodePath1
 
 
-viewContext : Model node -> List Int -> Context node
-viewContext (Model model) path =
+viewContext : Settings.Settings node -> State node -> Tree.Tree node -> List Int -> Context node
+viewContext settings (State model) tree path =
     let
         { flat } =
-            computeTree (Model model)
+            computeTree settings tree
 
         isDropTarget =
             Drag.state model.drag
@@ -703,7 +645,7 @@ viewContext (Model model) path =
                     (\( draggedPath, offset ) ->
                         case draggedPath of
                             Just justDraggedPath ->
-                                getDropTarget justDraggedPath offset (Model model)
+                                getDropTarget settings justDraggedPath offset tree
                                     |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
                                     |> Maybe.withDefault False
 
@@ -776,8 +718,8 @@ viewContext (Model model) path =
     nodeViewContext
 
 
-nodeDragInfo : List Int -> Model node -> ( Bool, ( Float, Float ) )
-nodeDragInfo path (Model model) =
+nodeDragInfo : List Int -> State node -> ( Bool, ( Float, Float ) )
+nodeDragInfo path (State model) =
     let
         modelIsDragging =
             Drag.state model.drag /= Nothing
@@ -810,31 +752,38 @@ nodeDragInfo path (Model model) =
 
   - [NodeView](#NodeView): view function for an individual node.
   - a list of html attributes for the container element.
-  - the editor's [model](#Model).
+  - the editor's [model](#State).
 
 -}
-view : NodeView node -> List (Html.Attribute Msg) -> Model node -> Html.Html Msg
-view nodeView attrs (Model model) =
-    styledView
-        (\ctx node -> nodeView ctx node |> fromUnstyled)
-        (List.map Html.Styled.Attributes.fromUnstyled attrs)
-        (Model model)
-        |> toUnstyled
-
-
-{-| Styled version of [view](#NodeView), using `elm-css`.
--}
-styledView : StyledNodeView node -> List (Html.Styled.Attribute Msg) -> Model node -> Html.Styled.Html Msg
-styledView viewNode attrs (Model model) =
+view :
+    List (Html.Attribute Msg)
+    ->
+        { nodeView : NodeView node
+        , tree : Tree.Tree node
+        , state : State node
+        , toMsg : (State node -> Tree.Tree node -> ( State node, Tree.Tree node )) -> msg
+        , settings : List (Setting node)
+        }
+    -> Html.Html msg
+view attrs config =
     let
+        (State model) =
+            config.state
+
+        { nodeView } =
+            config
+
+        settings =
+            Settings.apply config.settings Settings.defaults
+
         { flat, layout } =
-            computeTree (Model model)
+            computeTree settings config.tree
 
         nodeBaseStyle =
-            Styles.nodeBase model.settings
+            Styles.nodeBase settings
 
         coordStyle =
-            Styles.coordinate model.settings
+            Styles.coordinate settings
 
         dragState =
             Drag.state model.drag
@@ -871,8 +820,8 @@ styledView viewNode attrs (Model model) =
                 (Decode.field "screenY" Decode.float)
             )
          , on "mouseleave" (Decode.succeed CanvasMouseLeave)
-         , style "width" <| Utils.floatToPxString model.settings.canvasWidth
-         , style "height" <| Utils.floatToPxString model.settings.canvasHeight
+         , style "width" <| Utils.floatToPxString settings.canvasWidth
+         , style "height" <| Utils.floatToPxString settings.canvasHeight
          , style "cursor" <|
             if isCanvasDragging then
                 "move"
@@ -907,7 +856,7 @@ styledView viewNode attrs (Model model) =
           <|
             (List.map
                 (\( path, node ) ->
-                    nodeGeometry model.settings path layout
+                    nodeGeometry settings path layout
                         |> Maybe.map
                             (\{ center, childCenters } ->
                                 let
@@ -915,7 +864,7 @@ styledView viewNode attrs (Model model) =
                                         center
 
                                     ( isDragged, ( xDrag, yDrag ) ) =
-                                        nodeDragInfo path (Model model)
+                                        nodeDragInfo path (State model)
 
                                     xWithDrag =
                                         x + xDrag
@@ -924,7 +873,7 @@ styledView viewNode attrs (Model model) =
                                         y + yDrag
 
                                     nodeViewContext =
-                                        viewContext (Model model) path
+                                        viewContext settings (State model) config.tree path
                                 in
                                 [ div
                                     ((nodeBaseStyle
@@ -955,20 +904,19 @@ styledView viewNode attrs (Model model) =
                                            , on "mouseleave" (Decode.succeed (NodeMouseLeave path))
                                            ]
                                     )
-                                    [ viewNode nodeViewContext node
+                                    [ nodeView nodeViewContext node
                                     ]
                                 , if node == Nothing then
                                     text ""
 
                                   else
                                     Views.NodeConnectors.view
-                                        model.settings
+                                        settings
                                         1.0
                                         ( xDrag, yDrag )
                                         center
                                         childCenters
-                                        |> fromUnstyled
-                                        |> Html.Styled.map (always NoOp)
+                                        |> Html.map (always NoOp)
                                 ]
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
                                             div
@@ -985,13 +933,12 @@ styledView viewNode attrs (Model model) =
 
                                                     else
                                                         [ Views.NodeConnectors.view
-                                                            model.settings
+                                                            settings
                                                             0.3
                                                             ( 0, 0 )
                                                             center
                                                             childCenters
-                                                            |> fromUnstyled
-                                                            |> Html.Styled.map (always NoOp)
+                                                            |> Html.map (always NoOp)
                                                         ]
                                                    )
 
@@ -1005,6 +952,13 @@ styledView viewNode attrs (Model model) =
                 |> List.foldl (++) []
             )
         ]
+        |> Html.map
+            (\msg ->
+                config.toMsg
+                    (\prevState prevTree ->
+                        update settings msg prevState prevTree
+                    )
+            )
 
 
 {-| The state of a node at a given time. May be normal one of the following:

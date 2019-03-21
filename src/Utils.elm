@@ -40,7 +40,7 @@ areListsEqual list1 list2 =
 dictGetWithListKeys : List comparable -> Dict.Dict (List comparable) a -> Maybe a
 dictGetWithListKeys key dict =
     Dict.toList dict
-        |> List.filter (\( currentKey, currentValue ) -> areListsEqual key currentKey)
+        |> List.filter (\( currentKey, _ ) -> areListsEqual key currentKey)
         |> List.head
         |> Maybe.map Tuple.second
 

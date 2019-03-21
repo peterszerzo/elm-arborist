@@ -35,7 +35,8 @@ setAnswer val item =
 {-| Program model.
 -}
 type alias Model =
-    { arborist : Arborist.Model Node
+    { arborist : Arborist.State Node
+    , tree : Tree.Tree Node
 
     -- Keep track of a to-be-inserted node
     , newNode : Node
@@ -56,20 +57,27 @@ tree =
         ]
 
 
+arboristSettings : List (Arborist.Setting Node)
+arboristSettings =
+    [ Settings.centerOffset 0 -150
+    , Settings.nodeHeight 45
+    , Settings.level 100
+    , Settings.nodeWidth 160
+    , Settings.sturdyMode False
+    , Settings.canvasWidth 1000
+    , Settings.canvasHeight 600
+    , Settings.dragAndDrop True
+    , Settings.showPlaceholderLeavesAdvanced
+        (\{ node, parent, children, siblings } ->
+            node.answer == "yes"
+        )
+    ]
+
+
 init : Encode.Value -> ( Model, Cmd Msg )
 init flags =
-    ( { arborist =
-            Arborist.initWith
-                [ Settings.centerOffset 0 -150
-                , Settings.nodeHeight 45
-                , Settings.level 100
-                , Settings.nodeWidth 160
-                , Settings.sturdyMode False
-                , Settings.canvasWidth 1000
-                , Settings.canvasHeight 600
-                , Settings.showPlaceholderLeavesAdvanced (\{ node, parent, children, siblings } -> node.answer == "yes")
-                ]
-                tree
+    ( { arborist = Arborist.init
+      , tree = tree
       , newNode = { question = "", answer = "" }
       }
     , Cmd.none
@@ -79,7 +87,7 @@ init flags =
 {-| Program message
 -}
 type Msg
-    = ArboristMsg Arborist.Msg
+    = Arborist (Arborist.State Node -> Tree.Tree Node -> ( Arborist.State Node, Tree.Tree Node ))
     | EditNewNodeQuestion String
     | EditNewNodeAnswer String
     | SetActive Node
@@ -93,18 +101,39 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ArboristMsg arboristMsg ->
-            ( { model | arborist = Arborist.update arboristMsg model.arborist }
+        Arborist updater ->
+            let
+                ( newState, newTree ) =
+                    updater model.arborist model.tree
+            in
+            ( { model
+                | arborist = newState
+                , tree = newTree
+              }
             , Cmd.none
             )
 
         SetActive newNode ->
-            ( { model | arborist = Arborist.setActiveNodeWithChildren newNode Nothing model.arborist }
+            ( { model
+                | tree =
+                    Arborist.setActiveNodeWithChildren
+                        newNode
+                        Nothing
+                        model.arborist
+                        model.tree
+              }
             , Cmd.none
             )
 
         DeleteActive ->
-            ( { model | arborist = Arborist.deleteActiveNode model.arborist }
+            ( Arborist.deleteActiveNode model.arborist model.tree
+                |> (\( state, tree_ ) ->
+                        { model
+                            | arborist =
+                                state
+                            , tree = tree_
+                        }
+                   )
             , Cmd.none
             )
 
@@ -140,14 +169,18 @@ view model =
                     , style "left" "0px"
                     ]
                  <|
-                    [ Arborist.view nodeView
+                    [ Arborist.view
                         (Styles.box
                             |> List.map (\( property, value ) -> style property value)
                         )
-                        model.arborist
-                        |> Html.map ArboristMsg
+                        { state = model.arborist
+                        , tree = model.tree
+                        , nodeView = nodeView
+                        , settings = arboristSettings
+                        , toMsg = Arborist
+                        }
                     ]
-                        ++ (Arborist.activeNode model.arborist
+                        ++ (Arborist.activeNode arboristSettings model.arborist model.tree
                                 |> Maybe.map
                                     (\( item, { position } ) ->
                                         let
@@ -280,8 +313,8 @@ nodeView context maybeNode =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Arborist.subscriptions model.arborist |> Sub.map ArboristMsg
+subscriptions _ =
+    Sub.none
 
 
 {-| Entry point
