@@ -1,7 +1,7 @@
-module Views.Styles exposing (coordinate, nodeBase)
+module Internals.Styles exposing (coordinate, nodeBase)
 
-import Internal.Settings as Settings
-import Utils
+import Internals.Settings as Settings
+import Internals.Utils as Utils
 
 
 coordinate : Settings.Settings node -> ( Float, Float ) -> List ( String, String )

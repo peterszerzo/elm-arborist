@@ -1,10 +1,12 @@
-module Utils exposing
+module Internals.Utils exposing
     ( addFloatTuples
+    , changeLastInList
     , compareLists
     , convertElm018Styles
     , dictGetWithListKeys
     , floatToPxString
     , onClickStopPropagation
+    , removeLastInList
     , startsWith
     )
 
@@ -43,6 +45,20 @@ dictGetWithListKeys key dict =
         |> List.filter (\( currentKey, _ ) -> areListsEqual key currentKey)
         |> List.head
         |> Maybe.map Tuple.second
+
+
+removeLastInList : List a -> List a
+removeLastInList lst =
+    List.take (List.length lst - 1) lst
+
+
+changeLastInList : (a -> a) -> List a -> List a
+changeLastInList fn lst =
+    List.take (List.length lst - 1) lst
+        ++ (lst
+                |> List.drop (List.length lst - 1)
+                |> List.map fn
+           )
 
 
 floatToPxString : Float -> String

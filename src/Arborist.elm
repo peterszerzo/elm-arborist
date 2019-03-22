@@ -1,5 +1,5 @@
 module Arborist exposing
-    ( State, init, NodeView, view
+    ( State, init, NodeView, view, subscriptions
     , Setting
     , activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
     , reposition, deactivate
@@ -11,7 +11,7 @@ module Arborist exposing
 
 # Module setup
 
-@docs State, init, NodeView, view
+@docs State, init, NodeView, view, subscriptions
 
 
 # Configuration
@@ -36,18 +36,19 @@ module Arborist exposing
 -}
 
 import Arborist.Tree as Tree
+import Browser.Events
 import Css exposing (..)
 import Dict
-import Drag exposing (Drag)
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, stopPropagationOn)
-import Internal.Settings as Settings
-import Internal.Tree.Extra as TreeExtra exposing (TreeNodePath)
+import Internals.Drag as Drag exposing (Drag)
+import Internals.NodeConnectors as NodeConnectors
+import Internals.Settings as Settings
+import Internals.Styles as Styles
+import Internals.TreeUtils as TreeUtils exposing (TreeNodePath)
+import Internals.Utils as Utils
 import Json.Decode as Decode
-import Utils
-import Views.NodeConnectors
-import Views.Styles as Styles
 
 
 type alias NodeGeometry =
@@ -106,26 +107,26 @@ deactivate (State model) =
         }
 
 
-computeTree : Settings.Settings node -> Tree.Tree node -> { flat : List ( List Int, Maybe node ), layout : TreeExtra.Layout }
+computeTree : Settings.Settings node -> Tree.Tree node -> { flat : List ( List Int, Maybe node ), layout : TreeUtils.Layout }
 computeTree settings tree =
     let
         withPlaceholders =
             case ( settings.showPlaceholderLeaves, settings.showPlaceholderLeavesAdvanced ) of
                 ( _, Just addEmpties ) ->
-                    TreeExtra.addTrailingEmptiesAdvanced addEmpties tree
+                    TreeUtils.addTrailingEmptiesAdvanced addEmpties tree
 
                 ( True, _ ) ->
-                    TreeExtra.addTrailingEmpties tree
+                    TreeUtils.addTrailingEmpties tree
 
                 ( _, _ ) ->
                     tree
 
         flat =
-            TreeExtra.flatten withPlaceholders
+            TreeUtils.flatten withPlaceholders
 
         layout =
             withPlaceholders
-                |> TreeExtra.layout
+                |> TreeUtils.layout
     in
     { layout = layout
     , flat = flat
@@ -137,12 +138,25 @@ computeTree settings tree =
   - `position : ( Float, Float )`: the node's position on the canvas (useful for rendering an edit pop-up).
   - `context`: view context, identical to the one provided in [NodeView](#NodeView).
 
+In order for the position calculations to match the current active node, you must supply the same settings array that the [view](#view) method gets.
+
 -}
-activeNode : List (Setting node) -> State node -> Tree.Tree node -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context node } )
-activeNode settingsOverrides (State model) tree =
+activeNode :
+    { settings : List (Setting node)
+    , state : State node
+    , tree : Tree.Tree node
+    }
+    -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context node } )
+activeNode config =
     let
+        (State model) =
+            config.state
+
+        { tree } =
+            config
+
         settings =
-            Settings.apply settingsOverrides Settings.defaults
+            Settings.apply config.settings Settings.defaults
     in
     model.active
         |> Maybe.map
@@ -180,8 +194,8 @@ activeNode settingsOverrides (State model) tree =
 {-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNodeWithContext](#activeNodeWithContext) method.
 -}
 setActiveNode : node -> State node -> Tree.Tree node -> Tree.Tree node
-setActiveNode newNode (State model) tree =
-    setActiveNodeWithChildren newNode Nothing (State model) tree
+setActiveNode newNode =
+    setActiveNodeWithChildren { node = newNode, childrenOverride = Nothing }
 
 
 setActiveNodeWithChildrenHelper : List Int -> node -> Maybe (List node) -> Tree.Tree node -> Tree.Tree node
@@ -205,10 +219,10 @@ setActiveNodeWithChildrenHelper active newNode newChildren tree =
         in
         case node of
             Just (Just _) ->
-                TreeExtra.updateAtWithChildren active newNode newChildren tree
+                TreeUtils.updateAtWithChildren active newNode newChildren tree
 
             Just Nothing ->
-                TreeExtra.insert (List.take (List.length active - 1) active) (Just newNode) tree
+                TreeUtils.insert (List.take (List.length active - 1) active) (Just newNode) tree
 
             _ ->
                 -- Impossible state
@@ -217,12 +231,12 @@ setActiveNodeWithChildrenHelper active newNode newChildren tree =
 
 {-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
 -}
-setActiveNodeWithChildren : node -> Maybe (List node) -> State node -> Tree.Tree node -> Tree.Tree node
-setActiveNodeWithChildren newNode newChildren (State model) tree =
+setActiveNodeWithChildren : { node : node, childrenOverride : Maybe (List node) } -> State node -> Tree.Tree node -> Tree.Tree node
+setActiveNodeWithChildren newStuff (State model) tree =
     model.active
         |> Maybe.map
             (\active ->
-                setActiveNodeWithChildrenHelper active newNode newChildren tree
+                setActiveNodeWithChildrenHelper active newStuff.node newStuff.childrenOverride tree
             )
         |> Maybe.withDefault tree
 
@@ -230,15 +244,15 @@ setActiveNodeWithChildren newNode newChildren (State model) tree =
 {-| Delete the active node from a tree, including all of its children. If a placeholder is active, this method does nothing.
 -}
 deleteActiveNode : State node -> Tree.Tree node -> ( State node, Tree.Tree node )
-deleteActiveNode (State model) tree =
+deleteActiveNode (State state) tree =
     ( State
-        { model
+        { state
             | active = Nothing
         }
-    , model.active
+    , state.active
         |> Maybe.map
             (\active ->
-                TreeExtra.delete active
+                TreeUtils.delete active
                     tree
             )
         |> Maybe.withDefault tree
@@ -291,13 +305,13 @@ resolveDrop settings (State model) tree =
                                 )
                                 currentNode
                         )
-                    |> Maybe.map (\_ -> TreeExtra.swap path dropTargetPath tree)
+                    |> Maybe.map (\_ -> TreeUtils.swap path dropTargetPath tree)
                     |> Maybe.withDefault
                         -- If the drop target is a placeholder, first add an Empty node in the original tree
                         -- so the swap method actually finds a node.
-                        (TreeExtra.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
-                            |> TreeExtra.swap path dropTargetPath
-                            |> TreeExtra.removeEmpties
+                        (TreeUtils.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
+                            |> TreeUtils.swap path dropTargetPath
+                            |> TreeUtils.removeEmpties
                         )
             )
         |> Maybe.withDefault tree
@@ -516,6 +530,62 @@ update settings msg (State model) tree =
             )
 
 
+{-| Subscriptions for interactive enhancements like keyboard events
+-}
+subscriptions : List (Setting node) -> State node -> Tree.Tree node -> Sub ( State node, Tree.Tree node )
+subscriptions settings (State state) tree =
+    let
+        { flat } =
+            computeTree (Settings.apply settings Settings.defaults) tree
+    in
+    Browser.Events.onKeyDown
+        (Decode.field "key" Decode.string
+            |> Decode.andThen
+                (\str ->
+                    let
+                        newActive =
+                            case str of
+                                "ArrowDown" ->
+                                    Maybe.map (\active -> active ++ [ 0 ]) state.active
+                                        |> (\newActive_ ->
+                                                if newActive_ == Nothing then
+                                                    Just []
+
+                                                else
+                                                    newActive_
+                                           )
+
+                                "ArrowUp" ->
+                                    Maybe.map (\active -> List.take (List.length active - 1) active) state.active
+
+                                "ArrowLeft" ->
+                                    Maybe.map (\active -> Utils.changeLastInList (\val -> val - 1) active) state.active
+
+                                "ArrowRight" ->
+                                    Maybe.map (\active -> Utils.changeLastInList (\val -> val + 1) active) state.active
+
+                                _ ->
+                                    Nothing
+
+                        confirmNewActive =
+                            newActive
+                                |> Maybe.andThen
+                                    (\newActive_ ->
+                                        Utils.dictGetWithListKeys newActive_ (Dict.fromList flat)
+                                    )
+                                |> Maybe.andThen (always newActive)
+                    in
+                    Decode.succeed
+                        ( State
+                            { state
+                                | active = confirmNewActive
+                            }
+                        , tree
+                        )
+                )
+        )
+
+
 getDropTarget :
     Settings.Settings node
     -> TreeNodePath
@@ -591,7 +661,7 @@ getDropTarget settings path ( dragX, dragY ) tree =
             )
 
 
-nodeGeometry : Settings.Settings node -> List Int -> TreeExtra.Layout -> Maybe NodeGeometry
+nodeGeometry : Settings.Settings node -> List Int -> TreeUtils.Layout -> Maybe NodeGeometry
 nodeGeometry settings path layout =
     layout
         |> Utils.dictGetWithListKeys path
@@ -910,7 +980,7 @@ view attrs config =
                                     text ""
 
                                   else
-                                    Views.NodeConnectors.view
+                                    NodeConnectors.view
                                         settings
                                         1.0
                                         ( xDrag, yDrag )
@@ -932,7 +1002,7 @@ view attrs config =
                                                         []
 
                                                     else
-                                                        [ Views.NodeConnectors.view
+                                                        [ NodeConnectors.view
                                                             settings
                                                             0.3
                                                             ( 0, 0 )

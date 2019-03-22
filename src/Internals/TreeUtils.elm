@@ -1,4 +1,4 @@
-module Internal.Tree.Extra exposing
+module Internals.TreeUtils exposing
     ( Layout
     , NodeInfo
     , TreeAnalysis
@@ -20,7 +20,7 @@ module Internal.Tree.Extra exposing
 
 import Arborist.Tree exposing (..)
 import Dict
-import Utils
+import Internals.Utils as Utils
 
 
 

@@ -1,4 +1,4 @@
-module Drag exposing
+module Internals.Drag exposing
     ( Drag
     , init
     , start, move

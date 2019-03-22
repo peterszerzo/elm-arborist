@@ -1,11 +1,11 @@
-module Views.NodeConnectors exposing (pad, strokeWeight, toCoord, view)
+module Internals.NodeConnectors exposing (pad, strokeWeight, toCoord, view)
 
 import Html exposing (Html)
 import Html.Attributes exposing (style)
-import Internal.Settings as Settings
+import Internals.Settings as Settings
+import Internals.Styles as Styles
 import Svg exposing (line, svg)
 import Svg.Attributes exposing (height, stroke, strokeLinecap, strokeLinejoin, strokeWidth, viewBox, width, x1, x2, y1, y2)
-import Views.Styles as Styles
 
 
 pad : Float

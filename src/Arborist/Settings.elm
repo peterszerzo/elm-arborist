@@ -6,7 +6,7 @@ module Arborist.Settings exposing (nodeWidth, nodeHeight, canvasWidth, canvasHei
 
 -}
 
-import Internal.Settings exposing (Setting(..))
+import Internals.Settings exposing (Setting(..))
 
 
 {-| Sets the width of node.

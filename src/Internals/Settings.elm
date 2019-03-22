@@ -1,4 +1,11 @@
-module Internal.Settings exposing (Setting(..), Settings, ShowPlaceholderLeavesAdvanced, apply, defaults, showPlaceholderLeavesAdvanced)
+module Internals.Settings exposing
+    ( Setting(..)
+    , Settings
+    , ShowPlaceholderLeavesAdvanced
+    , apply
+    , defaults
+    , showPlaceholderLeavesAdvanced
+    )
 
 
 type alias ShowPlaceholderLeavesAdvanced node =
