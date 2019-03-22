@@ -1,5 +1,6 @@
 module Internals.Utils exposing
     ( addFloatTuples
+    , areListsEqual
     , changeLastInList
     , compareLists
     , convertElm018Styles

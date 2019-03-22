@@ -46,7 +46,7 @@ import Internals.Drag as Drag exposing (Drag)
 import Internals.NodeConnectors as NodeConnectors
 import Internals.Settings as Settings
 import Internals.Styles as Styles
-import Internals.TreeUtils as TreeUtils exposing (TreeNodePath)
+import Internals.TreeUtils as TreeUtils exposing (Path)
 import Internals.Utils as Utils
 import Json.Decode as Decode
 
@@ -61,9 +61,9 @@ type alias NodeGeometry =
 -}
 type State node
     = State
-        { active : Maybe TreeNodePath
-        , hovered : Maybe TreeNodePath
-        , drag : Drag (Maybe TreeNodePath)
+        { active : Maybe Path
+        , hovered : Maybe Path
+        , drag : Drag (Maybe Path)
         , panOffset : ( Float, Float )
         }
 
@@ -262,10 +262,10 @@ deleteActiveNode (State state) tree =
 {-| Module messages
 -}
 type Msg
-    = NodeMouseDown TreeNodePath Float Float
+    = NodeMouseDown Path Float Float
     | NodeMouseUp Float Float
-    | NodeMouseEnter TreeNodePath
-    | NodeMouseLeave TreeNodePath
+    | NodeMouseEnter Path
+    | NodeMouseLeave Path
     | CanvasMouseMove Float Float
     | CanvasMouseDown Float Float
     | CanvasMouseUp Float Float
@@ -543,42 +543,28 @@ subscriptions settings (State state) tree =
             |> Decode.andThen
                 (\str ->
                     let
-                        newActive =
-                            case str of
-                                "ArrowDown" ->
-                                    Maybe.map (\active -> active ++ [ 0 ]) state.active
-                                        |> (\newActive_ ->
-                                                if newActive_ == Nothing then
-                                                    Just []
-
-                                                else
-                                                    newActive_
-                                           )
-
-                                "ArrowUp" ->
-                                    Maybe.map (\active -> List.take (List.length active - 1) active) state.active
-
-                                "ArrowLeft" ->
-                                    Maybe.map (\active -> Utils.changeLastInList (\val -> val - 1) active) state.active
-
-                                "ArrowRight" ->
-                                    Maybe.map (\active -> Utils.changeLastInList (\val -> val + 1) active) state.active
-
-                                _ ->
-                                    Nothing
-
-                        confirmNewActive =
-                            newActive
-                                |> Maybe.andThen
-                                    (\newActive_ ->
-                                        Utils.dictGetWithListKeys newActive_ (Dict.fromList flat)
-                                    )
-                                |> Maybe.andThen (always newActive)
+                        all =
+                            List.map Tuple.first flat
                     in
                     Decode.succeed
                         ( State
                             { state
-                                | active = confirmNewActive
+                                | active =
+                                    case str of
+                                        "ArrowDown" ->
+                                            TreeUtils.moveDown all state.active
+
+                                        "ArrowUp" ->
+                                            TreeUtils.moveUp all state.active
+
+                                        "ArrowLeft" ->
+                                            TreeUtils.moveLeft all state.active
+
+                                        "ArrowRight" ->
+                                            TreeUtils.moveRight all state.active
+
+                                        _ ->
+                                            state.active
                             }
                         , tree
                         )
@@ -588,10 +574,10 @@ subscriptions settings (State state) tree =
 
 getDropTarget :
     Settings.Settings node
-    -> TreeNodePath
+    -> Path
     -> ( Float, Float )
     -> Tree.Tree node
-    -> Maybe TreeNodePath
+    -> Maybe Path
 getDropTarget settings path ( dragX, dragY ) tree =
     let
         { flat, layout } =

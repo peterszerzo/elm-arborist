@@ -1,8 +1,8 @@
 module Internals.TreeUtils exposing
     ( Layout
     , NodeInfo
+    , Path
     , TreeAnalysis
-    , TreeNodePath
     , addTrailingEmpties
     , addTrailingEmptiesAdvanced
     , analyze
@@ -11,6 +11,10 @@ module Internals.TreeUtils exposing
     , flatten
     , insert
     , layout
+    , moveDown
+    , moveLeft
+    , moveRight
+    , moveUp
     , removeEmpties
     , swap
     , updateAt
@@ -24,11 +28,89 @@ import Internals.Utils as Utils
 
 
 
--- Data structure
+-- Node traversal
 
 
-type alias TreeNodePath =
+type alias Path =
     List Int
+
+
+member : Path -> List Path -> Bool
+member current all =
+    case all of
+        [] ->
+            False
+
+        head :: tail ->
+            Utils.areListsEqual current head || member current tail
+
+
+confirm : List Path -> Path -> Maybe Path
+confirm all current =
+    current
+        |> (\pth -> ( pth, member pth all ))
+        |> (\( pth, isMember ) ->
+                if isMember then
+                    Just pth
+
+                else
+                    Nothing
+           )
+
+
+moveDown : List Path -> Maybe Path -> Maybe Path
+moveDown all current =
+    current
+        |> Maybe.andThen ((\lst -> lst ++ [ 0 ]) >> confirm all)
+        |> Maybe.withDefault []
+        |> Just
+
+
+moveUp : List Path -> Maybe Path -> Maybe Path
+moveUp all current =
+    current
+        |> Maybe.andThen ((\lst -> List.take (List.length lst - 1) lst) >> confirm all)
+        |> Maybe.map Just
+        |> Maybe.withDefault
+            (case all of
+                [] ->
+                    Nothing
+
+                head :: tail ->
+                    List.foldl
+                        (\current_ accumulator ->
+                            if List.length current_ > List.length accumulator then
+                                current_
+
+                            else
+                                accumulator
+                        )
+                        head
+                        tail
+                        |> Just
+            )
+
+
+moveLeft : List Path -> Maybe Path -> Maybe Path
+moveLeft all current =
+    current
+        |> Maybe.andThen
+            (Utils.changeLastInList (\v -> v - 1)
+                >> confirm all
+            )
+        |> Maybe.withDefault []
+        |> Just
+
+
+moveRight : List Path -> Maybe Path -> Maybe Path
+moveRight all current =
+    current
+        |> Maybe.andThen
+            (Utils.changeLastInList (\v -> v + 1)
+                >> confirm all
+            )
+        |> Maybe.withDefault []
+        |> Just
 
 
 
@@ -36,22 +118,22 @@ type alias TreeNodePath =
 
 
 type alias Layout =
-    Dict.Dict TreeNodePath
+    Dict.Dict Path
         { center : ( Float, Float )
         , childCenters : List Float
         }
 
 
 type alias NodeInfo =
-    Dict.Dict TreeNodePath
+    Dict.Dict Path
         { siblings : Int
-        , children : List TreeNodePath
+        , children : List Path
         }
 
 
 type alias TreeAnalysis =
     { depth : Int
-    , shortNodes : List TreeNodePath
+    , shortNodes : List Path
     , nodeInfo : NodeInfo
     }
 
@@ -143,7 +225,7 @@ removeEmpties tree =
 
 {-| Find item by path
 -}
-find : TreeNodePath -> Tree a -> Maybe (Tree a)
+find : Path -> Tree a -> Maybe (Tree a)
 find path tree =
     case ( path, tree ) of
         ( head :: tail, Node _ children ) ->
@@ -159,7 +241,7 @@ find path tree =
             Nothing
 
 
-swap : TreeNodePath -> TreeNodePath -> Tree a -> Tree a
+swap : Path -> Path -> Tree a -> Tree a
 swap path1 path2 tree =
     let
         subtree1 =
@@ -179,7 +261,7 @@ swap path1 path2 tree =
         |> Maybe.withDefault tree
 
 
-updateSubtree : TreeNodePath -> Tree a -> Tree a -> Tree a
+updateSubtree : Path -> Tree a -> Tree a -> Tree a
 updateSubtree path subtree tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -201,7 +283,7 @@ updateSubtree path subtree tree =
             currentTree
 
 
-updateAtWithChildren : TreeNodePath -> a -> Maybe (List a) -> Tree a -> Tree a
+updateAtWithChildren : Path -> a -> Maybe (List a) -> Tree a -> Tree a
 updateAtWithChildren path replaceItem replaceChildren tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -227,12 +309,12 @@ updateAtWithChildren path replaceItem replaceChildren tree =
             anyTree
 
 
-updateAt : TreeNodePath -> a -> Tree a -> Tree a
+updateAt : Path -> a -> Tree a -> Tree a
 updateAt path replaceItem tree =
     updateAtWithChildren path replaceItem Nothing tree
 
 
-insert : TreeNodePath -> Maybe a -> Tree a -> Tree a
+insert : Path -> Maybe a -> Tree a -> Tree a
 insert path insertItem tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -260,7 +342,7 @@ insert path insertItem tree =
             anyTree
 
 
-delete : TreeNodePath -> Tree a -> Tree a
+delete : Path -> Tree a -> Tree a
 delete path tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
@@ -285,12 +367,12 @@ delete path tree =
 
 {-| Flatten
 -}
-flatten : Tree a -> List ( TreeNodePath, Maybe a )
+flatten : Tree a -> List ( Path, Maybe a )
 flatten =
     flattenTail []
 
 
-flattenTail : TreeNodePath -> Tree a -> List ( TreeNodePath, Maybe a )
+flattenTail : Path -> Tree a -> List ( Path, Maybe a )
 flattenTail path tree =
     case tree of
         Empty ->
@@ -344,7 +426,7 @@ analyze tree =
         tree
 
 
-analyzeTail : { depth : Int, current : { path : TreeNodePath, siblings : Int } } -> Tree a -> TreeAnalysis
+analyzeTail : { depth : Int, current : { path : Path, siblings : Int } } -> Tree a -> TreeAnalysis
 analyzeTail { depth, current } tree =
     case tree of
         Empty ->
