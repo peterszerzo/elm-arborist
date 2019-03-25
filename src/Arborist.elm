@@ -461,53 +461,63 @@ update settings msg (State model) tree =
             )
 
         CanvasMouseDown x y ->
-            ( State
-                { model
-                    | drag = Drag.start Nothing x y
-                }
-            , tree
-            )
+            case model.hovered of
+                Just path ->
+                    update settings (NodeMouseDown path x y) (State model) tree
 
-        CanvasMouseUp _ _ ->
-            let
-                active_ =
-                    Drag.state model.drag
-                        |> Maybe.map
-                            (\( _, ( dragX, dragY ) ) ->
-                                if (abs dragX + abs dragY) < 21 then
-                                    Nothing
+                Nothing ->
+                    ( State
+                        { model
+                            | drag = Drag.start Nothing x y
+                        }
+                    , tree
+                    )
 
-                                else
-                                    model.active
-                            )
-                        |> Maybe.withDefault Nothing
-            in
-            ( State
-                { model
-                    | drag = Drag.init
-                    , panOffset =
-                        Drag.state model.drag
-                            |> Maybe.map
-                                (\( draggedNode, offset ) ->
-                                    let
-                                        ( panOffsetX, panOffsetY ) =
-                                            model.panOffset
+        CanvasMouseUp x y ->
+            case model.hovered of
+                Just path ->
+                    update settings (NodeMouseUp x y) (State model) tree
 
-                                        ( offsetX, offsetY ) =
-                                            if draggedNode == Nothing then
-                                                offset
+                Nothing ->
+                    let
+                        active_ =
+                            Drag.state model.drag
+                                |> Maybe.map
+                                    (\( _, ( dragX, dragY ) ) ->
+                                        if (abs dragX + abs dragY) < 21 then
+                                            Nothing
 
-                                            else
-                                                ( 0, 0 )
-                                    in
-                                    ( panOffsetX + offsetX, panOffsetY + offsetY )
-                                )
-                            |> Maybe.withDefault model.panOffset
-                    , active =
-                        active_
-                }
-            , tree
-            )
+                                        else
+                                            model.active
+                                    )
+                                |> Maybe.withDefault Nothing
+                    in
+                    ( State
+                        { model
+                            | drag = Drag.init
+                            , panOffset =
+                                Drag.state model.drag
+                                    |> Maybe.map
+                                        (\( draggedNode, offset ) ->
+                                            let
+                                                ( panOffsetX, panOffsetY ) =
+                                                    model.panOffset
+
+                                                ( offsetX, offsetY ) =
+                                                    if draggedNode == Nothing then
+                                                        offset
+
+                                                    else
+                                                        ( 0, 0 )
+                                            in
+                                            ( panOffsetX + offsetX, panOffsetY + offsetY )
+                                        )
+                                    |> Maybe.withDefault model.panOffset
+                            , active =
+                                active_
+                        }
+                    , tree
+                    )
 
         CanvasMouseLeave ->
             ( State { model | drag = Drag.init }
@@ -956,21 +966,7 @@ view attrs config =
                                            )
                                         |> List.map (\( property, value ) -> style property value)
                                      )
-                                        ++ [ stopPropagationOn "mousedown"
-                                                (Decode.map2 (NodeMouseDown path)
-                                                    (Decode.field "screenX" Decode.float)
-                                                    (Decode.field "screenY" Decode.float)
-                                                    |> Decode.map (mapMsg config)
-                                                    |> Decode.map (\msg -> ( msg, True ))
-                                                )
-                                           , stopPropagationOn "mouseup"
-                                                (Decode.map2 NodeMouseUp
-                                                    (Decode.field "screenX" Decode.float)
-                                                    (Decode.field "screenY" Decode.float)
-                                                    |> Decode.map (mapMsg config)
-                                                    |> Decode.map (\msg -> ( msg, True ))
-                                                )
-                                           , on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
+                                        ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
                                            , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
                                            ]
                                     )
