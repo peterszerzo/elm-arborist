@@ -7,12 +7,32 @@ import Arborist
 import Arborist.Settings as Settings
 import Arborist.Tree as Tree
 import Browser
+import Browser.Dom as Dom
+import Browser.Events
 import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Events as Events
+import Element.Font as Font
 import Element.Input as Input
-import Html exposing (Html, a, button, div, h1, h2, h3, input, label, map, node, p, text)
-import Html.Attributes exposing (class, href, style, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html
+import Html.Attributes
 import Json.Encode as Encode
+import Svg
+import Svg.Attributes
+import Task
+
+
+{-| Entry point
+-}
+main : Program Encode.Value Model Msg
+main =
+    Browser.element
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
+        }
 
 
 {-| The Node data type held in each of the tree's nodes.
@@ -33,11 +53,19 @@ setAnswer val item =
     { item | answer = val }
 
 
+type EditMode
+    = NoEdit
+    | Question
+    | Answer
+
+
 {-| Program model.
 -}
 type alias Model =
     { arborist : Arborist.State Node
     , tree : Tree.Tree Node
+    , windowSize : Maybe { width : Int, height : Int }
+    , editMode : EditMode
 
     -- Keep track of a to-be-inserted node
     , newNode : Node
@@ -58,15 +86,20 @@ tree =
         ]
 
 
-arboristSettings : List (Arborist.Setting Node)
-arboristSettings =
+nodeHeight : Int
+nodeHeight =
+    45
+
+
+arboristSettings : Model -> List (Arborist.Setting Node)
+arboristSettings model =
     [ Settings.centerOffset 0 -150
-    , Settings.nodeHeight 45
+    , Settings.nodeHeight nodeHeight
     , Settings.level 100
+    , Settings.gutter 40
     , Settings.nodeWidth 160
-    , Settings.sturdyMode False
-    , Settings.canvasWidth 1000
-    , Settings.canvasHeight 600
+    , Settings.canvasWidth (model.windowSize |> Maybe.map .width |> Maybe.withDefault 1000)
+    , Settings.canvasHeight (model.windowSize |> Maybe.map .height |> Maybe.withDefault 600)
     , Settings.dragAndDrop True
     , Settings.showPlaceholderLeavesAdvanced
         (\{ node, parent, children, siblings } ->
@@ -79,23 +112,27 @@ init : Encode.Value -> ( Model, Cmd Msg )
 init flags =
     ( { arborist = Arborist.init
       , tree = tree
+      , editMode = NoEdit
+      , windowSize = Nothing
       , newNode =
             { question = ""
             , answer = ""
             }
       }
-    , Cmd.none
+    , Dom.getViewport
+        |> Task.map (\v -> Resize (floor v.viewport.width) (floor v.viewport.height))
+        |> Task.perform identity
     )
 
 
-{-| Program message
--}
 type Msg
     = Arborist (Arborist.State Node -> Tree.Tree Node -> ( Arborist.State Node, Tree.Tree Node ))
     | EditNewNodeQuestion String
     | EditNewNodeAnswer String
     | SetActive Node
     | DeleteActive
+    | SetEditMode EditMode
+    | Resize Int Int
 
 
 
@@ -149,9 +186,29 @@ update msg model =
             , Cmd.none
             )
 
+        SetEditMode editMode ->
+            let
+                _ =
+                    Debug.log "m" editMode
+            in
+            ( { model | editMode = editMode }
+            , Cmd.none
+            )
+
         EditNewNodeAnswer val ->
             ( { model
                 | newNode = setAnswer val model.newNode
+              }
+            , Cmd.none
+            )
+
+        Resize width height ->
+            ( { model
+                | windowSize =
+                    Just
+                        { width = width
+                        , height = height
+                        }
               }
             , Cmd.none
             )
@@ -161,28 +218,44 @@ update msg model =
 -- View
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
-    div
-        [ style "margin" "auto"
-        , style "position" "absolute"
-        , style "top" "0px"
-        , style "left" "0px"
+    Html.div
+        [ Html.Attributes.style "margin" "auto"
+        , Html.Attributes.style "position" "absolute"
+        , Html.Attributes.style "top" "0px"
+        , Html.Attributes.style "left" "0px"
+        , Html.Attributes.style "width" "100vw"
+        , Html.Attributes.style "height" "100vh"
         ]
     <|
-        [ Element.text ""
-            |> layout []
+        [ Html.node "style" [] [ Html.text """
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+        """ ]
+        , Element.text ""
+            |> layout
+                [ htmlAttribute <| Html.Attributes.style "display" "none"
+                ]
         , Arborist.view
-            []
+            [ Html.Attributes.style "background-color" "#fefefe"
+            ]
             { state = model.arborist
             , tree = model.tree
-            , nodeView = nodeView
-            , settings = arboristSettings
+            , nodeView = nodeView model.editMode
+            , settings = arboristSettings model
             , toMsg = Arborist
             }
         ]
             ++ (Arborist.activeNode
-                    { settings = arboristSettings
+                    { settings = arboristSettings model
                     , state = model.arborist
                     , tree = model.tree
                     }
@@ -192,62 +265,59 @@ view model =
                                 ( x, y ) =
                                     position
                             in
-                            [ div
-                                [ style "position" "absolute"
-                                , style "left" <| String.fromFloat x ++ "px"
-                                , style "top" <| String.fromFloat y ++ "px"
+                            [ column
+                                [ spacing 20
+                                , width fill
+                                , height (px 240)
+                                , Background.color (rgb255 255 255 255)
+                                , largeShadow
+                                , Border.rounded 4
+                                , padding 20
                                 ]
                                 (case item of
                                     Just justItem ->
-                                        [ Input.text []
+                                        [ input
                                             { onChange = \val -> SetActive { justItem | question = val }
-                                            , text = justItem.question
-                                            , placeholder = Nothing
-                                            , label = Element.text "Question" |> Input.labelAbove []
+                                            , value = justItem.question
+                                            , label = Just "Question"
                                             }
-                                            |> layoutWith
-                                                { options = [ noStaticStyleSheet ]
-                                                }
-                                                []
-                                        , Input.text []
+                                        , input
                                             { onChange = \val -> SetActive { justItem | answer = val }
-                                            , text = justItem.answer
-                                            , placeholder = Nothing
-                                            , label = Element.text "Answer" |> Input.labelAbove []
+                                            , value = justItem.answer
+                                            , label = Just "Answer"
                                             }
-                                            |> layoutWith
-                                                { options = [ noStaticStyleSheet ]
-                                                }
-                                                []
                                         , Input.button []
                                             { onPress = Just DeleteActive
                                             , label = Element.text "Delete"
                                             }
-                                            |> layoutWith
-                                                { options = [ noStaticStyleSheet ]
-                                                }
-                                                []
                                         ]
 
                                     Nothing ->
-                                        [ label []
-                                            [ text "Question"
-                                            , input
-                                                [ value model.newNode.question
-                                                , onInput EditNewNodeQuestion
-                                                ]
-                                                []
-                                            ]
-                                        , label []
-                                            [ text "Answer"
-                                            , input [ value model.newNode.answer, onInput EditNewNodeAnswer ] []
-                                            ]
-                                        , button
-                                            [ onClick (SetActive model.newNode)
-                                            ]
-                                            [ text "Add node" ]
+                                        [ input
+                                            { onChange = EditNewNodeQuestion
+                                            , value = model.newNode.question
+                                            , label = Just "Question"
+                                            }
+                                        , input
+                                            { onChange = EditNewNodeAnswer
+                                            , value = model.newNode.answer
+                                            , label = Just "Answer"
+                                            }
+                                        , Input.button []
+                                            { onPress = Just (SetActive model.newNode)
+                                            , label = el bodyType (text "Add node")
+                                            }
                                         ]
                                 )
+                                |> layoutWith
+                                    { options = [ noStaticStyleSheet ]
+                                    }
+                                    [ htmlAttribute <| Html.Attributes.style "position" "absolute"
+                                    , htmlAttribute <| Html.Attributes.style "left" <| String.fromFloat (x - 210) ++ "px"
+                                    , htmlAttribute <| Html.Attributes.style "top" <| String.fromFloat (y + 60) ++ "px"
+                                    , width (px 420)
+                                    , height (px 240)
+                                    ]
                             ]
                         )
                     |> Maybe.withDefault []
@@ -256,82 +326,199 @@ view model =
 
 {-| Describe how a node should render inside the tree's layout.
 -}
-nodeView : Arborist.NodeView Node
-nodeView context maybeNode =
+nodeView : EditMode -> Arborist.NodeView Node Msg
+nodeView editMode context maybeNode =
     maybeNode
         |> Maybe.map
             (\node ->
-                div
-                    ([ ( "background-color"
-                       , case context.state of
-                            Arborist.Active ->
-                                "green"
+                el
+                    ([ Just <|
+                        Background.color <|
+                            case context.state of
+                                Arborist.Active ->
+                                    rgb255 0 255 0
 
-                            Arborist.Hovered ->
-                                "blue"
+                                Arborist.Hovered ->
+                                    rgb255 255 0 0
 
-                            Arborist.DropTarget ->
-                                "blue"
+                                Arborist.DropTarget ->
+                                    rgb255 255 0 0
 
-                            Arborist.Normal ->
-                                "black"
-                       )
-                     , ( "color", "white" )
+                                Arborist.Normal ->
+                                    rgb255 0 0 0
+                     , Font.color black |> Just
+                     , Border.rounded 4 |> Just
+                     , smallShadow |> Just
+                     , Background.color white |> Just
+                     , if context.state == Arborist.Active then
+                        onLeft
+                            (el
+                                [ width (px 8)
+                                , height (px 8)
+                                , moveLeft -4
+                                , moveDown 10
+                                , Border.rounded 4
+                                , Background.color blue
+                                ]
+                                none
+                            )
+                            |> Just
+
+                       else
+                        Nothing
+                     , el
+                        [ width fill
+                        , moveUp 20
+                        , Background.color white
+                        , smallShadow
+                        , height (px 20)
+                        , htmlAttribute <| Html.Attributes.class "AAAAAAAAA-abcd"
+                        , Events.onClick (SetEditMode Answer)
+                        ]
+                        (el
+                            (bodyType
+                                ++ [ centerX
+                                   , centerY
+                                   ]
+                            )
+                         <|
+                            text node.answer
+                        )
+                        |> above
+                        |> Just
+                     , padding 6 |> Just
+                     , width fill |> Just
+                     , height (nodeHeight |> px) |> Just
                      ]
-                        |> List.map (\( property, value ) -> style property value)
+                        |> List.filterMap identity
                     )
-                    [ text node.question
-                    ]
+                    (paragraph
+                        (bodyType
+                            ++ [ centerX
+                               , centerY
+                               , Font.center
+                               ]
+                        )
+                        [ text node.question
+                        ]
+                    )
             )
         |> Maybe.withDefault
             (el
-                ([ width fill
-                 , height fill
-                 ]
-                    ++ ((case context.state of
-                            Arborist.Active ->
-                                [ ( "color", "white" )
-                                , ( "border", "0" )
-                                ]
-
-                            Arborist.DropTarget ->
-                                [ ( "border", "0" )
-                                , ( "color", "white" )
-                                ]
-
-                            _ ->
-                                [ ( "background-color", "transparent" )
-                                , ( "border", "1px dashed #CECECE" )
-                                , ( "color", "#898989" )
-                                ]
-                        )
-                            |> List.map (\( property, value ) -> style property value |> htmlAttribute)
-                       )
+                [ width fill
+                , height (nodeHeight |> px)
+                , Border.width 2
+                , Border.dashed
+                , Border.color (rgb255 200 200 200)
+                ]
+                (el
+                    (bodyType
+                        ++ [ centerX
+                           , centerY
+                           , Font.color (rgb255 200 200 200)
+                           ]
+                    )
+                 <|
+                    text "New child"
                 )
-                (Element.text "New child")
-                |> layout
-                    [ width fill
-                    , height fill
-                    ]
             )
+        |> layoutWith
+            { options = [ noStaticStyleSheet ]
+            }
+            []
+
+
+logo : Html.Html msg
+logo =
+    Svg.svg [ Svg.Attributes.viewBox "0 0 1000 1000", Svg.Attributes.fill "currentColor" ]
+        [ Svg.path [ Svg.Attributes.d "M520,720l220,-220l220,220l-440,0Z" ] []
+        , Svg.path [ Svg.Attributes.d "M40,720l220,-220l220,220l-440,0Z" ] []
+        , Svg.path [ Svg.Attributes.d "M280,480l220,-220l220,220l-440,0Z" ] []
+        ]
+
+
+bodyType : List (Attribute msg)
+bodyType =
+    [ Font.size 14
+    , Font.family
+        [ Font.typeface "Source Sans Pro"
+        ]
+    ]
+
+
+inputAttrs : List (Attribute msg)
+inputAttrs =
+    [ Font.size 14
+    , paddingXY 6 2
+    , Font.family
+        [ Font.typeface "Source Sans Pro"
+        ]
+    ]
+
+
+input : { value : String, onChange : String -> msg, label : Maybe String } -> Element msg
+input config =
+    Input.text inputAttrs
+        { onChange = config.onChange
+        , text = config.value
+        , placeholder = Nothing
+        , label =
+            config.label
+                |> Maybe.map
+                    (Element.text
+                        >> Input.labelAbove []
+                    )
+                |> Maybe.withDefault (Input.labelHidden "Label")
+        }
+
+
+white : Color
+white =
+    rgb255 255 255 255
+
+
+black : Color
+black =
+    rgb255 0 0 0
+
+
+blue : Color
+blue =
+    rgb255 30 90 112
+
+
+lighterBlue : Color
+lighterBlue =
+    rgb255 50 105 125
+
+
+smallShadow : Attribute msg
+smallShadow =
+    Border.shadow
+        { offset = ( 0, 2 )
+        , size = 0
+        , blur = 12
+        , color = rgba255 0 0 0 0.1
+        }
+
+
+largeShadow : Attribute msg
+largeShadow =
+    Border.shadow
+        { offset = ( 0, 3 )
+        , size = 0
+        , blur = 16
+        , color = rgba255 0 0 0 0.2
+        }
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Arborist.subscriptions arboristSettings model.arborist model.tree
-        |> Sub.map
-            (\( newState, newTree ) ->
-                Arborist (\_ _ -> ( newState, newTree ))
-            )
-
-
-{-| Entry point
--}
-main : Program Encode.Value Model Msg
-main =
-    Browser.element
-        { init = init
-        , update = update
-        , view = view
-        , subscriptions = subscriptions
-        }
+    Sub.batch
+        [ Arborist.subscriptions (arboristSettings model) model.arborist model.tree
+            |> Sub.map
+                (\( newState, newTree ) ->
+                    Arborist (\_ _ -> ( newState, newTree ))
+                )
+        , Browser.Events.onResize Resize
+        ]

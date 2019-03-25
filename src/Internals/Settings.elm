@@ -30,7 +30,6 @@ type alias Settings node =
     , isDragAndDropEnabled : Bool
     , showPlaceholderLeaves : Bool
     , showPlaceholderLeavesAdvanced : Maybe (ShowPlaceholderLeavesAdvanced node)
-    , isSturdyMode : Bool
     , defaultNode : Maybe node
     }
 
@@ -49,7 +48,6 @@ defaults =
     , isDragAndDropEnabled = True
     , showPlaceholderLeaves = True
     , showPlaceholderLeavesAdvanced = Nothing
-    , isSturdyMode = False
     , defaultNode = Nothing
     }
 
@@ -67,7 +65,6 @@ type Setting node
     | DragAndDrop Bool
     | ShowPlaceholderLeaves Bool
     | ShowPlaceholderLeavesAdvanced (ShowPlaceholderLeavesAdvanced node)
-    | SturdyMode Bool
     | DefaultNode node
 
 
@@ -121,9 +118,6 @@ apply newSettings settings =
 
                     ShowPlaceholderLeavesAdvanced show ->
                         { settings | showPlaceholderLeavesAdvanced = Just show }
-
-                    SturdyMode isSturdyMode ->
-                        { settings | isSturdyMode = isSturdyMode }
 
                     DefaultNode node ->
                         { settings | defaultNode = Just node }

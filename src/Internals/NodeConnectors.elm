@@ -23,7 +23,7 @@ toCoord =
     floor >> String.fromInt
 
 
-view : Settings.Settings node -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html Never
+view : Settings.Settings node -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
 view settings opacity ( dragX, dragY ) center childCenters =
     let
         strokeAttrs =
@@ -84,6 +84,7 @@ view settings opacity ( dragX, dragY ) center childCenters =
             else
                 "-2 0 " ++ String.fromFloat (w + 4) ++ " " ++ String.fromFloat h
          , style "position" "absolute"
+         , style "z-index" "-1"
          , style "opacity" <| String.fromFloat opacity
          ]
             ++ (Styles.coordinate settings

@@ -1,8 +1,8 @@
-module Arborist.Settings exposing (nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, sturdyMode, defaultNode)
+module Arborist.Settings exposing (nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, defaultNode)
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, sturdyMode, defaultNode
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, defaultNode
 
 -}
 
@@ -98,10 +98,3 @@ showPlaceholderLeavesAdvanced =
 defaultNode : node -> Setting node
 defaultNode =
     DefaultNode
-
-
-{-| Enables sturdy mode: as long as the tree is not empty, there is always one active node. Use this mode when it is critical that active node-related feedback doesn't leave the screen.
--}
-sturdyMode : Bool -> Setting node
-sturdyMode =
-    SturdyMode

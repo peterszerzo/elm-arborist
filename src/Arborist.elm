@@ -37,7 +37,6 @@ module Arborist exposing
 
 import Arborist.Tree as Tree
 import Browser.Events
-import Css exposing (..)
 import Dict
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
@@ -270,7 +269,6 @@ type Msg
     | CanvasMouseDown Float Float
     | CanvasMouseUp Float Float
     | CanvasMouseLeave
-    | NoOp
 
 
 resolveDrop : Settings.Settings node -> State node -> Tree.Tree node -> Tree.Tree node
@@ -340,7 +338,7 @@ update settings msg (State model) tree =
                         else
                             Drag.start (Just path) x y
                     , active =
-                        if active_ == Nothing && (settings.isSturdyMode == True || not settings.isDragAndDropEnabled) then
+                        if active_ == Nothing && not settings.isDragAndDropEnabled then
                             model.active
 
                         else
@@ -426,11 +424,7 @@ update settings msg (State model) tree =
                     , panOffset =
                         newPanOffset |> Maybe.withDefault model.panOffset
                     , active =
-                        if active_ == Nothing && settings.isSturdyMode == True then
-                            model.active
-
-                        else
-                            active_
+                        active_
                 }
             , newTree
             )
@@ -510,22 +504,13 @@ update settings msg (State model) tree =
                                 )
                             |> Maybe.withDefault model.panOffset
                     , active =
-                        if active_ == Nothing && settings.isSturdyMode == True then
-                            model.active
-
-                        else
-                            active_
+                        active_
                 }
             , tree
             )
 
         CanvasMouseLeave ->
             ( State { model | drag = Drag.init }
-            , tree
-            )
-
-        NoOp ->
-            ( State model
             , tree
             )
 
@@ -675,8 +660,8 @@ nodeGeometry settings path layout =
 
 {-| View function for an individual node, depending on its [context](Context), and its value. This value is expressed as a maybe because the node may contain an `insert new node`-type placeholder.
 -}
-type alias NodeView node =
-    Context node -> Maybe node -> Html.Html Msg
+type alias NodeView node msg =
+    Context node -> Maybe node -> Html.Html msg
 
 
 isSibling : List Int -> List Int -> Bool
@@ -804,6 +789,27 @@ nodeDragInfo path (State model) =
         ( False, ( 0, 0 ) )
 
 
+type alias Config node msg =
+    { nodeView : NodeView node msg
+    , tree : Tree.Tree node
+    , state : State node
+    , toMsg : (State node -> Tree.Tree node -> ( State node, Tree.Tree node )) -> msg
+    , settings : List (Setting node)
+    }
+
+
+mapMsg : Config node msg -> Msg -> msg
+mapMsg config msg =
+    let
+        settings =
+            Settings.apply config.settings Settings.defaults
+    in
+    config.toMsg
+        (\prevState prevTree ->
+            update settings msg prevState prevTree
+        )
+
+
 {-| The editor's view function, taking the following arguments:
 
   - [NodeView](#NodeView): view function for an individual node.
@@ -812,9 +818,9 @@ nodeDragInfo path (State model) =
 
 -}
 view :
-    List (Html.Attribute Msg)
+    List (Html.Attribute msg)
     ->
-        { nodeView : NodeView node
+        { nodeView : NodeView node msg
         , tree : Tree.Tree node
         , state : State node
         , toMsg : (State node -> Tree.Tree node -> ( State node, Tree.Tree node )) -> msg
@@ -864,18 +870,24 @@ view attrs config =
             (Decode.map2 CanvasMouseMove
                 (Decode.field "screenX" Decode.float)
                 (Decode.field "screenY" Decode.float)
+                |> Decode.map (mapMsg config)
             )
          , on "mousedown"
             (Decode.map2 CanvasMouseDown
                 (Decode.field "screenX" Decode.float)
                 (Decode.field "screenY" Decode.float)
+                |> Decode.map (mapMsg config)
             )
          , on "mouseup"
             (Decode.map2 CanvasMouseUp
                 (Decode.field "screenX" Decode.float)
                 (Decode.field "screenY" Decode.float)
+                |> Decode.map (mapMsg config)
             )
-         , on "mouseleave" (Decode.succeed CanvasMouseLeave)
+         , on "mouseleave"
+            (Decode.succeed CanvasMouseLeave
+                |> Decode.map (mapMsg config)
+            )
          , style "width" <| Utils.floatToPxString settings.canvasWidth
          , style "height" <| Utils.floatToPxString settings.canvasHeight
          , style "cursor" <|
@@ -948,16 +960,18 @@ view attrs config =
                                                 (Decode.map2 (NodeMouseDown path)
                                                     (Decode.field "screenX" Decode.float)
                                                     (Decode.field "screenY" Decode.float)
+                                                    |> Decode.map (mapMsg config)
                                                     |> Decode.map (\msg -> ( msg, True ))
                                                 )
                                            , stopPropagationOn "mouseup"
                                                 (Decode.map2 NodeMouseUp
                                                     (Decode.field "screenX" Decode.float)
                                                     (Decode.field "screenY" Decode.float)
+                                                    |> Decode.map (mapMsg config)
                                                     |> Decode.map (\msg -> ( msg, True ))
                                                 )
-                                           , on "mouseenter" (Decode.succeed (NodeMouseEnter path))
-                                           , on "mouseleave" (Decode.succeed (NodeMouseLeave path))
+                                           , on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
+                                           , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
                                            ]
                                     )
                                     [ nodeView nodeViewContext node
@@ -972,7 +986,6 @@ view attrs config =
                                         ( xDrag, yDrag )
                                         center
                                         childCenters
-                                        |> Html.map (always NoOp)
                                 ]
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
                                             div
@@ -994,7 +1007,6 @@ view attrs config =
                                                             ( 0, 0 )
                                                             center
                                                             childCenters
-                                                            |> Html.map (always NoOp)
                                                         ]
                                                    )
 
@@ -1008,13 +1020,6 @@ view attrs config =
                 |> List.foldl (++) []
             )
         ]
-        |> Html.map
-            (\msg ->
-                config.toMsg
-                    (\prevState prevTree ->
-                        update settings msg prevState prevTree
-                    )
-            )
 
 
 {-| The state of a node at a given time. May be normal one of the following:
