@@ -94,13 +94,13 @@ nodeHeight =
 arboristSettings : Model -> List (Arborist.Setting Node)
 arboristSettings model =
     [ Settings.centerOffset 0 -150
-    , Settings.nodeHeight nodeHeight
     , Settings.level 100
     , Settings.gutter 40
     , Settings.nodeWidth 160
+    , Settings.nodeHeight nodeHeight
     , Settings.canvasWidth (model.windowSize |> Maybe.map .width |> Maybe.withDefault 1000)
     , Settings.canvasHeight (model.windowSize |> Maybe.map .height |> Maybe.withDefault 600)
-    , Settings.dragAndDrop True
+    , Settings.dragAndDrop False
     , Settings.showPlaceholderLeavesAdvanced
         (\{ node, parent, children, siblings } ->
             node.answer == "yes"
@@ -379,7 +379,13 @@ nodeView editMode context maybeNode =
                             ( Arborist.Active, Answer ) ->
                                 input
                                     { value = node.answer
-                                    , onChange = \newAnswer -> SetActive { node | answer = newAnswer }
+                                    , onChange =
+                                        \newAnswer ->
+                                            SetActive
+                                                { node
+                                                    | answer =
+                                                        newAnswer
+                                                }
                                     , label = Nothing
                                     }
 

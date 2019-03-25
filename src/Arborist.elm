@@ -338,11 +338,7 @@ update settings msg (State model) tree =
                         else
                             Drag.start (Just path) x y
                     , active =
-                        if active_ == Nothing && not settings.isDragAndDropEnabled then
-                            model.active
-
-                        else
-                            active_
+                        Just path
                 }
             , tree
             )
