@@ -187,11 +187,9 @@ update msg model =
             )
 
         SetEditMode editMode ->
-            let
-                _ =
-                    Debug.log "m" editMode
-            in
-            ( { model | editMode = editMode }
+            ( { model
+                | editMode = editMode
+              }
             , Cmd.none
             )
 
@@ -227,6 +225,7 @@ view model =
         , Html.Attributes.style "left" "0px"
         , Html.Attributes.style "width" "100vw"
         , Html.Attributes.style "height" "100vh"
+        , Html.Attributes.style "overflow" "hidden"
         ]
     <|
         [ Html.node "style" [] [ Html.text """
@@ -286,9 +285,9 @@ body {
                                             , value = justItem.answer
                                             , label = Just "Answer"
                                             }
-                                        , Input.button []
+                                        , button
                                             { onPress = Just DeleteActive
-                                            , label = Element.text "Delete"
+                                            , label = "Delete"
                                             }
                                         ]
 
@@ -303,9 +302,9 @@ body {
                                             , value = model.newNode.answer
                                             , label = Just "Answer"
                                             }
-                                        , Input.button []
+                                        , button
                                             { onPress = Just (SetActive model.newNode)
-                                            , label = el bodyType (text "Add node")
+                                            , label = "Add node"
                                             }
                                         ]
                                 )
@@ -313,8 +312,10 @@ body {
                                     { options = [ noStaticStyleSheet ]
                                     }
                                     [ htmlAttribute <| Html.Attributes.style "position" "absolute"
-                                    , htmlAttribute <| Html.Attributes.style "left" <| String.fromFloat (x - 210) ++ "px"
-                                    , htmlAttribute <| Html.Attributes.style "top" <| String.fromFloat (y + 60) ++ "px"
+                                    , htmlAttribute <| Html.Attributes.style "top" "0px"
+                                    , htmlAttribute <| Html.Attributes.style "left" "0px"
+                                    , htmlAttribute <| Html.Attributes.style "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 60) ++ "px, 0px)"
+                                    , htmlAttribute <| Html.Attributes.style "transition" "transform 0.3s ease-in-out"
                                     , width (px 420)
                                     , height (px 240)
                                     ]
@@ -372,17 +373,25 @@ nodeView editMode context maybeNode =
                         , Background.color white
                         , smallShadow
                         , height (px 20)
-                        , htmlAttribute <| Html.Attributes.class "AAAAAAAAA-abcd"
                         , Events.onClick (SetEditMode Answer)
                         ]
-                        (el
-                            (bodyType
-                                ++ [ centerX
-                                   , centerY
-                                   ]
-                            )
-                         <|
-                            text node.answer
+                        (case ( context.state, editMode ) of
+                            ( Arborist.Active, Answer ) ->
+                                input
+                                    { value = node.answer
+                                    , onChange = \newAnswer -> SetActive { node | answer = newAnswer }
+                                    , label = Nothing
+                                    }
+
+                            _ ->
+                                el
+                                    (bodyType
+                                        ++ [ centerX
+                                           , centerY
+                                           ]
+                                    )
+                                <|
+                                    text node.answer
                         )
                         |> above
                         |> Just
@@ -446,19 +455,29 @@ bodyType =
     ]
 
 
-inputAttrs : List (Attribute msg)
-inputAttrs =
-    [ Font.size 14
-    , paddingXY 6 2
-    , Font.family
-        [ Font.typeface "Source Sans Pro"
+button : { onPress : Maybe msg, label : String } -> Element msg
+button config =
+    Input.button
+        [ Background.color blue
+        , Font.color white
+        , Font.size 14
+        , paddingXY 10 4
+        , Border.rounded 2
         ]
-    ]
+        { onPress = config.onPress
+        , label = el bodyType (text config.label)
+        }
 
 
 input : { value : String, onChange : String -> msg, label : Maybe String } -> Element msg
 input config =
-    Input.text inputAttrs
+    Input.text
+        [ Font.size 14
+        , paddingXY 6 2
+        , Font.family
+            [ Font.typeface "Source Sans Pro"
+            ]
+        ]
         { onChange = config.onChange
         , text = config.value
         , placeholder = Nothing

@@ -40,7 +40,7 @@ import Browser.Events
 import Dict
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
-import Html.Events exposing (on, stopPropagationOn)
+import Html.Events exposing (on)
 import Internals.Drag as Drag exposing (Drag)
 import Internals.NodeConnectors as NodeConnectors
 import Internals.Settings as Settings
@@ -475,7 +475,7 @@ update settings msg (State model) tree =
 
         CanvasMouseUp x y ->
             case model.hovered of
-                Just path ->
+                Just _ ->
                     update settings (NodeMouseUp x y) (State model) tree
 
                 Nothing ->
