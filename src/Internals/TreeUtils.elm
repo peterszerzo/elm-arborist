@@ -59,11 +59,17 @@ confirm all current =
 
 
 moveDown : List Path -> Maybe Path -> Maybe Path
-moveDown all current =
-    current
-        |> Maybe.andThen ((\lst -> lst ++ [ 0 ]) >> confirm all)
-        |> Maybe.withDefault []
-        |> Just
+moveDown all maybeCurrent =
+    case maybeCurrent of
+        Nothing ->
+            Just []
+
+        Just current ->
+            current
+                ++ [ 0 ]
+                |> confirm all
+                |> Maybe.withDefault current
+                |> Just
 
 
 moveUp : List Path -> Maybe Path -> Maybe Path
@@ -71,31 +77,36 @@ moveUp all current =
     current
         |> Maybe.andThen ((\lst -> List.take (List.length lst - 1) lst) >> confirm all)
         |> Maybe.map Just
-        |> Maybe.withDefault
-            (case all of
-                [] ->
-                    Nothing
-
-                head :: tail ->
-                    List.foldl
-                        (\current_ accumulator ->
-                            if List.length current_ > List.length accumulator then
-                                current_
-
-                            else
-                                accumulator
-                        )
-                        head
-                        tail
-                        |> Just
-            )
+        |> Maybe.withDefault (Just [])
 
 
 moveLeft : List Path -> Maybe Path -> Maybe Path
 moveLeft all current =
     current
         |> Maybe.andThen
-            (Utils.changeLastInList (\v -> v - 1)
+            (Utils.changeLastInList
+                (\v ->
+                    case v of
+                        0 ->
+                            case current of
+                                Just pth ->
+                                    all
+                                        |> List.filter
+                                            (\pth_ ->
+                                                (List.length pth_ == List.length pth)
+                                                    && (List.take (List.length pth_ - 1) pth_
+                                                            == List.take (List.length pth - 1) pth
+                                                       )
+                                            )
+                                        |> List.length
+                                        |> (\v_ -> v_ - 1)
+
+                                Nothing ->
+                                    -1
+
+                        v_ ->
+                            v_ - 1
+                )
                 >> confirm all
             )
         |> Maybe.withDefault []
@@ -109,7 +120,10 @@ moveRight all current =
             (Utils.changeLastInList (\v -> v + 1)
                 >> confirm all
             )
-        |> Maybe.withDefault []
+        |> Maybe.withDefault
+            (Maybe.map (Utils.changeLastInList (\_ -> 0)) current
+                |> Maybe.withDefault []
+            )
         |> Just
 
 

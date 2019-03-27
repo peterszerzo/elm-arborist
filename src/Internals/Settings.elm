@@ -27,7 +27,8 @@ type alias Settings node =
     , centerOffset : ( Float, Float )
     , connectorStroke : String
     , connectorStrokeWidth : String
-    , isDragAndDropEnabled : Bool
+    , dragAndDrop : Bool
+    , keyboardNavigation : Bool
     , showPlaceholderLeaves : Bool
     , showPlaceholderLeavesAdvanced : Maybe (ShowPlaceholderLeavesAdvanced node)
     , defaultNode : Maybe node
@@ -45,7 +46,8 @@ defaults =
     , centerOffset = ( 0, 0 )
     , connectorStroke = "#E2E2E2"
     , connectorStrokeWidth = "2"
-    , isDragAndDropEnabled = True
+    , dragAndDrop = True
+    , keyboardNavigation = False
     , showPlaceholderLeaves = True
     , showPlaceholderLeavesAdvanced = Nothing
     , defaultNode = Nothing
@@ -63,6 +65,7 @@ type Setting node
     | ConnectorStroke String
     | ConnectorStrokeWidth String
     | DragAndDrop Bool
+    | KeyboardNavigation Bool
     | ShowPlaceholderLeaves Bool
     | ShowPlaceholderLeavesAdvanced (ShowPlaceholderLeavesAdvanced node)
     | DefaultNode node
@@ -111,7 +114,10 @@ apply newSettings settings =
                         { settings | connectorStrokeWidth = strokeWidth }
 
                     DragAndDrop isEnabled ->
-                        { settings | isDragAndDropEnabled = isEnabled }
+                        { settings | dragAndDrop = isEnabled }
+
+                    KeyboardNavigation enabled ->
+                        { settings | keyboardNavigation = enabled }
 
                     ShowPlaceholderLeaves show ->
                         { settings | showPlaceholderLeaves = show }

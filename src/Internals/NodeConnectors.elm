@@ -10,7 +10,7 @@ import Svg.Attributes exposing (height, stroke, strokeLinecap, strokeLinejoin, s
 
 pad : Float
 pad =
-    4
+    0
 
 
 strokeWeight : Int

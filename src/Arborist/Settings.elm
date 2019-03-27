@@ -1,8 +1,19 @@
-module Arborist.Settings exposing (nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, defaultNode)
+module Arborist.Settings exposing
+    ( nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth
+    , dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced
+    )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
 
-@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth, dragAndDrop, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, defaultNode
+
+## Geometry
+
+@docs nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth
+
+
+## Features
+
+@docs dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced
 
 -}
 
@@ -77,6 +88,13 @@ connectorStrokeWidth =
 dragAndDrop : Bool -> Setting node
 dragAndDrop =
     DragAndDrop
+
+
+{-| Enable or disable keyboard navigation, which traverses and activates nodes using the arrow keys
+-}
+keyboardNavigation : Bool -> Setting node
+keyboardNavigation =
+    KeyboardNavigation
 
 
 {-| Set whether placeholder leaves should be displayed.

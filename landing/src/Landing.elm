@@ -1,4 +1,4 @@
-module Simple exposing (main)
+module Landing exposing (main)
 
 {-| A simple Arborist app modeling a conversation flow.
 -}
@@ -17,6 +17,8 @@ import Element.Font as Font
 import Element.Input as Input
 import Html
 import Html.Attributes
+import Html.Events
+import Json.Decode as Decode
 import Json.Encode as Encode
 import Svg
 import Svg.Attributes
@@ -69,6 +71,11 @@ type alias Model =
 
     -- Keep track of a to-be-inserted node
     , newNode : Node
+
+    -- Features
+    , dragAndDrop : Bool
+    , canCreateNodes : Bool
+    , keyboardNavigation : Bool
     }
 
 
@@ -100,10 +107,13 @@ arboristSettings model =
     , Settings.nodeHeight nodeHeight
     , Settings.canvasWidth (model.windowSize |> Maybe.map .width |> Maybe.withDefault 1000)
     , Settings.canvasHeight (model.windowSize |> Maybe.map .height |> Maybe.withDefault 600)
-    , Settings.dragAndDrop False
+    , Settings.dragAndDrop model.dragAndDrop
+    , Settings.keyboardNavigation model.keyboardNavigation
+    , Settings.connectorStrokeWidth "2"
+    , Settings.connectorStroke "#CECECE"
     , Settings.showPlaceholderLeavesAdvanced
         (\{ node, parent, children, siblings } ->
-            node.answer == "yes"
+            model.canCreateNodes
         )
     ]
 
@@ -112,12 +122,17 @@ init : Encode.Value -> ( Model, Cmd Msg )
 init flags =
     ( { arborist = Arborist.init
       , tree = tree
-      , editMode = NoEdit
       , windowSize = Nothing
       , newNode =
             { question = ""
             , answer = ""
             }
+
+      -- Arborist settings
+      , editMode = NoEdit
+      , dragAndDrop = False
+      , canCreateNodes = True
+      , keyboardNavigation = True
       }
     , Dom.getViewport
         |> Task.map (\v -> Resize (floor v.viewport.width) (floor v.viewport.height))
@@ -132,6 +147,9 @@ type Msg
     | SetActive Node
     | DeleteActive
     | SetEditMode EditMode
+    | SetDragAndDrop Bool
+    | SetCanCreateNodes Bool
+    | SetKeyboardNavigation Bool
     | Resize Int Int
 
 
@@ -200,6 +218,21 @@ update msg model =
             , Cmd.none
             )
 
+        SetDragAndDrop dragAndDrop ->
+            ( { model | dragAndDrop = dragAndDrop }
+            , Cmd.none
+            )
+
+        SetCanCreateNodes canCreateNodes ->
+            ( { model | canCreateNodes = canCreateNodes }
+            , Cmd.none
+            )
+
+        SetKeyboardNavigation keyboardNavigation ->
+            ( { model | keyboardNavigation = keyboardNavigation }
+            , Cmd.none
+            )
+
         Resize width height ->
             ( { model
                 | windowSize =
@@ -216,6 +249,11 @@ update msg model =
 -- View
 
 
+elementHtmlStyle : String -> String -> Attribute msg
+elementHtmlStyle prop val =
+    htmlAttribute <| Html.Attributes.style prop val
+
+
 view : Model -> Html.Html Msg
 view model =
     Html.div
@@ -226,6 +264,7 @@ view model =
         , Html.Attributes.style "width" "100vw"
         , Html.Attributes.style "height" "100vh"
         , Html.Attributes.style "overflow" "hidden"
+        , Html.Events.on "someevent" (Decode.succeed (SetEditMode Answer))
         ]
     <|
         [ Html.node "style" [] [ Html.text """
@@ -243,8 +282,76 @@ body {
             |> layout
                 [ htmlAttribute <| Html.Attributes.style "display" "none"
                 ]
+        , column
+            [ height fill
+            ]
+            [ column
+                [ width (px 100)
+                , height (px 100)
+                ]
+                [ el
+                    [ width (px 48)
+                    , height (px 48)
+                    , Font.color white
+                    , centerX
+                    , centerY
+                    ]
+                    (html logo)
+                , el
+                    (bodyType
+                        ++ [ Font.color white
+                           , centerX
+                           , centerY
+                           , moveUp 6
+                           ]
+                    )
+                    (text "elm-arborist")
+                ]
+            , column
+                [ padding 10
+                , spacing 20
+                ]
+                [ switch []
+                    { checked = model.dragAndDrop
+                    , onChange = SetDragAndDrop
+                    , label = "Drag and drop"
+                    }
+                , switch []
+                    { checked = model.canCreateNodes
+                    , onChange = SetCanCreateNodes
+                    , label = "Create"
+                    }
+                , switch []
+                    { checked = model.keyboardNavigation
+                    , onChange = SetKeyboardNavigation
+                    , label = "Keyboard"
+                    }
+                ]
+            , column
+                [ alignBottom
+                , paddingXY 10 20
+                ]
+                [ el
+                    (bodyType
+                        ++ [ Font.color white
+                           ]
+                    )
+                    (text "v7.0.0")
+                ]
+            ]
+            |> layoutWith
+                { options = [ noStaticStyleSheet ]
+                }
+                [ elementHtmlStyle "position" "fixed"
+                , elementHtmlStyle "top" "0px"
+                , elementHtmlStyle "left" "0px"
+                , elementHtmlStyle "bottom" "0px"
+                , elementHtmlStyle "z-index" "100"
+                , Background.color dark
+                , width (px 100)
+                ]
         , Arborist.view
-            [ Html.Attributes.style "background-color" "#fefefe"
+            [ Html.Attributes.style "background-color" "#EFEFEF"
             ]
             { state = model.arborist
             , tree = model.tree
@@ -253,76 +360,85 @@ body {
             , toMsg = Arborist
             }
         ]
-            ++ (Arborist.activeNode
-                    { settings = arboristSettings model
-                    , state = model.arborist
-                    , tree = model.tree
-                    }
-                    |> Maybe.map
-                        (\( item, { position } ) ->
-                            let
-                                ( x, y ) =
-                                    position
-                            in
-                            [ column
-                                [ spacing 20
-                                , width fill
-                                , height (px 240)
-                                , Background.color (rgb255 255 255 255)
-                                , largeShadow
-                                , Border.rounded 4
-                                , padding 20
-                                ]
-                                (case item of
-                                    Just justItem ->
-                                        [ input
-                                            { onChange = \val -> SetActive { justItem | question = val }
-                                            , value = justItem.question
-                                            , label = Just "Question"
-                                            }
-                                        , input
-                                            { onChange = \val -> SetActive { justItem | answer = val }
-                                            , value = justItem.answer
-                                            , label = Just "Answer"
-                                            }
-                                        , button
-                                            { onPress = Just DeleteActive
-                                            , label = "Delete"
-                                            }
-                                        ]
+            ++ (if model.dragAndDrop then
+                    []
 
-                                    Nothing ->
-                                        [ input
-                                            { onChange = EditNewNodeQuestion
-                                            , value = model.newNode.question
-                                            , label = Just "Question"
-                                            }
-                                        , input
-                                            { onChange = EditNewNodeAnswer
-                                            , value = model.newNode.answer
-                                            , label = Just "Answer"
-                                            }
-                                        , button
-                                            { onPress = Just (SetActive model.newNode)
-                                            , label = "Add node"
-                                            }
-                                        ]
-                                )
-                                |> layoutWith
-                                    { options = [ noStaticStyleSheet ]
-                                    }
-                                    [ htmlAttribute <| Html.Attributes.style "position" "absolute"
-                                    , htmlAttribute <| Html.Attributes.style "top" "0px"
-                                    , htmlAttribute <| Html.Attributes.style "left" "0px"
-                                    , htmlAttribute <| Html.Attributes.style "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 60) ++ "px, 0px)"
-                                    , htmlAttribute <| Html.Attributes.style "transition" "transform 0.3s ease-in-out"
-                                    , width (px 420)
-                                    , height (px 240)
-                                    ]
-                            ]
-                        )
-                    |> Maybe.withDefault []
+                else
+                    Arborist.activeNode
+                        { settings = arboristSettings model
+                        , state = model.arborist
+                        , tree = model.tree
+                        }
+                        |> Maybe.map (activeNodePopup model.newNode)
+                        |> Maybe.withDefault []
                )
+
+
+activeNodePopup :
+    Node
+    -> ( Maybe Node, { context : Arborist.Context Node, position : ( Float, Float ) } )
+    -> List (Html.Html Msg)
+activeNodePopup newNode ( item, { position } ) =
+    let
+        ( x, y ) =
+            position
+    in
+    [ column
+        [ spacing 20
+        , width fill
+        , height (px 240)
+        , Background.color (rgb255 255 255 255)
+        , largeShadow
+        , Border.rounded 4
+        , padding 20
+        ]
+        (case item of
+            Just justItem ->
+                [ input
+                    { onChange = \val -> SetActive { justItem | question = val }
+                    , value = justItem.question
+                    , label = Just "Question"
+                    }
+                , input
+                    { onChange = \val -> SetActive { justItem | answer = val }
+                    , value = justItem.answer
+                    , label = Just "Answer"
+                    }
+                , button
+                    { onPress = Just DeleteActive
+                    , label = "Delete"
+                    }
+                ]
+
+            Nothing ->
+                [ input
+                    { onChange = EditNewNodeQuestion
+                    , value = newNode.question
+                    , label = Just "Question"
+                    }
+                , input
+                    { onChange = EditNewNodeAnswer
+                    , value = newNode.answer
+                    , label = Just "Answer"
+                    }
+                , button
+                    { onPress = Just (SetActive newNode)
+                    , label = "Add node"
+                    }
+                ]
+        )
+        |> layoutWith
+            { options = [ noStaticStyleSheet ]
+            }
+            [ elementHtmlStyle "position" "absolute"
+            , elementHtmlStyle "top" "0px"
+            , elementHtmlStyle "left" "0px"
+            , elementHtmlStyle "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 60) ++ "px, 0px)"
+            , elementHtmlStyle "transition" "transform 0.3s ease-in-out"
+            , width (px 420)
+            , height (px 240)
+            ]
+    ]
 
 
 {-| Describe how a node should render inside the tree's layout.
@@ -349,7 +465,6 @@ nodeView editMode context maybeNode =
                                     rgb255 0 0 0
                      , Font.color black |> Just
                      , Border.rounded 4 |> Just
-                     , smallShadow |> Just
                      , Background.color white |> Just
                      , if context.state == Arborist.Active then
                         onLeft
@@ -371,7 +486,6 @@ nodeView editMode context maybeNode =
                         [ width fill
                         , moveUp 20
                         , Background.color white
-                        , smallShadow
                         , height (px 20)
                         , Events.onClick (SetEditMode Answer)
                         ]
@@ -390,14 +504,24 @@ nodeView editMode context maybeNode =
                                     }
 
                             _ ->
-                                el
+                                row
                                     (bodyType
                                         ++ [ centerX
                                            , centerY
                                            ]
                                     )
-                                <|
-                                    text node.answer
+                                    [ text node.answer
+                                    , customClicker "someevent"
+                                        []
+                                        [ Html.div
+                                            [ Html.Attributes.style "width" "8px"
+                                            , Html.Attributes.style "height" "8px"
+                                            , Html.Attributes.style "background-color" "#000000"
+                                            ]
+                                            []
+                                        ]
+                                        |> html
+                                    ]
                         )
                         |> above
                         |> Just
@@ -423,22 +547,22 @@ nodeView editMode context maybeNode =
                 [ width fill
                 , height (nodeHeight |> px)
                 , Border.width 2
-                , Border.dashed
                 , Border.color (rgb255 200 200 200)
                 ]
                 (el
-                    (bodyType
-                        ++ [ centerX
-                           , centerY
-                           , Font.color (rgb255 200 200 200)
-                           ]
-                    )
+                    [ centerX
+                    , centerY
+                    , Font.color (rgb255 200 200 200)
+                    , Font.size 20
+                    ]
                  <|
-                    text "New child"
+                    text "+"
                 )
             )
         |> layoutWith
-            { options = [ noStaticStyleSheet ]
+            { options =
+                [ noStaticStyleSheet
+                ]
             }
             []
 
@@ -455,6 +579,15 @@ logo =
 bodyType : List (Attribute msg)
 bodyType =
     [ Font.size 14
+    , Font.family
+        [ Font.typeface "Source Sans Pro"
+        ]
+    ]
+
+
+smallType : List (Attribute msg)
+smallType =
+    [ Font.size 11
     , Font.family
         [ Font.typeface "Source Sans Pro"
         ]
@@ -517,6 +650,11 @@ lighterBlue =
     rgb255 50 105 125
 
 
+dark : Color
+dark =
+    rgb255 25 35 50
+
+
 smallShadow : Attribute msg
 smallShadow =
     Border.shadow
@@ -546,4 +684,107 @@ subscriptions model =
                     Arborist (\_ _ -> ( newState, newTree ))
                 )
         , Browser.Events.onResize Resize
+        , onCtrlPlus "d" (SetDragAndDrop (not model.dragAndDrop))
+        , onCtrlPlus "c" (SetCanCreateNodes (not model.canCreateNodes))
+        , onCtrlPlus "k" (SetKeyboardNavigation (not model.keyboardNavigation))
         ]
+
+
+customClicker : String -> List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
+customClicker eventName attrs =
+    Html.node "custom-clicker"
+        (attrs
+            ++ [ Html.Attributes.attribute "eventname" eventName
+               ]
+        )
+
+
+switch :
+    List (Attribute msg)
+    ->
+        { label : String
+        , checked : Bool
+        , onChange : Bool -> msg
+        }
+    -> Element msg
+switch attrs config =
+    Input.checkbox attrs
+        { checked = config.checked
+        , onChange = config.onChange
+        , icon =
+            \checked ->
+                el
+                    ([ width (px 40)
+                     , height (px 18)
+                     , padding 3
+                     , Border.width 1
+                     , Border.rounded 18
+                     , Border.color white
+                     ]
+                        ++ (if checked then
+                                [ Background.color white
+                                ]
+
+                            else
+                                []
+                           )
+                    )
+                <|
+                    el
+                        ([ width (px 12)
+                         , height (px 12)
+                         , moveUp 1
+                         , moveRight
+                            (if checked then
+                                20
+
+                             else
+                                0
+                            )
+                         , centerY
+                         , Border.rounded 14
+                         ]
+                            ++ (if checked then
+                                    [ Background.color dark
+                                    ]
+
+                                else
+                                    [ Background.color white
+                                    ]
+                               )
+                        )
+                        none
+        , label =
+            el
+                (smallType
+                    ++ [ Font.color white
+                       ]
+                )
+                (text config.label)
+                |> Input.labelAbove []
+        }
+
+
+onCtrlPlus : String -> msg -> Sub msg
+onCtrlPlus targetKey message =
+    Browser.Events.onKeyPress
+        (Decode.map2
+            (\key ctrlKey ->
+                if ctrlKey && key == targetKey then
+                    Just ()
+
+                else
+                    Nothing
+            )
+            (Decode.field "key" Decode.string)
+            (Decode.field "ctrlKey" Decode.bool)
+            |> Decode.andThen
+                (\res ->
+                    case res of
+                        Just _ ->
+                            Decode.succeed message
+
+                        Nothing ->
+                            Decode.fail ""
+                )
+        )

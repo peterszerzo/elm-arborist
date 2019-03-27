@@ -41,6 +41,7 @@ import Dict
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
+import Html.Keyed exposing (node)
 import Internals.Drag as Drag exposing (Drag)
 import Internals.NodeConnectors as NodeConnectors
 import Internals.Settings as Settings
@@ -323,7 +324,7 @@ update settings msg (State model) tree =
         NodeMouseDown path x y ->
             let
                 active_ =
-                    if not settings.isDragAndDropEnabled then
+                    if not settings.dragAndDrop then
                         Just path
 
                     else
@@ -332,7 +333,7 @@ update settings msg (State model) tree =
             ( State
                 { model
                     | drag =
-                        if not settings.isDragAndDropEnabled then
+                        if not settings.dragAndDrop then
                             Drag.init
 
                         else
@@ -345,8 +346,8 @@ update settings msg (State model) tree =
 
         NodeMouseUp _ _ ->
             let
-                active_ =
-                    if not settings.isDragAndDropEnabled then
+                newActive =
+                    if not settings.dragAndDrop then
                         model.active
 
                     else
@@ -371,7 +372,7 @@ update settings msg (State model) tree =
                     computeTree settings tree
 
                 newTree =
-                    case active_ of
+                    case newActive of
                         Just path ->
                             case Dict.get path (Dict.fromList flat) of
                                 Just (Just _) ->
@@ -396,7 +397,7 @@ update settings msg (State model) tree =
                     computeTree settings newTree
 
                 newPanOffset =
-                    active_
+                    newActive
                         |> Maybe.andThen
                             (\justActive ->
                                 nodeGeometry settings justActive layout
@@ -412,15 +413,16 @@ update settings msg (State model) tree =
                                                 |> List.foldl Utils.addFloatTuples ( 0, 0 )
                                         )
                             )
+                        |> Maybe.withDefault model.panOffset
             in
             ( State
                 { model
                     | drag =
                         Drag.init
                     , panOffset =
-                        newPanOffset |> Maybe.withDefault model.panOffset
+                        newPanOffset
                     , active =
-                        active_
+                        newActive
                 }
             , newTree
             )
@@ -524,43 +526,72 @@ update settings msg (State model) tree =
 {-| Subscriptions for interactive enhancements like keyboard events
 -}
 subscriptions : List (Setting node) -> State node -> Tree.Tree node -> Sub ( State node, Tree.Tree node )
-subscriptions settings (State state) tree =
+subscriptions settingsOverrides (State state) tree =
     let
-        { flat } =
-            computeTree (Settings.apply settings Settings.defaults) tree
+        settings =
+            Settings.apply settingsOverrides Settings.defaults
+
+        { flat, layout } =
+            computeTree settings tree
     in
-    Browser.Events.onKeyDown
-        (Decode.field "key" Decode.string
-            |> Decode.andThen
-                (\str ->
-                    let
-                        all =
-                            List.map Tuple.first flat
-                    in
-                    Decode.succeed
-                        ( State
-                            { state
-                                | active =
-                                    case str of
-                                        "ArrowDown" ->
-                                            TreeUtils.moveDown all state.active
+    if settings.keyboardNavigation then
+        Browser.Events.onKeyDown
+            (Decode.field "key" Decode.string
+                |> Decode.andThen
+                    (\str ->
+                        let
+                            all =
+                                List.map Tuple.first flat
 
-                                        "ArrowUp" ->
-                                            TreeUtils.moveUp all state.active
+                            newActive =
+                                case str of
+                                    "ArrowDown" ->
+                                        TreeUtils.moveDown all state.active
 
-                                        "ArrowLeft" ->
-                                            TreeUtils.moveLeft all state.active
+                                    "ArrowUp" ->
+                                        TreeUtils.moveUp all state.active
 
-                                        "ArrowRight" ->
-                                            TreeUtils.moveRight all state.active
+                                    "ArrowLeft" ->
+                                        TreeUtils.moveLeft all state.active
 
-                                        _ ->
-                                            state.active
-                            }
-                        , tree
-                        )
-                )
-        )
+                                    "ArrowRight" ->
+                                        TreeUtils.moveRight all state.active
+
+                                    _ ->
+                                        state.active
+
+                            newPanOffset =
+                                newActive
+                                    |> Maybe.andThen
+                                        (\justActive ->
+                                            nodeGeometry settings justActive layout
+                                                |> Maybe.map .center
+                                                |> Maybe.map
+                                                    (\( cx, cy ) ->
+                                                        [ settings.centerOffset
+                                                        , ( settings.canvasWidth / 2
+                                                          , settings.canvasHeight / 2
+                                                          )
+                                                        , ( -cx, -settings.nodeHeight / 2 - cy )
+                                                        ]
+                                                            |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                                    )
+                                        )
+                                    |> Maybe.withDefault state.panOffset
+                        in
+                        Decode.succeed
+                            ( State
+                                { state
+                                    | active = newActive
+                                    , panOffset = newPanOffset
+                                }
+                            , tree
+                            )
+                    )
+            )
+
+    else
+        Sub.none
 
 
 getDropTarget :
@@ -908,7 +939,7 @@ view attrs config =
          ]
             ++ attrs
         )
-        [ div
+        [ node "div"
             [ style "width" "100%"
             , style "height" "100%"
             , style "position" "relative"
@@ -930,6 +961,12 @@ view attrs config =
           <|
             (List.map
                 (\( path, node ) ->
+                    let
+                        pathIdBase =
+                            path
+                                |> List.map String.fromInt
+                                |> String.join "-"
+                    in
                     nodeGeometry settings path layout
                         |> Maybe.map
                             (\{ center, childCenters } ->
@@ -949,38 +986,43 @@ view attrs config =
                                     nodeViewContext =
                                         viewContext settings (State model) config.tree path
                                 in
-                                [ div
-                                    ((nodeBaseStyle
-                                        ++ coordStyle ( xWithDrag, yWithDrag )
-                                        ++ (if isDragged then
-                                                [ ( "z-index", "100" )
-                                                , ( "cursor", "move" )
-                                                ]
+                                [ ( pathIdBase ++ "-base"
+                                  , div
+                                        ((nodeBaseStyle
+                                            ++ coordStyle ( xWithDrag, yWithDrag )
+                                            ++ (if isDragged then
+                                                    [ ( "z-index", "100" )
+                                                    , ( "cursor", "move" )
+                                                    ]
 
-                                            else
-                                                []
-                                           )
-                                        |> List.map (\( property, value ) -> style property value)
-                                     )
-                                        ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
-                                           , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
-                                           ]
-                                    )
-                                    [ nodeView nodeViewContext node
-                                    ]
-                                , if node == Nothing then
-                                    text ""
+                                                else
+                                                    []
+                                               )
+                                            |> List.map (\( property, value ) -> style property value)
+                                         )
+                                            ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
+                                               , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
+                                               ]
+                                        )
+                                        [ nodeView nodeViewContext node
+                                        ]
+                                  )
+                                , ( pathIdBase ++ "-connector"
+                                  , if node == Nothing then
+                                        text ""
 
-                                  else
-                                    NodeConnectors.view
-                                        settings
-                                        1.0
-                                        ( xDrag, yDrag )
-                                        center
-                                        childCenters
+                                    else
+                                        NodeConnectors.view
+                                            settings
+                                            1.0
+                                            ( xDrag, yDrag )
+                                            center
+                                            childCenters
+                                  )
                                 ]
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
-                                            div
+                                            ( pathIdBase ++ "-shadow"
+                                            , div
                                                 ((nodeBaseStyle
                                                     ++ coordStyle ( x, y )
                                                     |> List.map (\( property, value ) -> style property value)
@@ -989,16 +1031,19 @@ view attrs config =
                                                        ]
                                                 )
                                                 []
+                                            )
                                                 :: (if node == Nothing then
                                                         []
 
                                                     else
-                                                        [ NodeConnectors.view
-                                                            settings
-                                                            0.3
-                                                            ( 0, 0 )
-                                                            center
-                                                            childCenters
+                                                        [ ( pathIdBase ++ "-shadowconnector"
+                                                          , NodeConnectors.view
+                                                                settings
+                                                                0.3
+                                                                ( 0, 0 )
+                                                                center
+                                                                childCenters
+                                                          )
                                                         ]
                                                    )
 
