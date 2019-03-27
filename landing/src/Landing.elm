@@ -68,6 +68,8 @@ type alias Model =
     , tree : Tree.Tree Node
     , windowSize : Maybe { width : Int, height : Int }
     , editMode : EditMode
+    , test1 : Bool
+    , test2 : Bool
 
     -- Keep track of a to-be-inserted node
     , newNode : Node
@@ -127,6 +129,8 @@ init flags =
             { question = ""
             , answer = ""
             }
+      , test1 = False
+      , test2 = False
 
       -- Arborist settings
       , editMode = NoEdit
@@ -151,6 +155,8 @@ type Msg
     | SetCanCreateNodes Bool
     | SetKeyboardNavigation Bool
     | Resize Int Int
+    | Test1
+    | Test2
 
 
 
@@ -160,6 +166,22 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Test1 ->
+            ( { model
+                | test1 = True
+                , test2 = False
+              }
+            , Cmd.none
+            )
+
+        Test2 ->
+            ( { model
+                | test1 = False
+                , test2 = True
+              }
+            , Cmd.none
+            )
+
         Arborist updater ->
             let
                 ( newState, newTree ) =
@@ -355,7 +377,11 @@ body {
             ]
             { state = model.arborist
             , tree = model.tree
-            , nodeView = nodeView model.editMode
+            , nodeView =
+                nodeView
+                    { test1 = model.test1
+                    , test2 = model.test2
+                    }
             , settings = arboristSettings model
             , toMsg = Arborist
             }
@@ -443,128 +469,45 @@ activeNodePopup newNode ( item, { position } ) =
 
 {-| Describe how a node should render inside the tree's layout.
 -}
-nodeView : EditMode -> Arborist.NodeView Node Msg
-nodeView editMode context maybeNode =
-    maybeNode
-        |> Maybe.map
-            (\node ->
-                el
-                    ([ Just <|
-                        Background.color <|
-                            case context.state of
-                                Arborist.Active ->
-                                    rgb255 0 255 0
-
-                                Arborist.Hovered ->
-                                    rgb255 255 0 0
-
-                                Arborist.DropTarget ->
-                                    rgb255 255 0 0
-
-                                Arborist.Normal ->
-                                    rgb255 0 0 0
-                     , Font.color black |> Just
-                     , Border.rounded 4 |> Just
-                     , Background.color white |> Just
-                     , if context.state == Arborist.Active then
-                        onLeft
-                            (el
-                                [ width (px 8)
-                                , height (px 8)
-                                , moveLeft -4
-                                , moveDown 10
-                                , Border.rounded 4
-                                , Background.color blue
-                                ]
-                                none
-                            )
-                            |> Just
-
-                       else
-                        Nothing
-                     , el
-                        [ width fill
-                        , moveUp 20
-                        , Background.color white
-                        , height (px 20)
-                        , Events.onClick (SetEditMode Answer)
-                        ]
-                        (case ( context.state, editMode ) of
-                            ( Arborist.Active, Answer ) ->
-                                input
-                                    { value = node.answer
-                                    , onChange =
-                                        \newAnswer ->
-                                            SetActive
-                                                { node
-                                                    | answer =
-                                                        newAnswer
-                                                }
-                                    , label = Nothing
-                                    }
-
-                            _ ->
-                                row
-                                    (bodyType
-                                        ++ [ centerX
-                                           , centerY
-                                           ]
-                                    )
-                                    [ text node.answer
-                                    , customClicker "someevent"
-                                        []
-                                        [ Html.div
-                                            [ Html.Attributes.style "width" "8px"
-                                            , Html.Attributes.style "height" "8px"
-                                            , Html.Attributes.style "background-color" "#000000"
-                                            ]
-                                            []
-                                        ]
-                                        |> html
-                                    ]
-                        )
-                        |> above
-                        |> Just
-                     , padding 6 |> Just
-                     , width fill |> Just
-                     , height (nodeHeight |> px) |> Just
-                     ]
-                        |> List.filterMap identity
-                    )
-                    (paragraph
-                        (bodyType
-                            ++ [ centerX
-                               , centerY
-                               , Font.center
-                               ]
-                        )
-                        [ text node.question
-                        ]
-                    )
-            )
-        |> Maybe.withDefault
-            (el
-                [ width fill
-                , height (nodeHeight |> px)
-                , Border.width 2
-                , Border.color (rgb255 200 200 200)
+nodeView : { test1 : Bool, test2 : Bool } -> Arborist.NodeView Node Msg
+nodeView { test1, test2 } context maybeNode =
+    Html.div
+        [ Html.Attributes.style "width" "160px"
+        , Html.Attributes.style "height" "45px"
+        , Html.Attributes.style "background-color" "#343434"
+        , Html.Attributes.style "display" "flex"
+        , Html.Attributes.style "align-items" "center"
+        , Html.Attributes.style "justify-content" "center"
+        ]
+        [ if context.state == Arborist.Active && test1 then
+            Html.span
+                [ Html.Attributes.style "background-color" "#FFFFFF"
                 ]
-                (el
-                    [ centerX
-                    , centerY
-                    , Font.color (rgb255 200 200 200)
-                    , Font.size 20
-                    ]
-                 <|
-                    text "+"
-                )
-            )
-        |> layoutWith
-            { options =
-                [ noStaticStyleSheet
+                [ Html.text "test1" ]
+
+          else
+            Html.div
+                [ Html.Attributes.style "width" "30px"
+                , Html.Attributes.style "height" "30px"
+                , Html.Attributes.style "background-color" "#9933EE"
+                , Html.Events.onClick Test1
                 ]
-            }
-            []
+                []
+        , if context.state == Arborist.Active && test2 then
+            Html.span
+                [ Html.Attributes.style "background-color" "#FFFFFF"
+                ]
+                [ Html.text "test2" ]
+
+          else
+            Html.div
+                [ Html.Attributes.style "width" "30px"
+                , Html.Attributes.style "height" "30px"
+                , Html.Attributes.style "background-color" "#3399EE"
+                , Html.Events.onClick Test2
+                ]
+                []
+        ]
 
 
 logo : Html.Html msg
