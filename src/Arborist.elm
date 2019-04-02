@@ -1,5 +1,5 @@
 module Arborist exposing
-    ( State, init, NodeView, view, subscriptions
+    ( State, init, NodeView, view, subscriptions, Updater
     , Setting
     , activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
     , reposition, deactivate
@@ -11,7 +11,7 @@ module Arborist exposing
 
 # Module setup
 
-@docs State, init, NodeView, view, subscriptions
+@docs State, init, NodeView, view, subscriptions, Updater
 
 
 # Configuration
@@ -193,7 +193,7 @@ activeNode config =
 
 {-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNodeWithContext](#activeNodeWithContext) method.
 -}
-setActiveNode : node -> State node -> Tree.Tree node -> Tree.Tree node
+setActiveNode : node -> State node -> Tree.Tree node -> ( State node, Tree.Tree node )
 setActiveNode newNode =
     setActiveNodeWithChildren { node = newNode, childrenOverride = Nothing }
 
@@ -231,14 +231,16 @@ setActiveNodeWithChildrenHelper active newNode newChildren tree =
 
 {-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
 -}
-setActiveNodeWithChildren : { node : node, childrenOverride : Maybe (List node) } -> State node -> Tree.Tree node -> Tree.Tree node
+setActiveNodeWithChildren : { node : node, childrenOverride : Maybe (List node) } -> State node -> Tree.Tree node -> ( State node, Tree.Tree node )
 setActiveNodeWithChildren newStuff (State model) tree =
-    model.active
+    ( State model
+    , model.active
         |> Maybe.map
             (\active ->
                 setActiveNodeWithChildrenHelper active newStuff.node newStuff.childrenOverride tree
             )
         |> Maybe.withDefault tree
+    )
 
 
 {-| Delete the active node from a tree, including all of its children. If a placeholder is active, this method does nothing.
@@ -847,6 +849,15 @@ mapMsg config msg =
         )
 
 
+{-| A function that updates hidden state and tree. This function is passed in the `toMsg` field of the [view function](#view).
+
+Passing functions is necessary here because in the update function using `elm-arborist`, modifications in state always need to operate on the latest value because events like mousemove are fired very frequently and therefore it is possible that the changes caused by one event in the runtime are undone by one that follows immediately after.
+
+-}
+type alias Updater node =
+    State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+
+
 {-| The editor's view function, taking the following arguments:
 
   - [NodeView](#NodeView): view function for an individual node.
@@ -860,7 +871,7 @@ view :
         { nodeView : NodeView node msg
         , tree : Tree.Tree node
         , state : State node
-        , toMsg : (State node -> Tree.Tree node -> ( State node, Tree.Tree node )) -> msg
+        , toMsg : Updater node -> msg
         , settings : List (Setting node)
         }
     -> Html.Html msg

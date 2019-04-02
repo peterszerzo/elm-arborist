@@ -195,14 +195,18 @@ update msg model =
             )
 
         SetActive newNode ->
-            ( { model
-                | tree =
+            let
+                ( newArborist, newTree ) =
                     Arborist.setActiveNodeWithChildren
                         { node = newNode
                         , childrenOverride = Nothing
                         }
                         model.arborist
                         model.tree
+            in
+            ( { model
+                | tree = newTree
+                , arborist = newArborist
               }
             , Cmd.none
             )
