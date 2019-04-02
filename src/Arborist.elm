@@ -326,7 +326,11 @@ update settings msg (State model) tree =
         NodeMouseDown path x y ->
             let
                 active_ =
-                    if not settings.dragAndDrop then
+                    if True then
+                        Just path
+                        -- Leaving this in for reference - this logic was once needed while dealing with drag and drop
+
+                    else if not settings.dragAndDrop then
                         Just path
 
                     else
@@ -341,7 +345,7 @@ update settings msg (State model) tree =
                         else
                             Drag.start (Just path) x y
                     , active =
-                        Just path
+                        active_
                 }
             , tree
             )
