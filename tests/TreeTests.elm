@@ -3,7 +3,7 @@ module TreeTests exposing (suite, tree)
 import Arborist.Tree as Tree
 import Dict
 import Expect exposing (Expectation)
-import Internal.Tree.Extra as TreeExtra
+import Internals.TreeUtils as TreeUtils
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Test exposing (..)
@@ -25,7 +25,7 @@ suite =
         [ test "Deletes" <|
             \_ ->
                 Expect.equal
-                    (TreeExtra.delete [ 1, 0 ]
+                    (TreeUtils.delete [ 1, 0 ]
                         (Tree.Node "Apple"
                             [ Tree.Node "Pear"
                                 [ Tree.Node "Pear2" []
@@ -43,7 +43,7 @@ suite =
                     )
         , test "Updates" <|
             \_ ->
-                Expect.equal (TreeExtra.updateAt [ 1, 0 ] "Apricot2" tree)
+                Expect.equal (TreeUtils.updateAt [ 1, 0 ] "Apricot2" tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -53,7 +53,7 @@ suite =
                     )
         , test "Updates with children" <|
             \_ ->
-                Expect.equal (TreeExtra.updateAtWithChildren [ 1, 0 ] "Apricot2" (Just [ "PeachChild1", "PeachChild2" ]) tree)
+                Expect.equal (TreeUtils.updateAtWithChildren [ 1, 0 ] "Apricot2" (Just [ "PeachChild1", "PeachChild2" ]) tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -66,7 +66,7 @@ suite =
                     )
         , test "Swaps" <|
             \_ ->
-                Expect.equal (TreeExtra.swap [ 0 ] [ 1 ] tree)
+                Expect.equal (TreeUtils.swap [ 0 ] [ 1 ] tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Peach"
                             [ Tree.Node "Apricot" []
@@ -76,7 +76,7 @@ suite =
                     )
         , test "Inserts" <|
             \_ ->
-                Expect.equal (TreeExtra.insert [] (Just "Banana") tree)
+                Expect.equal (TreeUtils.insert [] (Just "Banana") tree)
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -91,7 +91,7 @@ suite =
         , test "Adds trailing empties" <|
             \_ ->
                 Expect.equal
-                    (TreeExtra.addTrailingEmpties
+                    (TreeUtils.addTrailingEmpties
                         (Tree.Node "Apple"
                             [ Tree.Node "Pear" []
                             ]
@@ -105,7 +105,7 @@ suite =
         , test "Adds trailing conditionally" <|
             \_ ->
                 Expect.equal
-                    (TreeExtra.addTrailingEmptiesAdvanced
+                    (TreeUtils.addTrailingEmptiesAdvanced
                         (\{ node, parent, siblings, children } ->
                             node
                                 == "Pear"
@@ -140,7 +140,7 @@ suite =
                     [ Tree.Node "" []
                     , Tree.Node "" []
                     ]
-                    |> TreeExtra.layout
+                    |> TreeUtils.layout
                     |> Expect.equal
                         (Dict.fromList
                             [ ( [], { center = ( 0, 0 ), childCenters = [ -0.5, 0.5 ] } )
@@ -156,7 +156,7 @@ suite =
                         [ Tree.Node "" []
                         ]
                     ]
-                    |> TreeExtra.analyze
+                    |> TreeUtils.analyze
                     |> Expect.equal
                         { depth = 3
                         , shortNodes = [ [ 0 ] ]
@@ -188,7 +188,7 @@ suite =
             \_ ->
                 Tree.Node ""
                     []
-                    |> TreeExtra.layout
+                    |> TreeUtils.layout
                     |> Expect.equal
                         (Dict.fromList
                             [ ( [], { center = ( 0, 0 ), childCenters = [] } )
@@ -202,7 +202,7 @@ suite =
                         [ Tree.Node "" []
                         ]
                     ]
-                    |> TreeExtra.layout
+                    |> TreeUtils.layout
                     |> Expect.equal
                         (Dict.fromList
                             [ ( [], { center = ( 0, 0 ), childCenters = [ -0.5, 0.5 ] } )

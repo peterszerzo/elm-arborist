@@ -14,10 +14,6 @@ coordinate settings ( x, y ) =
 nodeBase : Settings.Settings node -> List ( String, String )
 nodeBase settings =
     [ ( "width", Utils.floatToPxString settings.nodeWidth )
-    , ( "height", "auto" )
-    , ( "min-height", Utils.floatToPxString settings.nodeHeight )
     , ( "position", "absolute" )
-    , ( "user-select", "none" )
-    , ( "cursor", "pointer" )
     , ( "margin", "0" )
     ]

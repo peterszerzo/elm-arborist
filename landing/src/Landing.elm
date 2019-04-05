@@ -477,7 +477,6 @@ nodeView : { test1 : Bool, test2 : Bool } -> Arborist.NodeView Node Msg
 nodeView { test1, test2 } context maybeNode =
     Html.div
         [ Html.Attributes.style "width" "160px"
-        , Html.Attributes.style "height" "45px"
         , Html.Attributes.style "background-color" "#343434"
         , Html.Attributes.style "display" "flex"
         , Html.Attributes.style "align-items" "center"
