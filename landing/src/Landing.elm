@@ -55,21 +55,12 @@ setAnswer val item =
     { item | answer = val }
 
 
-type EditMode
-    = NoEdit
-    | Question
-    | Answer
-
-
 {-| Program model.
 -}
 type alias Model =
     { arborist : Arborist.State Node
     , tree : Tree.Tree Node
     , windowSize : Maybe { width : Int, height : Int }
-    , editMode : EditMode
-    , test1 : Bool
-    , test2 : Bool
 
     -- Keep track of a to-be-inserted node
     , newNode : Node
@@ -100,19 +91,24 @@ nodeHeight =
     45
 
 
+nodeWidth : Int
+nodeWidth =
+    160
+
+
 arboristSettings : Model -> List (Arborist.Setting Node)
 arboristSettings model =
     [ Settings.centerOffset 0 -150
     , Settings.level 100
     , Settings.gutter 40
-    , Settings.nodeWidth 160
+    , Settings.nodeWidth nodeWidth
     , Settings.nodeHeight nodeHeight
     , Settings.canvasWidth (model.windowSize |> Maybe.map .width |> Maybe.withDefault 1000)
     , Settings.canvasHeight (model.windowSize |> Maybe.map .height |> Maybe.withDefault 600)
     , Settings.dragAndDrop model.dragAndDrop
     , Settings.keyboardNavigation model.keyboardNavigation
     , Settings.connectorStrokeWidth "2"
-    , Settings.connectorStroke "#CECECE"
+    , Settings.connectorStroke <| rgbToCssString blueRgb
     , Settings.showPlaceholderLeavesAdvanced
         (\{ node, parent, children, siblings } ->
             model.canCreateNodes
@@ -129,11 +125,8 @@ init flags =
             { question = ""
             , answer = ""
             }
-      , test1 = False
-      , test2 = False
 
       -- Arborist settings
-      , editMode = NoEdit
       , dragAndDrop = False
       , canCreateNodes = True
       , keyboardNavigation = True
@@ -150,13 +143,10 @@ type Msg
     | EditNewNodeAnswer String
     | SetActive Node
     | DeleteActive
-    | SetEditMode EditMode
     | SetDragAndDrop Bool
     | SetCanCreateNodes Bool
     | SetKeyboardNavigation Bool
     | Resize Int Int
-    | Test1
-    | Test2
 
 
 
@@ -166,22 +156,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Test1 ->
-            ( { model
-                | test1 = True
-                , test2 = False
-              }
-            , Cmd.none
-            )
-
-        Test2 ->
-            ( { model
-                | test1 = False
-                , test2 = True
-              }
-            , Cmd.none
-            )
-
         Arborist updater ->
             let
                 ( newState, newTree ) =
@@ -226,13 +200,6 @@ update msg model =
         EditNewNodeQuestion val ->
             ( { model
                 | newNode = setQuestion val model.newNode
-              }
-            , Cmd.none
-            )
-
-        SetEditMode editMode ->
-            ( { model
-                | editMode = editMode
               }
             , Cmd.none
             )
@@ -290,7 +257,6 @@ view model =
         , Html.Attributes.style "width" "100vw"
         , Html.Attributes.style "height" "100vh"
         , Html.Attributes.style "overflow" "hidden"
-        , Html.Events.on "someevent" (Decode.succeed (SetEditMode Answer))
         ]
     <|
         [ Html.node "style" [] [ Html.text """
@@ -318,14 +284,14 @@ body {
                 [ el
                     [ width (px 48)
                     , height (px 48)
-                    , Font.color white
+                    , Font.color black
                     , centerX
                     , centerY
                     ]
                     (html logo)
                 , el
                     (bodyType
-                        ++ [ Font.color white
+                        ++ [ Font.color black
                            , centerX
                            , centerY
                            , moveUp 6
@@ -336,18 +302,19 @@ body {
             , column
                 [ padding 10
                 , spacing 20
+                , width fill
                 ]
-                [ switch []
+                [ switch [ centerX ]
                     { checked = model.dragAndDrop
                     , onChange = SetDragAndDrop
                     , label = "Drag and drop"
                     }
-                , switch []
+                , switch [ centerX ]
                     { checked = model.canCreateNodes
                     , onChange = SetCanCreateNodes
                     , label = "Create"
                     }
-                , switch []
+                , switch [ centerX ]
                     { checked = model.keyboardNavigation
                     , onChange = SetKeyboardNavigation
                     , label = "Keyboard"
@@ -356,10 +323,12 @@ body {
             , column
                 [ alignBottom
                 , paddingXY 10 20
+                , width fill
                 ]
                 [ el
                     (bodyType
-                        ++ [ Font.color white
+                        ++ [ Font.color black
+                           , centerX
                            ]
                     )
                     (text "v7.0.0")
@@ -373,19 +342,22 @@ body {
                 , elementHtmlStyle "left" "0px"
                 , elementHtmlStyle "bottom" "0px"
                 , elementHtmlStyle "z-index" "100"
-                , Background.color dark
+                , Background.color white
+                , Border.widthEach
+                    { top = 0
+                    , bottom = 0
+                    , left = 0
+                    , right = 1
+                    }
+                , Border.color (rgb255 200 200 200)
                 , width (px 100)
                 ]
         , Arborist.view
-            [ Html.Attributes.style "background-color" "#EFEFEF"
+            [ Html.Attributes.style "background-color" "#FFFFFF"
             ]
             { state = model.arborist
             , tree = model.tree
-            , nodeView =
-                nodeView
-                    { test1 = model.test1
-                    , test2 = model.test2
-                    }
+            , nodeView = nodeView
             , settings = arboristSettings model
             , toMsg = Arborist
             }
@@ -412,6 +384,48 @@ activeNodePopup newNode ( item, { position } ) =
     let
         ( x, y ) =
             position
+
+        ( children, controls ) =
+            case item of
+                Just justItem ->
+                    ( [ input
+                            { onChange = \val -> SetActive { justItem | question = val }
+                            , value = justItem.question
+                            , label = Just "Question"
+                            }
+                      , input
+                            { onChange = \val -> SetActive { justItem | answer = val }
+                            , value = justItem.answer
+                            , label = Just "Answer"
+                            }
+                      ]
+                    , [ button
+                            [ Background.color red
+                            ]
+                            { onPress = Just DeleteActive
+                            , label = "Delete node"
+                            }
+                      ]
+                    )
+
+                Nothing ->
+                    ( [ input
+                            { onChange = EditNewNodeQuestion
+                            , value = newNode.question
+                            , label = Just "Question"
+                            }
+                      , input
+                            { onChange = EditNewNodeAnswer
+                            , value = newNode.answer
+                            , label = Just "Answer"
+                            }
+                      ]
+                    , [ button []
+                            { onPress = Just (SetActive newNode)
+                            , label = "Add node"
+                            }
+                      ]
+                    )
     in
     [ column
         [ spacing 20
@@ -421,49 +435,29 @@ activeNodePopup newNode ( item, { position } ) =
         , largeShadow
         , Border.rounded 4
         , padding 20
+        , row
+            [ moveUp 60
+            , height (px 60)
+            , alignRight
+            , Background.color (rgb255 245 245 245)
+            , width fill
+            ]
+            [ row
+                [ centerX
+                , centerY
+                ]
+                controls
+            ]
+            |> below
         ]
-        (case item of
-            Just justItem ->
-                [ input
-                    { onChange = \val -> SetActive { justItem | question = val }
-                    , value = justItem.question
-                    , label = Just "Question"
-                    }
-                , input
-                    { onChange = \val -> SetActive { justItem | answer = val }
-                    , value = justItem.answer
-                    , label = Just "Answer"
-                    }
-                , button
-                    { onPress = Just DeleteActive
-                    , label = "Delete"
-                    }
-                ]
-
-            Nothing ->
-                [ input
-                    { onChange = EditNewNodeQuestion
-                    , value = newNode.question
-                    , label = Just "Question"
-                    }
-                , input
-                    { onChange = EditNewNodeAnswer
-                    , value = newNode.answer
-                    , label = Just "Answer"
-                    }
-                , button
-                    { onPress = Just (SetActive newNode)
-                    , label = "Add node"
-                    }
-                ]
-        )
+        children
         |> layoutWith
             { options = [ noStaticStyleSheet ]
             }
             [ elementHtmlStyle "position" "absolute"
             , elementHtmlStyle "top" "0px"
             , elementHtmlStyle "left" "0px"
-            , elementHtmlStyle "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 60) ++ "px, 0px)"
+            , elementHtmlStyle "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 55) ++ "px, 0px)"
             , elementHtmlStyle "transition" "transform 0.3s ease-in-out"
             , width (px 420)
             , height (px 240)
@@ -473,49 +467,71 @@ activeNodePopup newNode ( item, { position } ) =
 
 {-| Describe how a node should render inside the tree's layout.
 -}
-nodeView : { test1 : Bool, test2 : Bool } -> Arborist.NodeView Node Msg
-nodeView { test1, test2 } context maybeNode =
-    Html.div
-        [ Html.Attributes.style "width" "160px"
-        , Html.Attributes.style "background-color" "#343434"
-        , Html.Attributes.style "display" "flex"
-        , Html.Attributes.style "align-items" "center"
-        , Html.Attributes.style "justify-content" "center"
-        ]
-        [ if context.state == Arborist.Active && test1 then
-            Html.span
-                [ Html.Attributes.style "background-color" "#FFFFFF"
+nodeView : Arborist.NodeView Node Msg
+nodeView context maybeNode =
+    case maybeNode of
+        Just node ->
+            column
+                [ width (px nodeWidth)
+                , height (px nodeHeight)
+                , Background.color blue
+                , Border.rounded 4
+                , padding 10
+                , pointer
+                , mouseOver
+                    [ Background.color lighterBlue
+                    ]
                 ]
-                [ Html.text "test1" ]
+                [ paragraph
+                    [ centerX
+                    , centerY
+                    , width fill
+                    , Font.center
+                    , spacing 4
+                    , Font.size 12
+                    , Font.color white
+                    ]
+                    [ text node.question
+                    ]
+                ]
+                |> layoutWith
+                    { options = [ noStaticStyleSheet ]
+                    }
+                    []
 
-          else
-            Html.div
-                [ Html.Attributes.style "width" "30px"
-                , Html.Attributes.style "height" "30px"
-                , Html.Attributes.style "background-color" "#9933EE"
-                , Html.Events.onClick Test1
+        Nothing ->
+            column
+                [ width (px 160)
+                , height (px nodeHeight)
+                , Border.rounded 4
+                , Border.width 2
+                , Border.color blue
+                , Font.color blue
+                , pointer
+                , mouseOver
+                    [ Background.color faintBlue
+                    ]
                 ]
-                []
-        , if context.state == Arborist.Active && test2 then
-            Html.span
-                [ Html.Attributes.style "background-color" "#FFFFFF"
+                [ el
+                    [ centerX
+                    , centerY
+                    , Font.size 28
+                    ]
+                  <|
+                    text "+"
                 ]
-                [ Html.text "test2" ]
-
-          else
-            Html.div
-                [ Html.Attributes.style "width" "30px"
-                , Html.Attributes.style "height" "30px"
-                , Html.Attributes.style "background-color" "#3399EE"
-                , Html.Events.onClick Test2
-                ]
-                []
-        ]
+                |> layoutWith
+                    { options = [ noStaticStyleSheet ]
+                    }
+                    []
 
 
 logo : Html.Html msg
 logo =
-    Svg.svg [ Svg.Attributes.viewBox "0 0 1000 1000", Svg.Attributes.fill "currentColor" ]
+    Svg.svg
+        [ Svg.Attributes.viewBox "0 0 1000 1000"
+        , Svg.Attributes.fill "currentColor"
+        ]
         [ Svg.path [ Svg.Attributes.d "M520,720l220,-220l220,220l-440,0Z" ] []
         , Svg.path [ Svg.Attributes.d "M40,720l220,-220l220,220l-440,0Z" ] []
         , Svg.path [ Svg.Attributes.d "M280,480l220,-220l220,220l-440,0Z" ] []
@@ -540,27 +556,43 @@ smallType =
     ]
 
 
-button : { onPress : Maybe msg, label : String } -> Element msg
-button config =
+button : List (Attribute msg) -> { onPress : Maybe msg, label : String } -> Element msg
+button attrs config =
     Input.button
-        [ Background.color blue
-        , Font.color white
-        , Font.size 14
-        , paddingXY 10 4
-        , Border.rounded 2
-        ]
+        (bodyType
+            ++ [ Background.color blue
+               , Font.color white
+               , paddingXY 10 8
+               , Border.rounded 4
+               ]
+            ++ attrs
+        )
         { onPress = config.onPress
         , label = el bodyType (text config.label)
         }
 
 
-input : { value : String, onChange : String -> msg, label : Maybe String } -> Element msg
+input :
+    { value : String
+    , onChange : String -> msg
+    , label : Maybe String
+    }
+    -> Element msg
 input config =
     Input.text
-        [ Font.size 14
-        , paddingXY 6 2
+        [ Font.size 16
+        , paddingXY 10 6
         , Font.family
             [ Font.typeface "Source Sans Pro"
+            ]
+        , focused
+            [ Border.shadow
+                { size = 3
+                , blur = 0
+                , offset = ( 0, 0 )
+                , color = faintBlue
+                }
+            , Border.color blue
             ]
         ]
         { onChange = config.onChange
@@ -569,8 +601,19 @@ input config =
         , label =
             config.label
                 |> Maybe.map
-                    (Element.text
-                        >> Input.labelAbove []
+                    (text
+                        >> el
+                            [ htmlAttribute <| Html.Attributes.style "text-transform" "uppercase"
+                            , Font.size 12
+                            ]
+                        >> Input.labelAbove
+                            [ paddingEach
+                                { top = 0
+                                , bottom = 4
+                                , left = 10
+                                , right = 0
+                                }
+                            ]
                     )
                 |> Maybe.withDefault (Input.labelHidden "Label")
         }
@@ -586,19 +629,39 @@ black =
     rgb255 0 0 0
 
 
+blueRgb : ( Int, Int, Int )
+blueRgb =
+    ( 20, 44, 81 )
+
+
 blue : Color
 blue =
-    rgb255 30 90 112
+    rgbToColor blueRgb
+
+
+red : Color
+red =
+    rgb255 220 40 30
 
 
 lighterBlue : Color
 lighterBlue =
-    rgb255 50 105 125
+    rgb255 41 63 96
 
 
-dark : Color
-dark =
-    rgb255 25 35 50
+faintBlue : Color
+faintBlue =
+    rgb255 233 235 239
+
+
+rgbToColor : ( Int, Int, Int ) -> Color
+rgbToColor ( r, g, b ) =
+    rgb255 r g b
+
+
+rgbToCssString : ( Int, Int, Int ) -> String
+rgbToCssString ( r, g, b ) =
+    "rgb(" ++ String.fromInt r ++ "," ++ String.fromInt g ++ "," ++ String.fromInt b ++ ")"
 
 
 smallShadow : Attribute msg
@@ -614,10 +677,10 @@ smallShadow =
 largeShadow : Attribute msg
 largeShadow =
     Border.shadow
-        { offset = ( 0, 3 )
+        { offset = ( 0, 2 )
         , size = 0
-        , blur = 16
-        , color = rgba255 0 0 0 0.2
+        , blur = 20
+        , color = rgba255 0 0 0 0.25
         }
 
 
@@ -660,54 +723,64 @@ switch attrs config =
         , icon =
             \checked ->
                 el
-                    ([ width (px 40)
-                     , height (px 18)
-                     , padding 3
-                     , Border.width 1
-                     , Border.rounded 18
-                     , Border.color white
-                     ]
-                        ++ (if checked then
-                                [ Background.color white
-                                ]
-
-                            else
-                                []
-                           )
-                    )
+                    [ width (px 80)
+                    , Font.center
+                    ]
                 <|
                     el
-                        ([ width (px 12)
-                         , height (px 12)
-                         , moveUp 1
-                         , moveRight
-                            (if checked then
-                                20
-
-                             else
-                                0
-                            )
-                         , centerY
-                         , Border.rounded 14
+                        ([ width (px 40)
+                         , height (px 18)
+                         , padding 3
+                         , Border.width 1
+                         , Border.rounded 18
+                         , Border.color black
+                         , centerX
                          ]
                             ++ (if checked then
-                                    [ Background.color dark
+                                    [ Background.color black
                                     ]
 
                                 else
-                                    [ Background.color white
-                                    ]
+                                    []
                                )
                         )
-                        none
+                    <|
+                        el
+                            ([ width (px 12)
+                             , height (px 12)
+                             , Font.center
+                             , moveUp 1
+                             , moveRight
+                                (if checked then
+                                    20
+
+                                 else
+                                    0
+                                )
+                             , centerY
+                             , Border.rounded 14
+                             ]
+                                ++ (if checked then
+                                        [ Background.color white
+                                        ]
+
+                                    else
+                                        [ Background.color black
+                                        ]
+                                   )
+                            )
+                            none
         , label =
             el
                 (smallType
-                    ++ [ Font.color white
+                    ++ [ Font.color black
+                       , Font.center
                        ]
                 )
                 (text config.label)
-                |> Input.labelAbove []
+                |> Input.labelAbove
+                    [ centerX
+                    ]
         }
 
 

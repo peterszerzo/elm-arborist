@@ -1042,7 +1042,11 @@ view attrs config =
                                                     ++ coordStyle ( x, y )
                                                     |> List.map (\( property, value ) -> style property value)
                                                  )
-                                                    ++ [ style "background-color" "rgba(0, 0, 0, 0.05)"
+                                                    ++ [ style "border-width" <| settings.connectorStrokeWidth ++ "px"
+                                                       , style "border-style" "solid"
+                                                       , style "box-sizing" "border-box"
+                                                       , style "opacity" "0.3"
+                                                       , style "border-color" <| settings.connectorStroke
                                                        ]
                                                 )
                                                 []

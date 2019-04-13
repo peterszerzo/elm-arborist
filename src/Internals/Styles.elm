@@ -14,6 +14,7 @@ coordinate settings ( x, y ) =
 nodeBase : Settings.Settings node -> List ( String, String )
 nodeBase settings =
     [ ( "width", Utils.floatToPxString settings.nodeWidth )
+    , ( "height", Utils.floatToPxString settings.nodeHeight )
     , ( "position", "absolute" )
     , ( "margin", "0" )
     ]
