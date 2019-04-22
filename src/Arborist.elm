@@ -529,6 +529,13 @@ update settings msg (State model) tree =
             )
 
 
+type ArrowDirection
+    = ArrowDown
+    | ArrowUp
+    | ArrowLeft
+    | ArrowRight
+
+
 {-| Subscriptions for interactive enhancements like keyboard events
 -}
 subscriptions : List (Setting node) -> State node -> Tree.Tree node -> Sub ( State node, Tree.Tree node )
@@ -544,27 +551,42 @@ subscriptions settingsOverrides (State state) tree =
         Browser.Events.onKeyDown
             (Decode.field "key" Decode.string
                 |> Decode.andThen
-                    (\str ->
+                    (\key ->
+                        case key of
+                            "ArrowDown" ->
+                                Decode.succeed ArrowDown
+
+                            "ArrowUp" ->
+                                Decode.succeed ArrowUp
+
+                            "ArrowLeft" ->
+                                Decode.succeed ArrowLeft
+
+                            "ArrowRight" ->
+                                Decode.succeed ArrowRight
+
+                            _ ->
+                                Decode.fail "No arrow key detected. This is fine"
+                    )
+                |> Decode.andThen
+                    (\arrowDirection ->
                         let
                             all =
                                 List.map Tuple.first flat
 
                             newActive =
-                                case str of
-                                    "ArrowDown" ->
+                                case arrowDirection of
+                                    ArrowDown ->
                                         TreeUtils.moveDown all state.active
 
-                                    "ArrowUp" ->
+                                    ArrowUp ->
                                         TreeUtils.moveUp all state.active
 
-                                    "ArrowLeft" ->
+                                    ArrowLeft ->
                                         TreeUtils.moveLeft all state.active
 
-                                    "ArrowRight" ->
+                                    ArrowRight ->
                                         TreeUtils.moveRight all state.active
-
-                                    _ ->
-                                        state.active
 
                             newPanOffset =
                                 newActive
