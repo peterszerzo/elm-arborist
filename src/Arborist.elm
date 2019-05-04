@@ -110,22 +110,29 @@ deactivate (State model) =
 computeTree : Settings.Settings node -> Tree.Tree node -> { flat : List ( List Int, Maybe node ), layout : TreeUtils.Layout }
 computeTree settings tree =
     let
-        withPlaceholders =
-            case ( settings.showPlaceholderLeaves, settings.showPlaceholderLeavesAdvanced ) of
-                ( _, Just addEmpties ) ->
-                    TreeUtils.addTrailingEmptiesAdvanced addEmpties tree
+        clusteredTree =
+            TreeUtils.clusterBy settings.isNodeClustered
 
-                ( True, _ ) ->
-                    TreeUtils.addTrailingEmpties tree
+        treeModifiedForCompute =
+            tree
+                |> TreeUtils.clusterBy settings.isNodeClustered
+                |> (\newTree ->
+                        case ( settings.showPlaceholderLeaves, settings.showPlaceholderLeavesAdvanced ) of
+                            ( _, Just addEmpties ) ->
+                                TreeUtils.addTrailingEmptiesAdvanced (\context -> addEmpties context && not (settings.isNodeClustered context.node)) newTree
 
-                ( _, _ ) ->
-                    tree
+                            ( True, _ ) ->
+                                TreeUtils.addTrailingEmptiesAdvanced (\context -> not (settings.isNodeClustered context.node)) newTree
+
+                            ( _, _ ) ->
+                                newTree
+                   )
 
         flat =
-            TreeUtils.flatten withPlaceholders
+            TreeUtils.flatten treeModifiedForCompute
 
         layout =
-            withPlaceholders
+            treeModifiedForCompute
                 |> TreeUtils.layout
     in
     { layout = layout

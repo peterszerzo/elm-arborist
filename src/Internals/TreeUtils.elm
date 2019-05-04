@@ -6,6 +6,7 @@ module Internals.TreeUtils exposing
     , addTrailingEmpties
     , addTrailingEmptiesAdvanced
     , analyze
+    , clusterBy
     , delete
     , find
     , flatten
@@ -35,6 +36,24 @@ type alias Path =
     List Int
 
 
+clusterBy : (node -> Bool) -> Tree node -> Tree node
+clusterBy isNodeClustered tree =
+    case tree of
+        Node node children ->
+            Node node
+                (if isNodeClustered node then
+                    []
+
+                 else
+                    List.map (clusterBy isNodeClustered) children
+                )
+
+        Empty ->
+            Empty
+
+
+{-| Using this method is necessary because `List.member` is not reliable with `elm make --optimize`
+-}
 member : Path -> List Path -> Bool
 member current all =
     case all of
@@ -159,6 +178,20 @@ addTrailingEmpties =
     addTrailingEmptiesAdvanced (\_ -> True)
 
 
+addTrailingEmptiesAdvanced :
+    ({ node : a
+     , parent : Maybe a
+     , siblings : List a
+     , children : List a
+     }
+     -> Bool
+    )
+    -> Tree a
+    -> Tree a
+addTrailingEmptiesAdvanced =
+    addTrailingEmptiesAdvancedHelper { parent = Nothing, siblings = [] }
+
+
 addTrailingEmptiesAdvancedHelper :
     { parent : Maybe a, siblings : List a }
     -> ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool)
@@ -207,20 +240,6 @@ addTrailingEmptiesAdvancedHelper context shouldAddEmpty tree =
                         else
                             []
                        )
-
-
-addTrailingEmptiesAdvanced :
-    ({ node : a
-     , parent : Maybe a
-     , siblings : List a
-     , children : List a
-     }
-     -> Bool
-    )
-    -> Tree a
-    -> Tree a
-addTrailingEmptiesAdvanced =
-    addTrailingEmptiesAdvancedHelper { parent = Nothing, siblings = [] }
 
 
 removeEmpties : Tree a -> Tree a

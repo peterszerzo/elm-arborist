@@ -42,6 +42,7 @@ main =
 type alias Node =
     { question : String
     , answer : String
+    , isClustered : Bool
     }
 
 
@@ -76,12 +77,34 @@ type alias Model =
 -}
 tree : Tree.Tree Node
 tree =
-    Tree.Node { answer = "", question = "Do you like trees?" }
-        [ Tree.Node { answer = "yes", question = "How much?" }
-            [ Tree.Node { answer = "A lot!", question = "Where were you all my life?" } []
+    Tree.Node
+        { answer = ""
+        , question = "Do you like trees?"
+        , isClustered = False
+        }
+        [ Tree.Node
+            { answer = "yes"
+            , question = "How much?"
+            , isClustered = True
+            }
+            [ Tree.Node
+                { answer = "A lot!"
+                , question = "Where were you all my life?"
+                , isClustered = False
+                }
+                []
             ]
-        , Tree.Node { answer = "No.", question = "Seriously?" }
-            [ Tree.Node { answer = "Yes", question = "How about rollercoasters?" } []
+        , Tree.Node
+            { answer = "No."
+            , question = "Seriously?"
+            , isClustered = False
+            }
+            [ Tree.Node
+                { answer = "Yes"
+                , question = "How about rollercoasters?"
+                , isClustered = False
+                }
+                []
             ]
         ]
 
@@ -109,6 +132,7 @@ arboristSettings model =
     , Settings.keyboardNavigation model.keyboardNavigation
     , Settings.connectorStrokeWidth "2"
     , Settings.connectorStroke <| rgbToCssString blueRgb
+    , Settings.isNodeClustered .isClustered
     , Settings.showPlaceholderLeavesAdvanced
         (\{ node, parent, children, siblings } ->
             model.canCreateNodes
@@ -124,6 +148,7 @@ init flags =
       , newNode =
             { question = ""
             , answer = ""
+            , isClustered = False
             }
 
       -- Arborist settings
@@ -405,6 +430,24 @@ activeNodePopup newNode ( item, { position } ) =
                             { onPress = Just DeleteActive
                             , label = "Delete node"
                             }
+                      , button
+                            [ Background.color blue
+                            ]
+                            { onPress =
+                                Just
+                                    (SetActive
+                                        { justItem
+                                            | isClustered =
+                                                not justItem.isClustered
+                                        }
+                                    )
+                            , label =
+                                if justItem.isClustered then
+                                    "Expand cluster"
+
+                                else
+                                    "Cluster"
+                            }
                       ]
                     )
 
@@ -445,6 +488,7 @@ activeNodePopup newNode ( item, { position } ) =
             [ row
                 [ centerX
                 , centerY
+                , spacing 10
                 ]
                 controls
             ]
@@ -472,16 +516,34 @@ nodeView context maybeNode =
     case maybeNode of
         Just node ->
             column
-                [ width (px nodeWidth)
-                , height (px nodeHeight)
-                , Background.color blue
-                , Border.rounded 4
-                , padding 10
-                , pointer
-                , mouseOver
+                ([ width (px nodeWidth)
+                 , height (px nodeHeight)
+                 , Background.color blue
+                 , Border.rounded 4
+                 , padding 10
+                 , pointer
+                 , mouseOver
                     [ Background.color lighterBlue
                     ]
-                ]
+                 ]
+                    ++ (if node.isClustered then
+                            [ el
+                                [ width (px nodeWidth)
+                                , height (px nodeHeight)
+                                , Background.color blue
+                                , alpha 0.4
+                                , Border.rounded 4
+                                , moveUp 4
+                                , moveRight 4
+                                ]
+                                none
+                                |> behindContent
+                            ]
+
+                        else
+                            []
+                       )
+                )
                 [ paragraph
                     [ centerX
                     , centerY

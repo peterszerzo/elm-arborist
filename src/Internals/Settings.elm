@@ -17,6 +17,10 @@ type alias ShowPlaceholderLeavesAdvanced node =
     -> Bool
 
 
+type alias IsNodeClustered node =
+    node -> Bool
+
+
 type alias Settings node =
     { canvasWidth : Float
     , canvasHeight : Float
@@ -32,6 +36,7 @@ type alias Settings node =
     , showPlaceholderLeaves : Bool
     , showPlaceholderLeavesAdvanced : Maybe (ShowPlaceholderLeavesAdvanced node)
     , defaultNode : Maybe node
+    , isNodeClustered : IsNodeClustered node
     }
 
 
@@ -51,6 +56,7 @@ defaults =
     , showPlaceholderLeaves = True
     , showPlaceholderLeavesAdvanced = Nothing
     , defaultNode = Nothing
+    , isNodeClustered = \_ -> False
     }
 
 
@@ -69,6 +75,7 @@ type Setting node
     | ShowPlaceholderLeaves Bool
     | ShowPlaceholderLeavesAdvanced (ShowPlaceholderLeavesAdvanced node)
     | DefaultNode node
+    | IsNodeClustered (node -> Bool)
 
 
 showPlaceholderLeavesAdvanced : Settings node -> ShowPlaceholderLeavesAdvanced node
@@ -127,4 +134,7 @@ apply newSettings settings =
 
                     DefaultNode node ->
                         { settings | defaultNode = Just node }
+
+                    IsNodeClustered isNodeClustered ->
+                        { settings | isNodeClustered = isNodeClustered }
                 )

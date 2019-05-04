@@ -1,6 +1,6 @@
 module Arborist.Settings exposing
     ( nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth
-    , dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced
+    , dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered
     )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
@@ -13,7 +13,7 @@ module Arborist.Settings exposing
 
 ## Features
 
-@docs dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced
+@docs dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered
 
 -}
 
@@ -106,9 +106,24 @@ showPlaceholderLeaves =
 
 {-| A fine-grained control version of `showPlaceholderLeaves`, allowing control on the display of placeholder leaves based on the contents of the node, as well as its parent and children.
 -}
-showPlaceholderLeavesAdvanced : ({ node : node, parent : Maybe node, children : List node, siblings : List node } -> Bool) -> Setting node
+showPlaceholderLeavesAdvanced :
+    ({ node : node
+     , parent : Maybe node
+     , children : List node
+     , siblings : List node
+     }
+     -> Bool
+    )
+    -> Setting node
 showPlaceholderLeavesAdvanced =
     ShowPlaceholderLeavesAdvanced
+
+
+{-| Tells arborist which nodes should be clustered. Clustered nodes do not render their children, making the tree easier to understand. Use e.g. [setActive](#setActive) to toggle clustered state on and off.
+-}
+isNodeClustered : (node -> Bool) -> Setting node
+isNodeClustered =
+    IsNodeClustered
 
 
 {-| Sets a default node to be created automatically when a child placeholder is clicked. If none is specified, the placeholder is activated so that a new node may be added manually.
