@@ -1,6 +1,6 @@
 # Build
 cd landing
-elm-app build
+PUBLIC_URL=./ elm-app build
 cd ..
 pwd
 
