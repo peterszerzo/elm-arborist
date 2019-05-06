@@ -78,12 +78,12 @@ type alias Model =
 tree : Tree.Tree Node
 tree =
     Tree.Node
-        { answer = ""
+        { answer = "Hello"
         , question = "Do you like trees?"
         , isClustered = False
         }
         [ Tree.Node
-            { answer = "yes"
+            { answer = "Yes"
             , question = "How much?"
             , isClustered = True
             }
@@ -95,7 +95,7 @@ tree =
                 []
             ]
         , Tree.Node
-            { answer = "No."
+            { answer = "No"
             , question = "Seriously?"
             , isClustered = False
             }
@@ -133,6 +133,11 @@ arboristSettings model =
     , Settings.connectorStrokeWidth "2"
     , Settings.connectorStroke <| rgbToCssString blueRgb
     , Settings.isNodeClustered .isClustered
+    , Settings.defaultNode
+        { question = "New question?"
+        , answer = "Answer"
+        , isClustered = False
+        }
     , Settings.showPlaceholderLeavesAdvanced
         (\{ node, parent, children, siblings } ->
             model.canCreateNodes
@@ -301,15 +306,17 @@ body {
                 ]
         , column
             [ height fill
+            , spacing 20
+            , width (px 100)
             ]
             [ column
-                [ width (px 100)
-                , height (px 100)
+                [ width fill
+                , paddingXY 0 10
                 ]
                 [ el
                     [ width (px 48)
                     , height (px 48)
-                    , Font.color black
+                    , Font.color blue
                     , centerX
                     , centerY
                     ]
@@ -323,6 +330,34 @@ body {
                            ]
                     )
                     (text "elm-arborist")
+                ]
+            , column
+                [ width (px 80)
+                , centerX
+                , spacing 6
+                , padding 8
+                , Background.color (rgb255 245 245 245)
+                , Border.rounded 4
+                ]
+                [ el
+                    (bodyType
+                        ++ [ Font.color black
+                           , centerX
+                           ]
+                    )
+                    (text "v7.1.0")
+                , link
+                    [ centerX
+                    ]
+                    { url = "https://github.com/peterszerzo/elm-arborist/tree/master"
+                    , label =
+                        el
+                            (bodyType
+                                ++ [ Font.underline
+                                   ]
+                            )
+                            (text "GitHub")
+                    }
                 ]
             , column
                 [ padding 10
@@ -344,19 +379,6 @@ body {
                     , onChange = SetKeyboardNavigation
                     , label = "Keyboard"
                     }
-                ]
-            , column
-                [ alignBottom
-                , paddingXY 10 20
-                , width fill
-                ]
-                [ el
-                    (bodyType
-                        ++ [ Font.color black
-                           , centerX
-                           ]
-                    )
-                    (text "v7.0.0")
                 ]
             ]
             |> layoutWith
@@ -425,10 +447,10 @@ activeNodePopup newNode ( item, { position } ) =
                             }
                       ]
                     , [ button
-                            [ Background.color red
-                            ]
+                            []
                             { onPress = Just DeleteActive
                             , label = "Delete node"
+                            , isError = True
                             }
                       , button
                             [ Background.color blue
@@ -447,6 +469,7 @@ activeNodePopup newNode ( item, { position } ) =
 
                                 else
                                     "Cluster"
+                            , isError = False
                             }
                       ]
                     )
@@ -466,6 +489,7 @@ activeNodePopup newNode ( item, { position } ) =
                     , [ button []
                             { onPress = Just (SetActive newNode)
                             , label = "Add node"
+                            , isError = False
                             }
                       ]
                     )
@@ -525,6 +549,25 @@ nodeView context maybeNode =
                  , mouseOver
                     [ Background.color lighterBlue
                     ]
+                 , el
+                    (bodyType
+                        ++ [ Font.color blue
+                           , centerX
+                           , centerY
+                           ]
+                    )
+                    (text node.answer)
+                    |> el
+                        [ width (px 80)
+                        , height (px 24)
+                        , moveUp 12
+                        , moveRight 42
+                        , Border.width 2
+                        , Border.rounded 4
+                        , Border.color blue
+                        , Background.color white
+                        ]
+                    |> above
                  ]
                     ++ (if node.isClustered then
                             [ el
@@ -549,11 +592,16 @@ nodeView context maybeNode =
                     , centerY
                     , width fill
                     , Font.center
-                    , spacing 4
+                    , spacing 0
                     , Font.size 12
                     , Font.color white
                     ]
-                    [ text node.question
+                    [ text <|
+                        if node.isClustered then
+                            "[ Cluster ]"
+
+                        else
+                            node.question
                     ]
                 ]
                 |> layoutWith
@@ -618,15 +666,31 @@ smallType =
     ]
 
 
-button : List (Attribute msg) -> { onPress : Maybe msg, label : String } -> Element msg
+button :
+    List (Attribute msg)
+    ->
+        { onPress : Maybe msg
+        , label : String
+        , isError : Bool
+        }
+    -> Element msg
 button attrs config =
     Input.button
         (bodyType
-            ++ [ Background.color blue
-               , Font.color white
+            ++ [ Font.color white
                , paddingXY 10 8
                , Border.rounded 4
                ]
+            ++ (if config.isError then
+                    [ Background.color red
+                    ]
+
+                else
+                    [ Background.color blue
+                    , focused
+                        []
+                    ]
+               )
             ++ attrs
         )
         { onPress = config.onPress
@@ -693,7 +757,7 @@ black =
 
 blueRgb : ( Int, Int, Int )
 blueRgb =
-    ( 20, 44, 81 )
+    ( 50, 57, 91 )
 
 
 blue : Color
@@ -701,19 +765,19 @@ blue =
     rgbToColor blueRgb
 
 
+lighterBlue : Color
+lighterBlue =
+    rgb255 68 75 105
+
+
 red : Color
 red =
     rgb255 220 40 30
 
 
-lighterBlue : Color
-lighterBlue =
-    rgb255 41 63 96
-
-
 faintBlue : Color
 faintBlue =
-    rgb255 233 235 239
+    rgb255 199 201 210
 
 
 rgbToColor : ( Int, Int, Int ) -> Color
@@ -795,11 +859,11 @@ switch attrs config =
                          , padding 3
                          , Border.width 1
                          , Border.rounded 18
-                         , Border.color black
+                         , Border.color blue
                          , centerX
                          ]
                             ++ (if checked then
-                                    [ Background.color black
+                                    [ Background.color blue
                                     ]
 
                                 else
@@ -827,7 +891,7 @@ switch attrs config =
                                         ]
 
                                     else
-                                        [ Background.color black
+                                        [ Background.color blue
                                         ]
                                    )
                             )
