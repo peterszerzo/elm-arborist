@@ -110,9 +110,6 @@ deactivate (State model) =
 computeTree : Settings.Settings node -> Tree.Tree node -> { flat : List ( List Int, Maybe node ), layout : TreeUtils.Layout }
 computeTree settings tree =
     let
-        clusteredTree =
-            TreeUtils.clusterBy settings.isNodeClustered
-
         treeModifiedForCompute =
             tree
                 |> TreeUtils.clusterBy settings.isNodeClustered
