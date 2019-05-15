@@ -10,7 +10,7 @@ Drag-and-drop interface to edit, dissect and-rearrange tree structures, with nod
 
 ## Getting started
 
-**TLDR:** [simple app example](examples/Simple.elm) (run with `cd examples && elm reactor`, then open http://localhost:8000/Simple.elm)
+**TLDR:** [simple app example](https://github.com/peterszerzo/elm-arborist/blob/master/examples/Simple.elm) (run with `cd examples && elm reactor`, then open http://localhost:8000/Simple.elm)
 
 First things first, we need to specify what kind of data structure our tree's nodes will hold. For this demo, it will be a record with a question and an answer.
 
@@ -136,7 +136,7 @@ This should work for a large number of tree editing cases. If you need a broader
 
 ### UX goodies
 
-In the [settings module](https://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest/Arborist-Settings), you will find setup instructions for advanced features like node clustering and keyboard navigation. For a real-world example, have a look at the [elm-arborist landing page](landing/src/Landing.elm).
+In the [settings module](https://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest/Arborist-Settings), you will find setup instructions for advanced features like node clustering and keyboard navigation. For a real-world example, have a look at the [elm-arborist landing page](https://github.com/peterszerzo/elm-arborist/blob/master/landing/src/Landing.elm).
 
 ## Contributing
 
