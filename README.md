@@ -8,72 +8,106 @@
 
 Drag-and-drop interface to edit, dissect and-rearrange tree structures, with nodes holding any data type you wish. Here is a [demo](https://peterszerzo.github.io/elm-arborist/), and here some [docs](http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest).
 
-## Getting started: a family tree
+## Getting started
 
-First things first, we need to specify what kind of data structure our tree's nodes will hold. For this demo, it'll be a tuple of names and ages.
+tldr: [simple app example](examples/Simple.elm) (run with `cd examples && elm reactor && open http://localhost:8000/Simple.elm`)
+
+First things first, we need to specify what kind of data structure our tree's nodes will hold. For this demo, it will be a record with a question and an answer.
 
 ```elm
-type alias Node = ( String, Int )
+type alias MyNode =
+    { question : String
+    , answer : String
+    }
 
-exampleNode = ( "Frank", 54 )
+exampleNode = MyNode "How are you?" "Fine thanks"
 ```
 
-We can then use the `Arborist.Tree` module to construct a tree structure:
+We can then use the `Arborist.Tree` module to recursively construct a tree structure:
 
 ```elm
 import Arborist.Tree as Tree
 
+tree : Tree.Tree MyNode
 tree =
-  Arborist.node ( "Frank", 54 )
-    [ Arborist.node ( "Mark", 36 ) []
-    , Arborist.node ( "Sally", 31 )
-        [ Arborist.node ( "Robert", 14 )
+  Tree.Node (MyNode "Q1" "A1")
+    [ Tree.Node (MyNode "Q2" "A2") []
+    , Tree.Node (MyNode "Q3" "A3")
+        [ Tree.Node ( "Q4", "A4" )
         ]
     ]
 ```
 
-The tree is defined recursively, with each node holding an arbitrary number of children. This is similar to the [binary tree](http://elm-lang.org/examples/binary-tree) example on the Elm website.
-
-Anyway, we can now define a model Arborist can work with:
+Now, we can now define a model for your app:
 
 ```elm
 import Arborist
+import Arborist.Tree as Tree
 
-type alias Model = Arborist.Model Node
-
-init : Model
-init = Arborist.init tree
+type alias Model =
+  { tree : Tree.Tree MyNode
+  , arborist : Arborist.State
+  }
 ```
 
-Notice how the model needs to know what data structure it holds, hence the type variable reference to the `Node` structure defined above.
+Next, we configure the editor:
+
+```elm
+```
+
+Rendering the editor will look like this:
+
+```
+view : Model -> Html Msg
+view model =
+    Arborist.view
+        []
+        { state = model.arborist
+        , tree = model.tree
+        , settings = arboristSettings
+        , nodeView = nodeView
+        , toMsg = Arborist
+        }
+```
 
 The rest is pretty much standard Elm architecture:
 
 ```elm
-type Msg = ArboristMsg Arborist.Msg
+type Msg
+    = Arborist (Arborist.Updater MyNode)
 
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
-    ArboristMsg arboristMsg ->
-      Arborist.update arboristMsg model
-
-view model =
-  Arborist.view nodeView [] model
+    case msg of
+        Arborist updater ->
+            let
+                ( newState, newTree ) =
+                    updater model.arborist model.tree
+            in
+            ( { model
+                | arborist = newState
+                , tree = newTree
+              }
+            , Cmd.none
+            )
 ```
+
+
+
+
 
 The final missing piece is `nodeView`. It specifies how a node should be displayed, and has the following form:
 
 ```elm
--- Ignore `Context` for now
-view : Context -> Maybe Node -> Html msg
-view _ maybeNode =
-  -- The node is not always available, because we also need to
-  -- specify how placeholders are rendered. 
-  case maybeNode of
-    Just ( name, age ) ->
-      div [] [ span [] [ text name ], span [] [ text (toString age) ] ]    
-    Nothing ->
-      div [] [ text "Insert node" ] 
+nodeView : Arborist.NodeView MyNode Msg
+nodeView _ maybeNode =
+    case maybeNode of
+        Just node ->
+            text node.question
+
+        Nothing ->
+            text "+ add node"
 ```
 
 That's it - your very own tree editor is ready.
@@ -92,13 +126,16 @@ Replace `init` with `initWith [ Arborist.Settings.canvasWidth 800, Arborist.Sett
 
 ### Animations
 
-Using the `Arborist.subscriptions`, you can smoothly animate to center a node when it is activated. See example for details.
+Using the `Arborist.subscriptions`, you can listen to keyboard events to help navigating the tree. See example for details.
 
-### Styling
+## Contributing
 
-You can use `styledView` instead of `view`, taking `StyledNodeView` instead of `NodeView` if you wish to use [elm-css](http://package.elm-lang.org/packages/rtfeldman/elm-css/latest) to style your view. `Arborist` uses `elm-css` under the hood, as it was necessary for most realistic use-cases that came up with the library.
+Contributions welcome - please feel free to go ahead with issues and PR's, or reach out to me on Elm Slack at `@peterszerzo`.
 
-Please open an issue if first-class [style-elements](http://package.elm-lang.org/packages/mdgriffith/style-elements/latest) support is essential to your project.
+## License
+
+MIT.
+
 
 ```
 🌲🌲🌲  🌲🌲🌲 🌲  🌲🌲🌲 🌲🌲  🌲  🌲🌲🌲 🌲🌲🌲   🌲 🌲🌲        🌲🌲      🌲   

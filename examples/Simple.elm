@@ -26,77 +26,39 @@ main =
 
 {-| The Node data type held in each of the tree's nodes.
 -}
-type alias Node =
-    { question : String
-    , answer : String
+type alias MyNode =
+    { answer : String
+    , question : String
     }
 
 
-{-| Program model.
--}
 type alias Model =
-    { arborist : Arborist.State Node
-    , tree : Tree.Tree Node
+    { arborist : Arborist.State
+    , tree : Tree.Tree MyNode
     }
 
 
-{-| The starting tree.
+{-| The starting tree
 -}
-tree : Tree.Tree Node
+tree : Tree.Tree MyNode
 tree =
-    Tree.Node
-        { answer = "Hello"
-        , question = "Do you like trees?"
-        }
-        [ Tree.Node
-            { answer = "Yes"
-            , question = "How much?"
-            }
-            [ Tree.Node
-                { answer = "A lot!"
-                , question = "Where were you all my life?"
-                }
-                []
+    Tree.Node (MyNode "Q1" "A1")
+        [ Tree.Node (MyNode "Q2" "A2")
+            [ Tree.Node (MyNode "Q3" "A3") []
             ]
-        , Tree.Node
-            { answer = "No"
-            , question = "Seriously?"
-            }
-            [ Tree.Node
-                { answer = "Yes"
-                , question = "How about rollercoasters?"
-                }
-                []
+        , Tree.Node (MyNode "Q4" "A4")
+            [ Tree.Node (MyNode "Q5" "A5") []
             ]
         ]
 
 
-nodeHeight : Int
-nodeHeight =
-    60
-
-
-nodeWidth : Int
-nodeWidth =
-    160
-
-
-arboristSettings : List (Arborist.Setting Node)
+arboristSettings : List (Arborist.Setting MyNode)
 arboristSettings =
-    [ Settings.centerOffset 0 -150
-    , Settings.level 100
-    , Settings.gutter 40
-    , Settings.keyboardNavigation True
-    , Settings.nodeWidth nodeWidth
-    , Settings.nodeHeight nodeHeight
-    , Settings.canvasWidth 800
-    , Settings.canvasHeight 480
-    , Settings.connectorStrokeWidth "2"
-    , Settings.defaultNode
-        { question = "New question?"
-        , answer = "Answer"
-        }
-    , Settings.showPlaceholderLeaves True
+    [ Settings.keyboardNavigation True
+    , Settings.defaultNode (MyNode "A" "Q")
+    , Settings.nodeWidth 100
+    , Settings.level 80
+    , Settings.gutter 20
     ]
 
 
@@ -110,11 +72,7 @@ init _ =
 
 
 type Msg
-    = Arborist (Arborist.State Node -> Tree.Tree Node -> ( Arborist.State Node, Tree.Tree Node ))
-
-
-
--- Update
+    = Arborist (Arborist.Updater MyNode)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -132,44 +90,11 @@ update msg model =
             , Cmd.none
             )
 
-        SetActive newNode ->
-            let
-                ( newArborist, newTree ) =
-                    Arborist.setActiveNodeWithChildren
-                        { node = newNode
-                        , childrenOverride = Nothing
-                        }
-                        model.arborist
-                        model.tree
-            in
-            ( { model
-                | tree = newTree
-                , arborist = newArborist
-              }
-            , Cmd.none
-            )
-
-        DeleteActive ->
-            ( Arborist.deleteActiveNode model.arborist model.tree
-                |> (\( state, tree_ ) ->
-                        { model
-                            | arborist =
-                                state
-                            , tree = tree_
-                        }
-                   )
-            , Cmd.none
-            )
-
-
-
--- View
-
 
 view : Model -> Html.Html Msg
 view model =
     Arborist.view
-        [ Html.Attributes.style "background-color" "#FFFFFF"
+        [ style "border" "1px solid black"
         ]
         { state = model.arborist
         , tree = model.tree
@@ -181,27 +106,20 @@ view model =
 
 {-| Describe how a node should render inside the tree's layout.
 -}
-nodeView : Arborist.NodeView Node Msg
+nodeView : Arborist.NodeView MyNode Msg
 nodeView _ maybeNode =
     case maybeNode of
         Just node ->
-            div
-                [ style "width" <| String.fromInt nodeWidth ++ "px"
-                , style "height" <| String.fromInt nodeHeight ++ "px"
-                ]
-                [ text node.question
-                ]
+            text node.question
 
         Nothing ->
-            text "nothing"
+            text "+ add node"
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Arborist.subscriptions arboristSettings model.arborist model.tree
-            |> Sub.map
-                (\( newState, newTree ) ->
-                    Arborist (\_ _ -> ( newState, newTree ))
-                )
-        ]
+    Arborist.subscriptions arboristSettings model.arborist model.tree
+        |> Sub.map
+            (\( newState, newTree ) ->
+                Arborist (\_ _ -> ( newState, newTree ))
+            )

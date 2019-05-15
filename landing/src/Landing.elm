@@ -59,7 +59,7 @@ setAnswer val item =
 {-| Program model.
 -}
 type alias Model =
-    { arborist : Arborist.State Node
+    { arborist : Arborist.State
     , tree : Tree.Tree Node
     , windowSize : Maybe { width : Int, height : Int }
 
@@ -168,7 +168,7 @@ init flags =
 
 
 type Msg
-    = Arborist (Arborist.State Node -> Tree.Tree Node -> ( Arborist.State Node, Tree.Tree Node ))
+    = Arborist (Arborist.State -> Tree.Tree Node -> ( Arborist.State, Tree.Tree Node ))
     | EditNewNodeQuestion String
     | EditNewNodeAnswer String
     | SetActive Node

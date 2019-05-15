@@ -59,7 +59,7 @@ type alias NodeGeometry =
 
 {-| Opaque type for the editor's model, dependent on a node type variable. You can only use this for type annotation - to initialize a new model, see [init](#init).
 -}
-type State node
+type State
     = State
         { active : Maybe Path
         , hovered : Maybe Path
@@ -70,7 +70,7 @@ type State node
 
 {-| Initialize state.
 -}
-init : State node
+init : State
 init =
     State
         { active = Nothing
@@ -88,7 +88,7 @@ type alias Setting node =
 
 {-| Restores the original pan position of the tree.
 -}
-reposition : State node -> State node
+reposition : State -> State
 reposition (State model) =
     State
         { model
@@ -99,7 +99,7 @@ reposition (State model) =
 
 {-| Remove active node
 -}
-deactivate : State node -> State node
+deactivate : State -> State
 deactivate (State model) =
     State
         { model
@@ -147,7 +147,7 @@ In order for the position calculations to match the current active node, you mus
 -}
 activeNode :
     { settings : List (Setting node)
-    , state : State node
+    , state : State
     , tree : Tree.Tree node
     }
     -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context node } )
@@ -197,7 +197,7 @@ activeNode config =
 
 {-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNodeWithContext](#activeNodeWithContext) method.
 -}
-setActiveNode : node -> State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+setActiveNode : node -> State -> Tree.Tree node -> ( State, Tree.Tree node )
 setActiveNode newNode =
     setActiveNodeWithChildren { node = newNode, childrenOverride = Nothing }
 
@@ -235,7 +235,7 @@ setActiveNodeWithChildrenHelper active newNode newChildren tree =
 
 {-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
 -}
-setActiveNodeWithChildren : { node : node, childrenOverride : Maybe (List node) } -> State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+setActiveNodeWithChildren : { node : node, childrenOverride : Maybe (List node) } -> State -> Tree.Tree node -> ( State, Tree.Tree node )
 setActiveNodeWithChildren newStuff (State model) tree =
     ( State model
     , model.active
@@ -249,7 +249,7 @@ setActiveNodeWithChildren newStuff (State model) tree =
 
 {-| Delete the active node from a tree, including all of its children. If a placeholder is active, this method does nothing.
 -}
-deleteActiveNode : State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+deleteActiveNode : State -> Tree.Tree node -> ( State, Tree.Tree node )
 deleteActiveNode (State state) tree =
     ( State
         { state
@@ -278,7 +278,7 @@ type Msg
     | CanvasMouseLeave
 
 
-resolveDrop : Settings.Settings node -> State node -> Tree.Tree node -> Tree.Tree node
+resolveDrop : Settings.Settings node -> State -> Tree.Tree node -> Tree.Tree node
 resolveDrop settings (State model) tree =
     let
         { flat } =
@@ -324,7 +324,7 @@ resolveDrop settings (State model) tree =
 
 {-| Update function handling changes in the model.
 -}
-update : Settings.Settings node -> Msg -> State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+update : Settings.Settings node -> Msg -> State -> Tree.Tree node -> ( State, Tree.Tree node )
 update settings msg (State model) tree =
     case msg of
         NodeMouseDown path x y ->
@@ -542,7 +542,7 @@ type ArrowDirection
 
 {-| Subscriptions for interactive enhancements like keyboard events
 -}
-subscriptions : List (Setting node) -> State node -> Tree.Tree node -> Sub ( State node, Tree.Tree node )
+subscriptions : List (Setting node) -> State -> Tree.Tree node -> Sub ( State, Tree.Tree node )
 subscriptions settingsOverrides (State state) tree =
     let
         settings =
@@ -743,7 +743,7 @@ isSibling nodePath1 nodePath2 =
         == List.take (List.length nodePath1 - 1) nodePath1
 
 
-viewContext : Settings.Settings node -> State node -> Tree.Tree node -> List Int -> Context node
+viewContext : Settings.Settings node -> State -> Tree.Tree node -> List Int -> Context node
 viewContext settings (State model) tree path =
     let
         { flat } =
@@ -828,7 +828,7 @@ viewContext settings (State model) tree path =
     nodeViewContext
 
 
-nodeDragInfo : List Int -> State node -> ( Bool, ( Float, Float ) )
+nodeDragInfo : List Int -> State -> ( Bool, ( Float, Float ) )
 nodeDragInfo path (State model) =
     let
         modelIsDragging =
@@ -861,8 +861,8 @@ nodeDragInfo path (State model) =
 type alias Config node msg =
     { nodeView : NodeView node msg
     , tree : Tree.Tree node
-    , state : State node
-    , toMsg : (State node -> Tree.Tree node -> ( State node, Tree.Tree node )) -> msg
+    , state : State
+    , toMsg : Updater node -> msg
     , settings : List (Setting node)
     }
 
@@ -885,7 +885,7 @@ Passing functions is necessary here because in the update function using `elm-ar
 
 -}
 type alias Updater node =
-    State node -> Tree.Tree node -> ( State node, Tree.Tree node )
+    State -> Tree.Tree node -> ( State, Tree.Tree node )
 
 
 {-| The editor's view function, taking the following arguments:
@@ -900,7 +900,7 @@ view :
     ->
         { nodeView : NodeView node msg
         , tree : Tree.Tree node
-        , state : State node
+        , state : State
         , toMsg : Updater node -> msg
         , settings : List (Setting node)
         }
