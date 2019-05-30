@@ -446,6 +446,27 @@ layout tree =
                         childCenters
                 }
             )
+        |> normalizeToRoot
+
+
+normalizeToRoot : Layout -> Layout
+normalizeToRoot treeLayout =
+    let
+        ( rootCenterX, rootCenterY ) =
+            treeLayout
+                |> Utils.dictGetWithListKeys []
+                |> Maybe.map .center
+                |> Maybe.withDefault ( 0, 0 )
+    in
+    Dict.map
+        (\_ treeLayoutItem ->
+            { center =
+                treeLayoutItem.center
+                    |> (\( x, y ) -> ( x - rootCenterX, y - rootCenterY ))
+            , childCenters = List.map (\center -> center - rootCenterX) treeLayoutItem.childCenters
+            }
+        )
+        treeLayout
 
 
 {-| Analyze tree.

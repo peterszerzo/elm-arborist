@@ -399,15 +399,19 @@ body {
                 , Border.color (rgb255 200 200 200)
                 , width (px 100)
                 ]
-        , Arborist.view
-            [ Html.Attributes.style "background-color" "#FFFFFF"
-            ]
-            { state = model.arborist
-            , tree = model.tree
-            , nodeView = nodeView
-            , settings = arboristSettings model
-            , toMsg = Arborist
-            }
+        , if model.windowSize == Nothing then
+            Html.text ""
+
+          else
+            Arborist.view
+                [ Html.Attributes.style "background-color" "#FFFFFF"
+                ]
+                { state = model.arborist
+                , tree = model.tree
+                , nodeView = nodeView
+                , settings = arboristSettings model
+                , toMsg = Arborist
+                }
         ]
             ++ (if model.dragAndDrop then
                     []
