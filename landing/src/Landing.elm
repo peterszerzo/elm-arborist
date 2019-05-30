@@ -345,7 +345,7 @@ body {
                            , centerX
                            ]
                     )
-                    (text "v7.1.0")
+                    (text "v8.0.2")
                 , link
                     [ centerX
                     ]
