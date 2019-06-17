@@ -6,6 +6,7 @@ module Internals.Utils exposing
     , convertElm018Styles
     , dictGetWithListKeys
     , floatToPxString
+    , offsetConfig
     , onClickStopPropagation
     , removeLastInList
     , startsWith
@@ -15,7 +16,16 @@ import Dict
 import Html exposing (Attribute)
 import Html.Attributes exposing (style)
 import Html.Events exposing (stopPropagationOn)
+import Internals.Offset as Offset
+import Internals.Settings as Settings
 import Json.Decode as Decode
+
+
+offsetConfig : Settings.Settings node -> Offset.GetterSetterConfig
+offsetConfig settings =
+    { unitX = settings.gutter + settings.nodeWidth
+    , unitY = settings.level + settings.nodeHeight
+    }
 
 
 areListsEqual : List comparable -> List comparable -> Bool

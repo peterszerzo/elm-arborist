@@ -44,6 +44,7 @@ import Html.Events exposing (on)
 import Html.Keyed exposing (node)
 import Internals.Drag as Drag exposing (Drag)
 import Internals.NodeConnectors as NodeConnectors
+import Internals.Offset as Offset
 import Internals.Settings as Settings
 import Internals.Styles as Styles
 import Internals.TreeUtils as TreeUtils exposing (Path)
@@ -64,7 +65,7 @@ type State
         { active : Maybe Path
         , hovered : Maybe Path
         , drag : Drag (Maybe Path)
-        , panOffset : ( Float, Float )
+        , panOffset : Offset.Offset
         }
 
 
@@ -76,7 +77,7 @@ init =
         { active = Nothing
         , hovered = Nothing
         , drag = Drag.init
-        , panOffset = ( 0, 0 )
+        , panOffset = Offset.noOffset
         }
 
 
@@ -92,7 +93,7 @@ reposition : State -> State
 reposition (State model) =
     State
         { model
-            | panOffset = ( 0, 0 )
+            | panOffset = Offset.noOffset
             , drag = Drag.init
         }
 
@@ -186,6 +187,7 @@ activeNode config =
                 , { position =
                         [ geo
                         , model.panOffset
+                            |> Offset.toPt (Utils.offsetConfig settings)
                         , dragOffset
                         ]
                             |> List.foldl Utils.addFloatTuples ( 0, 0 )
@@ -288,12 +290,23 @@ resolveDrop settings (State model) tree =
             Drag.state model.drag
                 |> Maybe.andThen
                     (\( path, dragOffset ) ->
-                        Maybe.map (\justPath -> ( justPath, dragOffset )) path
+                        Maybe.map
+                            (\justPath ->
+                                ( justPath
+                                , dragOffset
+                                )
+                            )
+                            path
                     )
                 |> Maybe.andThen
                     (\( path, dragOffset ) ->
                         getDropTarget settings path dragOffset tree
-                            |> Maybe.map (\dropTargetPath -> ( path, dropTargetPath ))
+                            |> Maybe.map
+                                (\dropTargetPath ->
+                                    ( path
+                                    , dropTargetPath
+                                    )
+                                )
                     )
     in
     stuff
@@ -411,16 +424,18 @@ update settings msg (State model) tree =
                         |> Maybe.andThen
                             (\justActive ->
                                 nodeGeometry settings justActive layout
-                                    |> Maybe.map .center
                                     |> Maybe.map
-                                        (\( cx, cy ) ->
-                                            [ settings.centerOffset
-                                            , ( settings.canvasWidth / 2
-                                              , settings.canvasHeight / 2
-                                              )
-                                            , ( -cx, -settings.nodeHeight / 2 - cy )
-                                            ]
-                                                |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                        (.center
+                                            >> (\( cx, cy ) ->
+                                                    [ settings.centerOffset
+                                                    , ( settings.canvasWidth / 2
+                                                      , settings.canvasHeight / 2
+                                                      )
+                                                    , ( -cx, -settings.nodeHeight / 2 - cy )
+                                                    ]
+                                                        |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                               )
+                                            >> Offset.fromPt (Utils.offsetConfig settings)
                                         )
                             )
                         |> Maybe.withDefault model.panOffset
@@ -510,6 +525,7 @@ update settings msg (State model) tree =
                                             let
                                                 ( panOffsetX, panOffsetY ) =
                                                     model.panOffset
+                                                        |> Offset.toPt (Utils.offsetConfig settings)
 
                                                 ( offsetX, offsetY ) =
                                                     if draggedNode == Nothing then
@@ -519,6 +535,7 @@ update settings msg (State model) tree =
                                                         ( 0, 0 )
                                             in
                                             ( panOffsetX + offsetX, panOffsetY + offsetY )
+                                                |> Offset.fromPt (Utils.offsetConfig settings)
                                         )
                                     |> Maybe.withDefault model.panOffset
                             , active =
@@ -597,16 +614,18 @@ subscriptions settingsOverrides (State state) tree =
                                     |> Maybe.andThen
                                         (\justActive ->
                                             nodeGeometry settings justActive layout
-                                                |> Maybe.map .center
                                                 |> Maybe.map
-                                                    (\( cx, cy ) ->
-                                                        [ settings.centerOffset
-                                                        , ( settings.canvasWidth / 2
-                                                          , settings.canvasHeight / 2
-                                                          )
-                                                        , ( -cx, -settings.nodeHeight / 2 - cy )
-                                                        ]
-                                                            |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                                    (.center
+                                                        >> (\( cx, cy ) ->
+                                                                [ settings.centerOffset
+                                                                , ( settings.canvasWidth / 2
+                                                                  , settings.canvasHeight / 2
+                                                                  )
+                                                                , ( -cx, -settings.nodeHeight / 2 - cy )
+                                                                ]
+                                                                    |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                                           )
+                                                        >> Offset.fromPt (Utils.offsetConfig settings)
                                                     )
                                         )
                                     |> Maybe.withDefault state.panOffset
@@ -941,7 +960,10 @@ view attrs config =
                 |> Maybe.withDefault ( ( 0, 0 ), False )
 
         ( canvasTotalDragOffsetX, canvasTotalDragOffsetY ) =
-            Utils.addFloatTuples canvasDragOffset model.panOffset
+            Utils.addFloatTuples canvasDragOffset
+                (model.panOffset
+                    |> Offset.toPt (Utils.offsetConfig settings)
+                )
     in
     div
         ([ on "mousemove"
