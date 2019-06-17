@@ -178,7 +178,10 @@ activeNode config =
                     dragOffset =
                         Drag.state model.drag
                             |> Maybe.map Tuple.second
-                            |> Maybe.withDefault ( 0, 0 )
+                            |> Maybe.withDefault Offset.noOffset
+
+                    offsetConfig =
+                        Utils.offsetConfig settings
                 in
                 ( flat
                     |> List.filter (\( path_, _ ) -> active == path_)
@@ -187,8 +190,9 @@ activeNode config =
                 , { position =
                         [ geo
                         , model.panOffset
-                            |> Offset.toPt (Utils.offsetConfig settings)
+                            |> Offset.toPt offsetConfig
                         , dragOffset
+                            |> Offset.toPt offsetConfig
                         ]
                             |> List.foldl Utils.addFloatTuples ( 0, 0 )
                   , context = viewContext settings (State model) tree active
@@ -300,7 +304,7 @@ resolveDrop settings (State model) tree =
                     )
                 |> Maybe.andThen
                     (\( path, dragOffset ) ->
-                        getDropTarget settings path dragOffset tree
+                        getDropTarget settings path (Offset.toPt (Utils.offsetConfig settings) dragOffset) tree
                             |> Maybe.map
                                 (\dropTargetPath ->
                                     ( path
@@ -376,7 +380,11 @@ update settings msg (State model) tree =
                     else
                         Drag.state model.drag
                             |> Maybe.andThen
-                                (\( path, ( offsetX, offsetY ) ) ->
+                                (\( path, dragOffset ) ->
+                                    let
+                                        ( offsetX, offsetY ) =
+                                            Offset.toPt (Utils.offsetConfig settings) dragOffset
+                                    in
                                     case path of
                                         Just _ ->
                                             -- If the node was dragged far enough already, it is not activated
@@ -478,7 +486,7 @@ update settings msg (State model) tree =
             ( State
                 { model
                     | drag =
-                        Drag.move xm ym model.drag
+                        Drag.move (Utils.offsetConfig settings) xm ym model.drag
                 }
             , tree
             )
@@ -506,8 +514,12 @@ update settings msg (State model) tree =
                         active_ =
                             Drag.state model.drag
                                 |> Maybe.map
-                                    (\( _, ( dragX, dragY ) ) ->
-                                        if (abs dragX + abs dragY) < 21 then
+                                    (\( _, dragOffset ) ->
+                                        let
+                                            ( dragOffsetX, dragOffsetY ) =
+                                                Offset.toPt (Utils.offsetConfig settings) dragOffset
+                                        in
+                                        if (abs dragOffsetX + abs dragOffsetY) < 21 then
                                             Nothing
 
                                         else
@@ -521,20 +533,20 @@ update settings msg (State model) tree =
                             , panOffset =
                                 Drag.state model.drag
                                     |> Maybe.map
-                                        (\( draggedNode, offset ) ->
+                                        (\( draggedNode, dragOffset ) ->
                                             let
                                                 ( panOffsetX, panOffsetY ) =
                                                     model.panOffset
                                                         |> Offset.toPt (Utils.offsetConfig settings)
 
-                                                ( offsetX, offsetY ) =
+                                                ( dragOffsetX, dragOffsetY ) =
                                                     if draggedNode == Nothing then
-                                                        offset
+                                                        Offset.toPt (Utils.offsetConfig settings) dragOffset
 
                                                     else
                                                         ( 0, 0 )
                                             in
-                                            ( panOffsetX + offsetX, panOffsetY + offsetY )
+                                            ( panOffsetX + dragOffsetX, panOffsetY + dragOffsetY )
                                                 |> Offset.fromPt (Utils.offsetConfig settings)
                                         )
                                     |> Maybe.withDefault model.panOffset
@@ -771,9 +783,13 @@ viewContext settings (State model) tree path =
         isDropTarget =
             Drag.state model.drag
                 |> Maybe.map
-                    (\( draggedPath, offset ) ->
+                    (\( draggedPath, dragOffset ) ->
                         case draggedPath of
                             Just justDraggedPath ->
+                                let
+                                    offset =
+                                        Offset.toPt (Utils.offsetConfig settings) dragOffset
+                                in
                                 getDropTarget settings justDraggedPath offset tree
                                     |> Maybe.map (\dropTargetPath -> dropTargetPath == path)
                                     |> Maybe.withDefault False
@@ -847,8 +863,8 @@ viewContext settings (State model) tree path =
     nodeViewContext
 
 
-nodeDragInfo : List Int -> State -> ( Bool, ( Float, Float ) )
-nodeDragInfo path (State model) =
+nodeDragInfo : Settings.Settings node -> List Int -> State -> ( Bool, ( Float, Float ) )
+nodeDragInfo settings path (State model) =
     let
         modelIsDragging =
             Drag.state model.drag /= Nothing
@@ -859,9 +875,13 @@ nodeDragInfo path (State model) =
     if modelIsDragging then
         dragState
             |> Maybe.map
-                (\( draggedPath, offset ) ->
+                (\( draggedPath, dragOffset ) ->
                     case draggedPath of
                         Just justDraggedPath ->
+                            let
+                                offset =
+                                    Offset.toPt (Utils.offsetConfig settings) dragOffset
+                            in
                             if Utils.startsWith justDraggedPath path then
                                 ( True, offset )
 
@@ -950,8 +970,12 @@ view attrs config =
         ( canvasDragOffset, isCanvasDragging ) =
             dragState
                 |> Maybe.map
-                    (\( path, offset ) ->
+                    (\( path, dragOffset ) ->
                         if path == Nothing then
+                            let
+                                offset =
+                                    Offset.toPt (Utils.offsetConfig settings) dragOffset
+                            in
                             ( offset, True )
 
                         else
@@ -1038,7 +1062,7 @@ view attrs config =
                                         center
 
                                     ( isDragged, ( xDrag, yDrag ) ) =
-                                        nodeDragInfo path (State model)
+                                        nodeDragInfo settings path (State model)
 
                                     xWithDrag =
                                         x + xDrag

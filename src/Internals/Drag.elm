@@ -29,6 +29,8 @@ module Internals.Drag exposing
 
 -}
 
+import Internals.Offset as Offset
+
 
 {-| This opaque data type contains the current drag state. If there is dragging, it contains the screen position where the drag began, where the cursor currently is, and an identifier of the point being dragged. The client can define any way of identifying points, as indicated by the `identifier` type variable.
 -}
@@ -38,8 +40,7 @@ type Drag identifier
             { id : identifier
             , x0 : Float
             , y0 : Float
-            , xd : Float
-            , yd : Float
+            , offset : Offset.Offset
             }
         )
 
@@ -60,33 +61,38 @@ start id x0 y0 =
             { id = id
             , x0 = x0
             , y0 = y0
-            , xd = x0
-            , yd = y0
+            , offset = Offset.noOffset
             }
         )
 
 
 {-| Set a new drag position under the current drag.
 -}
-move : Float -> Float -> Drag identifier -> Drag identifier
-move xm ym (Drag drag) =
-    case drag of
-        Just dg ->
+move : Offset.GetterSetterConfig -> Float -> Float -> Drag identifier -> Drag identifier
+move config newX newY (Drag maybeDrag) =
+    case maybeDrag of
+        Just drag ->
             Drag
                 (Just
-                    { dg
-                        | xd = xm
-                        , yd = ym
+                    { drag
+                        | offset =
+                            Offset.fromPt config
+                                ( newX - drag.x0
+                                , newY - drag.y0
+                                )
                     }
                 )
 
         Nothing ->
-            Drag drag
+            Drag Nothing
 
 
 {-| Retrieve drag state.
 -}
-state : Drag identifier -> Maybe ( identifier, ( Float, Float ) )
+state : Drag identifier -> Maybe ( identifier, Offset.Offset )
 state (Drag drag) =
     drag
-        |> Maybe.map (\d -> ( d.id, ( d.xd - d.x0, d.yd - d.y0 ) ))
+        |> Maybe.map
+            (\d ->
+                ( d.id, d.offset )
+            )

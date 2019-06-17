@@ -101,8 +101,21 @@ nodeWidth =
     160
 
 
-arboristSettings : Model -> List (Arborist.Setting Node.Node)
-arboristSettings model =
+sharedArboristSettings : Model -> List (Arborist.Setting Node.Node)
+sharedArboristSettings model =
+    [ Settings.dragAndDrop model.dragAndDrop
+    , Settings.isNodeClustered .isClustered
+    , Settings.defaultNode
+        { question = "New question?"
+        , answer = "Answer"
+        , isClustered = False
+        }
+    , Settings.showPlaceholderLeaves model.canCreateNodes
+    ]
+
+
+mainOnlyArboristSettings : Model -> List (Arborist.Setting Node.Node)
+mainOnlyArboristSettings model =
     [ Settings.centerOffset 0 -150
     , Settings.level 100
     , Settings.gutter 40
@@ -118,18 +131,20 @@ arboristSettings model =
             |> Maybe.map .height
             |> Maybe.withDefault 600
         )
-    , Settings.dragAndDrop model.dragAndDrop
     , Settings.keyboardNavigation model.keyboardNavigation
     , Settings.connectorStrokeWidth "2"
     , Settings.connectorStroke <| Ui.rgbToCssString Ui.blueRgb
-    , Settings.isNodeClustered .isClustered
-    , Settings.defaultNode
-        { question = "New question?"
-        , answer = "Answer"
-        , isClustered = False
-        }
-    , Settings.showPlaceholderLeaves model.canCreateNodes
     ]
+
+
+mainArboristSettings : Model -> List (Arborist.Setting Node.Node)
+mainArboristSettings model =
+    mainOnlyArboristSettings model ++ sharedArboristSettings model
+
+
+minimapArboristSettings : Model -> List (Arborist.Setting Node.Node)
+minimapArboristSettings model =
+    Minimap.minimapOnlyArboristSettings ++ sharedArboristSettings model
 
 
 init : Encode.Value -> ( Model, Cmd Msg )
@@ -390,7 +405,7 @@ view model =
                         { state = model.arborist
                         , tree = model.tree
                         , nodeView = Minimap.nodeView
-                        , settings = Minimap.arboristSettings
+                        , settings = minimapArboristSettings model
                         , toMsg = ArboristMinimap
                         }
                         |> html
@@ -407,7 +422,7 @@ view model =
                     { state = model.arborist
                     , tree = model.tree
                     , nodeView = nodeView
-                    , settings = arboristSettings model
+                    , settings = mainArboristSettings model
                     , toMsg = Arborist
                     }
                     |> html
@@ -417,7 +432,7 @@ view model =
 
                     else
                         Arborist.activeNode
-                            { settings = arboristSettings model
+                            { settings = mainArboristSettings model
                             , state = model.arborist
                             , tree = model.tree
                             }
@@ -662,7 +677,7 @@ logo =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Arborist.subscriptions (arboristSettings model) model.arborist model.tree
+        [ Arborist.subscriptions (mainArboristSettings model) model.arborist model.tree
             |> Sub.map
                 (\( newState, newTree ) ->
                     Arborist (\_ _ -> ( newState, newTree ))

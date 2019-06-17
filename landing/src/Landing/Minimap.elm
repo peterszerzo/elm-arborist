@@ -1,4 +1,4 @@
-module Landing.Minimap exposing (arboristSettings, canvasHeight, canvasWidth, nodeView)
+module Landing.Minimap exposing (canvasHeight, canvasWidth, minimapOnlyArboristSettings, nodeView)
 
 import Arborist
 import Arborist.Settings as Settings
@@ -20,12 +20,13 @@ canvasHeight =
     200
 
 
-arboristSettings : List (Arborist.Setting Node.Node)
-arboristSettings =
+minimapOnlyArboristSettings : List (Arborist.Setting Node.Node)
+minimapOnlyArboristSettings =
     [ Settings.keyboardNavigation False
-    , Settings.connectorStroke "#000"
+    , Settings.connectorStroke <| Ui.rgbToCssString Ui.blueRgb
     , Settings.canvasWidth canvasWidth
     , Settings.canvasHeight canvasWidth
+    , Settings.centerOffset 0 -60
     , Settings.showPlaceholderLeaves True
     , Settings.nodeWidth 20
     , Settings.nodeHeight 20
@@ -41,6 +42,7 @@ pinContainer attrs child =
          , height (px 20)
          , Border.rounded 10
          , moveRight 2
+         , pointer
          ]
             ++ attrs
         )
