@@ -339,10 +339,33 @@ resolveDrop settings (State model) tree =
         |> Maybe.withDefault tree
 
 
-{-| Update function handling changes in the model.
+resolvePanOffset : Settings.Settings node -> Drag.Drag (Maybe Path) -> Offset.Offset -> Offset.Offset
+resolvePanOffset settings drag panOffset =
+    Drag.state drag
+        |> Maybe.map
+            (\( draggedNode, dragOffset ) ->
+                let
+                    ( panOffsetX, panOffsetY ) =
+                        panOffset
+                            |> Offset.toPt (Utils.offsetConfig settings)
+
+                    ( dragOffsetX, dragOffsetY ) =
+                        if draggedNode == Nothing then
+                            Offset.toPt (Utils.offsetConfig settings) dragOffset
+
+                        else
+                            ( 0, 0 )
+                in
+                ( panOffsetX + dragOffsetX, panOffsetY + dragOffsetY )
+                    |> Offset.fromPt (Utils.offsetConfig settings)
+            )
+        |> Maybe.withDefault panOffset
+
+
+{-| Update function handling changes in the state.
 -}
 update : Settings.Settings node -> Msg -> State -> Tree.Tree node -> ( State, Tree.Tree node )
-update settings msg (State model) tree =
+update settings msg (State state) tree =
     case msg of
         NodeMouseDown path x y ->
             let
@@ -358,7 +381,7 @@ update settings msg (State model) tree =
                         Nothing
             in
             ( State
-                { model
+                { state
                     | drag =
                         if not settings.dragAndDrop then
                             Drag.init
@@ -375,10 +398,10 @@ update settings msg (State model) tree =
             let
                 newActive =
                     if not settings.dragAndDrop then
-                        model.active
+                        state.active
 
                     else
-                        Drag.state model.drag
+                        Drag.state state.drag
                             |> Maybe.andThen
                                 (\( path, dragOffset ) ->
                                     let
@@ -422,7 +445,7 @@ update settings msg (State model) tree =
                                     tree
 
                         Nothing ->
-                            resolveDrop settings (State model) tree
+                            resolveDrop settings (State state) tree
 
                 { layout } =
                     computeTree settings newTree
@@ -446,10 +469,10 @@ update settings msg (State model) tree =
                                             >> Offset.fromPt (Utils.offsetConfig settings)
                                         )
                             )
-                        |> Maybe.withDefault model.panOffset
+                        |> Maybe.withDefault state.panOffset
             in
             ( State
-                { model
+                { state
                     | drag =
                         Drag.init
                     , panOffset =
@@ -462,7 +485,7 @@ update settings msg (State model) tree =
 
         NodeMouseEnter path ->
             ( State
-                { model
+                { state
                     | hovered =
                         Just path
                 }
@@ -471,48 +494,48 @@ update settings msg (State model) tree =
 
         NodeMouseLeave path ->
             ( State
-                { model
+                { state
                     | hovered =
-                        if model.hovered == Just path then
+                        if state.hovered == Just path then
                             Nothing
 
                         else
-                            model.hovered
+                            state.hovered
                 }
             , tree
             )
 
         CanvasMouseMove xm ym ->
             ( State
-                { model
+                { state
                     | drag =
-                        Drag.move (Utils.offsetConfig settings) xm ym model.drag
+                        Drag.move (Utils.offsetConfig settings) xm ym state.drag
                 }
             , tree
             )
 
         CanvasMouseDown x y ->
-            case model.hovered of
+            case state.hovered of
                 Just path ->
-                    update settings (NodeMouseDown path x y) (State model) tree
+                    update settings (NodeMouseDown path x y) (State state) tree
 
                 Nothing ->
                     ( State
-                        { model
+                        { state
                             | drag = Drag.start Nothing x y
                         }
                     , tree
                     )
 
         CanvasMouseUp x y ->
-            case model.hovered of
+            case state.hovered of
                 Just _ ->
-                    update settings (NodeMouseUp x y) (State model) tree
+                    update settings (NodeMouseUp x y) (State state) tree
 
                 Nothing ->
                     let
                         active_ =
-                            Drag.state model.drag
+                            Drag.state state.drag
                                 |> Maybe.map
                                     (\( _, dragOffset ) ->
                                         let
@@ -523,33 +546,14 @@ update settings msg (State model) tree =
                                             Nothing
 
                                         else
-                                            model.active
+                                            state.active
                                     )
                                 |> Maybe.withDefault Nothing
                     in
                     ( State
-                        { model
+                        { state
                             | drag = Drag.init
-                            , panOffset =
-                                Drag.state model.drag
-                                    |> Maybe.map
-                                        (\( draggedNode, dragOffset ) ->
-                                            let
-                                                ( panOffsetX, panOffsetY ) =
-                                                    model.panOffset
-                                                        |> Offset.toPt (Utils.offsetConfig settings)
-
-                                                ( dragOffsetX, dragOffsetY ) =
-                                                    if draggedNode == Nothing then
-                                                        Offset.toPt (Utils.offsetConfig settings) dragOffset
-
-                                                    else
-                                                        ( 0, 0 )
-                                            in
-                                            ( panOffsetX + dragOffsetX, panOffsetY + dragOffsetY )
-                                                |> Offset.fromPt (Utils.offsetConfig settings)
-                                        )
-                                    |> Maybe.withDefault model.panOffset
+                            , panOffset = resolvePanOffset settings state.drag state.panOffset
                             , active =
                                 active_
                         }
@@ -557,7 +561,11 @@ update settings msg (State model) tree =
                     )
 
         CanvasMouseLeave ->
-            ( State { model | drag = Drag.init }
+            ( State
+                { state
+                    | drag = Drag.init
+                    , panOffset = resolvePanOffset settings state.drag state.panOffset
+                }
             , tree
             )
 
