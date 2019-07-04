@@ -751,14 +751,14 @@ nodeGeometry settings path layout =
                         center
                 in
                 { center =
-                    ( settings.canvasWidth / 2 + centerX * (settings.nodeWidth + settings.gutter)
-                    , settings.canvasHeight * 0.1 + centerY * (settings.nodeHeight + settings.level)
+                    ( settings.canvasWidth * 0.5 + centerX * (settings.nodeWidth + settings.gutter)
+                    , settings.canvasHeight * 0.5 + centerY * (settings.nodeHeight + settings.level)
                     )
                 , childCenters =
                     List.map
                         (\childCenter ->
-                            ( settings.canvasWidth / 2 + childCenter * (settings.nodeWidth + settings.gutter)
-                            , settings.canvasHeight * 0.1 + (centerY + 1) * (settings.nodeHeight + settings.level)
+                            ( settings.canvasWidth * 0.5 + childCenter * (settings.nodeWidth + settings.gutter)
+                            , settings.canvasHeight * 0.5 + (centerY + 1) * (settings.nodeHeight + settings.level)
                             )
                         )
                         childCenters

@@ -7,7 +7,7 @@ import Internals.Utils as Utils
 coordinate : Settings.Settings node -> ( Float, Float ) -> List ( String, String )
 coordinate settings ( x, y ) =
     [ ( "left", Utils.floatToPxString (x - (settings.nodeWidth / 2)) )
-    , ( "top", Utils.floatToPxString y )
+    , ( "top", Utils.floatToPxString (y - (settings.nodeHeight / 2)) )
     ]
 
 

@@ -551,7 +551,7 @@ activeNodePopup newNode ( item, { position } ) =
             [ elementHtmlStyle "position" "absolute"
             , elementHtmlStyle "top" "0px"
             , elementHtmlStyle "left" "0px"
-            , elementHtmlStyle "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 55) ++ "px, 0px)"
+            , elementHtmlStyle "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 35) ++ "px, 0px)"
             , elementHtmlStyle "transition" "transform 0.3s ease-in-out"
             , width (px 420)
             , height (px 240)
