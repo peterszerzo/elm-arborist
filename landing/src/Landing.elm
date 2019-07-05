@@ -101,6 +101,16 @@ nodeWidth =
     160
 
 
+level : Int
+level =
+    100
+
+
+gutter : Int
+gutter =
+    40
+
+
 sharedArboristSettings : Model -> List (Arborist.Setting Node.Node)
 sharedArboristSettings model =
     [ Settings.dragAndDrop model.dragAndDrop
@@ -114,23 +124,29 @@ sharedArboristSettings model =
     ]
 
 
+canvasWidth : Model -> Int
+canvasWidth model =
+    model.windowSize
+        |> Maybe.map (.width >> (\w -> w - 100))
+        |> Maybe.withDefault 1000
+
+
+canvasHeight : Model -> Int
+canvasHeight model =
+    model.windowSize
+        |> Maybe.map .height
+        |> Maybe.withDefault 600
+
+
 mainOnlyArboristSettings : Model -> List (Arborist.Setting Node.Node)
 mainOnlyArboristSettings model =
     [ Settings.centerOffset 0 -150
-    , Settings.level 100
-    , Settings.gutter 40
+    , Settings.level level
+    , Settings.gutter gutter
     , Settings.nodeWidth nodeWidth
     , Settings.nodeHeight nodeHeight
-    , Settings.canvasWidth
-        (model.windowSize
-            |> Maybe.map (.width >> (\w -> w - 100))
-            |> Maybe.withDefault 1000
-        )
-    , Settings.canvasHeight
-        (model.windowSize
-            |> Maybe.map .height
-            |> Maybe.withDefault 600
-        )
+    , Settings.canvasWidth (canvasWidth model)
+    , Settings.canvasHeight (canvasHeight model)
     , Settings.keyboardNavigation model.keyboardNavigation
     , Settings.connectorStrokeWidth "2"
     , Settings.connectorStroke <| Ui.rgbToCssString Ui.blueRgb
@@ -292,6 +308,60 @@ elementHtmlStyle prop val =
     htmlAttribute <| Html.Attributes.style prop val
 
 
+centerMark : Attribute msg
+centerMark =
+    inFront <|
+        el
+            [ width (px 4)
+            , height (px 4)
+            , Background.color (rgb 1 0 0)
+            , centerX
+            , centerY
+            ]
+            none
+
+
+centerArea : Int -> Int -> Attribute msg
+centerArea w h =
+    inFront <|
+        el
+            [ width (px w)
+            , height (px h)
+            , Background.color (rgba255 0 0 0 0.05)
+            , centerX
+            , centerY
+            , htmlAttribute <| Html.Attributes.style "pointer-events" "none"
+            ]
+            none
+
+
+centerAreaDims :
+    { canvasWidth : Int
+    , canvasHeight : Int
+    , nodeWidth : Int
+    , nodeHeight : Int
+    , level : Int
+    , gutter : Int
+    , minimapNodeWidth : Int
+    , minimapNodeHeight : Int
+    , minimapLevel : Int
+    , minimapGutter : Int
+    }
+    -> { width : Int, height : Int }
+centerAreaDims config =
+    { width =
+        toFloat config.canvasWidth
+            * (toFloat config.minimapGutter + toFloat config.minimapNodeWidth)
+            / (toFloat config.gutter + toFloat config.nodeWidth)
+            |> floor
+    , height =
+        toFloat config.canvasHeight
+            * (toFloat config.minimapLevel + toFloat config.minimapNodeHeight)
+            / (toFloat config.level + toFloat config.nodeHeight)
+            |> floor
+    }
+
+
 view : Model -> Html.Html Msg
 view model =
     row
@@ -348,7 +418,7 @@ view model =
                            , centerX
                            ]
                     )
-                    (text "v8.0.2")
+                    (text "v8.0.4")
                 , link
                     [ centerX
                     ]
@@ -385,7 +455,8 @@ view model =
                 ]
             ]
         , row
-            [ onRight <|
+            [ centerMark
+            , onRight <|
                 el
                     [ width (px Minimap.canvasWidth)
                     , height (px Minimap.canvasHeight)
@@ -399,9 +470,27 @@ view model =
                     , clip
                     , Border.width 1
                     , Border.color (rgb255 200 200 200)
-                    , Background.color Ui.white
+                    , let
+                        dims =
+                            centerAreaDims
+                                { canvasWidth = canvasWidth model
+                                , canvasHeight = canvasHeight model
+                                , nodeWidth = nodeWidth
+                                , nodeHeight = nodeHeight
+                                , level = level
+                                , gutter = gutter
+                                , minimapNodeWidth = Minimap.nodeSize
+                                , minimapNodeHeight = Minimap.nodeSize
+                                , minimapLevel = Minimap.level
+                                , minimapGutter = Minimap.gutter
+                                }
+                      in
+                      centerArea dims.width dims.height
+                    , centerMark
                     ]
-                    (Arborist.view []
+                    (Arborist.view
+                        [ Html.Attributes.style "background-color" "#FFFFFF"
+                        ]
                         { state = model.arborist
                         , tree = model.tree
                         , nodeView = Minimap.nodeView

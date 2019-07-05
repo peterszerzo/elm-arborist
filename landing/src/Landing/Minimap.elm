@@ -1,4 +1,12 @@
-module Landing.Minimap exposing (canvasHeight, canvasWidth, minimapOnlyArboristSettings, nodeView)
+module Landing.Minimap exposing
+    ( canvasHeight
+    , canvasWidth
+    , gutter
+    , level
+    , minimapOnlyArboristSettings
+    , nodeSize
+    , nodeView
+    )
 
 import Arborist
 import Arborist.Settings as Settings
@@ -12,7 +20,7 @@ import Landing.Ui as Ui
 
 canvasWidth : Int
 canvasWidth =
-    240
+    280
 
 
 canvasHeight : Int
@@ -20,18 +28,33 @@ canvasHeight =
     200
 
 
+nodeSize : Int
+nodeSize =
+    20
+
+
+level : Int
+level =
+    20
+
+
+gutter : Int
+gutter =
+    10
+
+
 minimapOnlyArboristSettings : List (Arborist.Setting Node.Node)
 minimapOnlyArboristSettings =
     [ Settings.keyboardNavigation False
     , Settings.connectorStroke <| Ui.rgbToCssString Ui.blueRgb
     , Settings.canvasWidth canvasWidth
-    , Settings.canvasHeight canvasWidth
-    , Settings.centerOffset 0 -60
+    , Settings.canvasHeight canvasHeight
+    , Settings.centerOffset 0 (-150 * 40 / 145 |> floor)
     , Settings.showPlaceholderLeaves True
-    , Settings.nodeWidth 20
-    , Settings.nodeHeight 20
-    , Settings.level 25
-    , Settings.gutter 20
+    , Settings.nodeWidth nodeSize
+    , Settings.nodeHeight nodeSize
+    , Settings.level level
+    , Settings.gutter gutter
     ]
 
 
