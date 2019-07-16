@@ -2,10 +2,24 @@ module Internals.NodeConnectors exposing (pad, strokeWeight, toCoord, view)
 
 import Html exposing (Html)
 import Html.Attributes exposing (style)
+import Internals.Pt as Pt
 import Internals.Settings as Settings
 import Internals.Styles as Styles
 import Svg exposing (line, svg)
-import Svg.Attributes exposing (height, stroke, strokeLinecap, strokeLinejoin, strokeWidth, viewBox, width, x1, x2, y1, y2)
+import Svg.Attributes
+    exposing
+        ( height
+        , stroke
+        , strokeLinecap
+        , strokeLinejoin
+        , strokeWidth
+        , viewBox
+        , width
+        , x1
+        , x2
+        , y1
+        , y2
+        )
 
 
 pad : Float
@@ -23,8 +37,27 @@ toCoord =
     floor >> String.fromInt
 
 
-view : Settings.Settings node -> Float -> ( Float, Float ) -> ( Float, Float ) -> List ( Float, Float ) -> Html msg
-view settings opacity ( dragX, dragY ) center childCenters =
+listMin : List Float -> Float
+listMin =
+    List.foldl min 100000
+
+
+listMax : List Float -> Float
+listMax =
+    List.foldl max -100000
+
+
+view :
+    { settings : Settings.Settings node
+    , extendTop : Bool
+    , extendBottom : Bool
+    , opacity : Float
+    , offset : Pt.Pt
+    , center : Pt.Pt
+    , childCenters : List Pt.Pt
+    }
+    -> List (Html msg)
+view { settings, opacity, offset, center, childCenters } =
     let
         strokeAttrs =
             [ stroke settings.connectorStroke
@@ -33,20 +66,31 @@ view settings opacity ( dragX, dragY ) center childCenters =
             , strokeLinejoin "round"
             ]
 
+        ( centerX, centerY ) =
+            center
+
         pts =
             center :: childCenters
 
         minX =
-            pts |> List.map Tuple.first |> List.foldl min 100000
+            pts
+                |> List.map Tuple.first
+                |> listMin
 
         minY =
-            pts |> List.map Tuple.second |> List.foldl min 100000
+            pts
+                |> List.map Tuple.second
+                |> listMin
 
         maxX =
-            pts |> List.map Tuple.first |> List.foldl max -100000
+            pts
+                |> List.map Tuple.first
+                |> listMax
 
         maxY =
-            pts |> List.map Tuple.second |> List.foldl max -100000
+            pts
+                |> List.map Tuple.second
+                |> listMax
 
         w_ =
             maxX - minX
@@ -72,9 +116,52 @@ view settings opacity ( dragX, dragY ) center childCenters =
             ( Tuple.first center - minX, Tuple.second center - minY )
 
         relChildren =
-            List.map (\( x, y ) -> ( x - minX, y - minY )) childCenters
+            List.map
+                (\( x, y ) ->
+                    ( x - minX
+                    , y - minY
+                    )
+                )
+                childCenters
+
+        extender isTop =
+            svg
+                ([ width "4"
+                 , height (String.fromFloat settings.extendConnectorsBy)
+                 , viewBox <| "-2 0 4 " ++ String.fromFloat settings.extendConnectorsBy
+                 , style "position" "absolute"
+                 , style "z-index" "-1"
+                 , style "opacity" <| String.fromFloat opacity
+                 ]
+                    ++ (Styles.coordinate settings
+                            (( centerX + (settings.nodeWidth / 2)
+                             , centerY
+                                + (if isTop then
+                                    -settings.extendConnectorsBy
+
+                                   else
+                                    settings.nodeHeight
+                                  )
+                             )
+                                |> Pt.add offset
+                            )
+                            |> List.map (\( property, value ) -> style property value)
+                       )
+                )
+                [ line
+                    ([ x1 "0"
+                     , y1 "0"
+                     , x2 "0"
+                     , y2 (String.fromFloat settings.extendConnectorsBy)
+                     ]
+                        ++ strokeAttrs
+                    )
+                    []
+                ]
     in
-    svg
+    [ extender True
+    , extender False
+    , svg
         ([ width (String.fromFloat (w + 4))
          , height (String.fromFloat h)
          , viewBox <|
@@ -88,13 +175,15 @@ view settings opacity ( dragX, dragY ) center childCenters =
          , style "opacity" <| String.fromFloat opacity
          ]
             ++ (Styles.coordinate settings
-                    ( minX + (settings.nodeWidth / 2) + dragX
-                    , minY + settings.nodeHeight + dragY
+                    (( minX + (settings.nodeWidth / 2)
+                     , minY + settings.nodeHeight
+                     )
+                        |> Pt.add offset
                     )
                     |> List.map (\( property, value ) -> style property value)
                )
         )
-    <|
+      <|
         if List.length childCenters == 0 then
             []
 
@@ -136,3 +225,4 @@ view settings opacity ( dragX, dragY ) center childCenters =
                     else
                         []
                    )
+    ]

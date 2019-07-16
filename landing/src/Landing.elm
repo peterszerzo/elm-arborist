@@ -144,6 +144,7 @@ mainOnlyArboristSettings model =
     , Settings.level level
     , Settings.gutter gutter
     , Settings.nodeWidth nodeWidth
+    , Settings.extendConnectorsBy 20
     , Settings.nodeHeight nodeHeight
     , Settings.canvasWidth (canvasWidth model)
     , Settings.canvasHeight (canvasHeight model)

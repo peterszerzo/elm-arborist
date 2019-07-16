@@ -193,8 +193,17 @@ addTrailingEmptiesAdvanced =
 
 
 addTrailingEmptiesAdvancedHelper :
-    { parent : Maybe a, siblings : List a }
-    -> ({ node : a, parent : Maybe a, siblings : List a, children : List a } -> Bool)
+    { parent : Maybe a
+    , siblings : List a
+    }
+    ->
+        ({ node : a
+         , parent : Maybe a
+         , siblings : List a
+         , children : List a
+         }
+         -> Bool
+        )
     -> Tree a
     -> Tree a
 addTrailingEmptiesAdvancedHelper context shouldAddEmpty tree =

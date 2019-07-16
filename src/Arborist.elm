@@ -45,6 +45,7 @@ import Html.Keyed exposing (node)
 import Internals.Drag as Drag exposing (Drag)
 import Internals.NodeConnectors as NodeConnectors
 import Internals.Offset as Offset
+import Internals.Pt as Pt
 import Internals.Settings as Settings
 import Internals.Styles as Styles
 import Internals.TreeUtils as TreeUtils exposing (Path)
@@ -194,7 +195,7 @@ activeNode config =
                         , dragOffset
                             |> Offset.toPt offsetConfig
                         ]
-                            |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                            |> List.foldl Pt.add ( 0, 0 )
                   , context = viewContext settings (State model) tree active
                   }
                 )
@@ -464,7 +465,7 @@ update settings msg (State state) tree =
                                                       )
                                                     , ( -cx, -settings.nodeHeight / 2 - cy )
                                                     ]
-                                                        |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                                        |> List.foldl Pt.add ( 0, 0 )
                                                )
                                             >> Offset.fromPt (Utils.offsetConfig settings)
                                         )
@@ -643,7 +644,7 @@ subscriptions settingsOverrides (State state) tree =
                                                                   )
                                                                 , ( -cx, -settings.nodeHeight / 2 - cy )
                                                                 ]
-                                                                    |> List.foldl Utils.addFloatTuples ( 0, 0 )
+                                                                    |> List.foldl Pt.add ( 0, 0 )
                                                            )
                                                         >> Offset.fromPt (Utils.offsetConfig settings)
                                                     )
@@ -992,7 +993,7 @@ view attrs config =
                 |> Maybe.withDefault ( ( 0, 0 ), False )
 
         ( canvasTotalDragOffsetX, canvasTotalDragOffsetY ) =
-            Utils.addFloatTuples canvasDragOffset
+            Pt.add canvasDragOffset
                 (model.panOffset
                     |> Offset.toPt (Utils.offsetConfig settings)
                 )
@@ -1081,40 +1082,47 @@ view attrs config =
                                     nodeViewContext =
                                         viewContext settings (State model) config.tree path
                                 in
-                                [ ( pathIdBase ++ "-base"
-                                  , div
-                                        ((nodeBaseStyle
-                                            ++ coordStyle ( xWithDrag, yWithDrag )
-                                            ++ (if isDragged then
-                                                    [ ( "z-index", "100" )
-                                                    , ( "cursor", "move" )
-                                                    ]
+                                ( pathIdBase ++ "-base"
+                                , div
+                                    ((nodeBaseStyle
+                                        ++ coordStyle ( xWithDrag, yWithDrag )
+                                        ++ (if isDragged then
+                                                [ ( "z-index", "100" )
+                                                , ( "cursor", "move" )
+                                                ]
 
-                                                else
-                                                    []
-                                               )
-                                            |> List.map (\( property, value ) -> style property value)
-                                         )
-                                            ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
-                                               , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
-                                               ]
-                                        )
-                                        [ nodeView nodeViewContext node
-                                        ]
-                                  )
-                                , ( pathIdBase ++ "-connector"
-                                  , if node == Nothing then
-                                        text ""
+                                            else
+                                                []
+                                           )
+                                        |> List.map (\( property, value ) -> style property value)
+                                     )
+                                        ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
+                                           , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
+                                           ]
+                                    )
+                                    [ nodeView nodeViewContext node
+                                    ]
+                                )
+                                    :: (NodeConnectors.view
+                                            { settings = settings
+                                            , opacity = 1.0
+                                            , offset = ( xDrag, yDrag )
+                                            , center = center
+                                            , childCenters = childCenters
+                                            , extendTop = nodeViewContext.parent == Nothing
+                                            , extendBottom = List.length nodeViewContext.children == 0
+                                            }
+                                            |> List.indexedMap
+                                                (\connectorIndex connectorElement ->
+                                                    ( pathIdBase ++ "-" ++ String.fromInt connectorIndex ++ "-connector"
+                                                    , if node == Nothing then
+                                                        text ""
 
-                                    else
-                                        NodeConnectors.view
-                                            settings
-                                            1.0
-                                            ( xDrag, yDrag )
-                                            center
-                                            childCenters
-                                  )
-                                ]
+                                                      else
+                                                        connectorElement
+                                                    )
+                                                )
+                                       )
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
                                             ( pathIdBase ++ "-shadow"
                                             , div
@@ -1135,15 +1143,21 @@ view attrs config =
                                                         []
 
                                                     else
-                                                        [ ( pathIdBase ++ "-shadowconnector"
-                                                          , NodeConnectors.view
-                                                                settings
-                                                                0.3
-                                                                ( 0, 0 )
-                                                                center
-                                                                childCenters
-                                                          )
-                                                        ]
+                                                        NodeConnectors.view
+                                                            { settings = settings
+                                                            , opacity = 0.3
+                                                            , offset = ( 0, 0 )
+                                                            , center = center
+                                                            , childCenters = childCenters
+                                                            , extendTop = False
+                                                            , extendBottom = False
+                                                            }
+                                                            |> List.indexedMap
+                                                                (\connectorIndex connectorElement ->
+                                                                    ( pathIdBase ++ "-" ++ String.fromInt connectorIndex ++ "-shadowconnector"
+                                                                    , connectorElement
+                                                                    )
+                                                                )
                                                    )
 
                                         else

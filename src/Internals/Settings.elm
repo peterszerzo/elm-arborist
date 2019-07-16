@@ -29,6 +29,7 @@ type alias Settings node =
     , level : Float
     , gutter : Float
     , centerOffset : ( Float, Float )
+    , extendConnectorsBy : Float
     , connectorStroke : String
     , connectorStrokeWidth : String
     , dragAndDrop : Bool
@@ -49,6 +50,7 @@ defaults =
     , level = 80
     , gutter = 20
     , centerOffset = ( 0, 0 )
+    , extendConnectorsBy = 0
     , connectorStroke = "#E2E2E2"
     , connectorStrokeWidth = "2"
     , dragAndDrop = True
@@ -70,6 +72,7 @@ type Setting node
     | CenterOffset Int Int
     | ConnectorStroke String
     | ConnectorStrokeWidth String
+    | ExtendConnectorsBy Int
     | DragAndDrop Bool
     | KeyboardNavigation Bool
     | ShowPlaceholderLeaves Bool
@@ -104,6 +107,9 @@ apply newSettings settings =
 
                     CanvasHeight h ->
                         { settings | canvasHeight = toFloat h }
+
+                    ExtendConnectorsBy offset ->
+                        { settings | extendConnectorsBy = toFloat offset }
 
                     Level l ->
                         { settings | level = toFloat l }

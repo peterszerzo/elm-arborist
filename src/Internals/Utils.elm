@@ -1,9 +1,7 @@
 module Internals.Utils exposing
-    ( addFloatTuples
-    , areListsEqual
+    ( areListsEqual
     , changeLastInList
     , compareLists
-    , convertElm018Styles
     , dictGetWithListKeys
     , floatToPxString
     , offsetConfig
@@ -14,7 +12,6 @@ module Internals.Utils exposing
 
 import Dict
 import Html exposing (Attribute)
-import Html.Attributes exposing (style)
 import Html.Events exposing (stopPropagationOn)
 import Internals.Offset as Offset
 import Internals.Settings as Settings
@@ -77,11 +74,6 @@ floatToPxString =
     (\a -> a ++ "px") << String.fromInt << floor
 
 
-addFloatTuples : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
-addFloatTuples ( x1, y1 ) ( x2, y2 ) =
-    ( x1 + x2, y1 + y2 )
-
-
 startsWith : List a -> List a -> Bool
 startsWith start list =
     List.take (List.length start) list == start
@@ -90,11 +82,6 @@ startsWith start list =
 onClickStopPropagation : msg -> Attribute msg
 onClickStopPropagation message =
     stopPropagationOn "click" (Decode.succeed ( message, True ))
-
-
-convertElm018Styles : List ( String, String ) -> List (Attribute msg)
-convertElm018Styles =
-    List.map (\( property, value ) -> style property value)
 
 
 compareLists : List comparable -> List comparable -> Order

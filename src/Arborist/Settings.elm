@@ -1,6 +1,6 @@
 module Arborist.Settings exposing
     ( nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth
-    , dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered
+    , dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy
     )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
@@ -13,7 +13,7 @@ module Arborist.Settings exposing
 
 ## Features
 
-@docs dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered
+@docs dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy
 
 -}
 
@@ -67,6 +67,13 @@ gutter =
 centerOffset : Int -> Int -> Setting node
 centerOffset =
     CenterOffset
+
+
+{-| Specifies whether node connectors should extend a certain distance at root- or leaf nodes to connect to peripheral UI elements
+-}
+extendConnectorsBy : Int -> Setting node
+extendConnectorsBy =
+    ExtendConnectorsBy
 
 
 {-| Stroke color of the lines connecting siblings.
