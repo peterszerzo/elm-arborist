@@ -936,6 +936,11 @@ type alias Updater node =
     State -> Tree.Tree node -> ( State, Tree.Tree node )
 
 
+isBetween : Float -> Float -> Float -> Bool
+isBetween min max val =
+    val >= min && val <= max
+
+
 {-| The editor's view function, taking the following arguments:
 
   - [NodeView](#NodeView): view function for an individual node.
@@ -1070,6 +1075,10 @@ view attrs config =
                                     ( x, y ) =
                                         center
 
+                                    isOffScreen =
+                                        not (x + canvasTotalDragOffsetX |> isBetween -settings.nodeWidth (settings.canvasWidth + settings.nodeWidth))
+                                            || not (y + canvasTotalDragOffsetY |> isBetween -settings.nodeHeight (settings.canvasHeight + settings.nodeHeight))
+
                                     ( isDragged, ( xDrag, yDrag ) ) =
                                         nodeDragInfo settings path (State model)
 
@@ -1082,28 +1091,34 @@ view attrs config =
                                     nodeViewContext =
                                         viewContext settings (State model) config.tree path
                                 in
-                                ( pathIdBase ++ "-base"
-                                , div
-                                    ((nodeBaseStyle
-                                        ++ coordStyle ( xWithDrag, yWithDrag )
-                                        ++ (if isDragged then
-                                                [ ( "z-index", "100" )
-                                                , ( "cursor", "move" )
-                                                ]
+                                (if isOffScreen then
+                                    []
 
-                                            else
-                                                []
-                                           )
-                                        |> List.map (\( property, value ) -> style property value)
-                                     )
-                                        ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
-                                           , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
-                                           ]
-                                    )
-                                    [ nodeView nodeViewContext node
+                                 else
+                                    [ ( pathIdBase ++ "-base"
+                                      , div
+                                            ((nodeBaseStyle
+                                                ++ coordStyle ( xWithDrag, yWithDrag )
+                                                ++ (if isDragged then
+                                                        [ ( "z-index", "100" )
+                                                        , ( "cursor", "move" )
+                                                        ]
+
+                                                    else
+                                                        []
+                                                   )
+                                                |> List.map (\( property, value ) -> style property value)
+                                             )
+                                                ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
+                                                   , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
+                                                   ]
+                                            )
+                                            [ nodeView nodeViewContext node
+                                            ]
+                                      )
                                     ]
                                 )
-                                    :: (NodeConnectors.view
+                                    ++ (NodeConnectors.view
                                             { settings = settings
                                             , opacity = 1.0
                                             , offset = ( xDrag, yDrag )
