@@ -109,7 +109,16 @@ deactivate (State model) =
         }
 
 
-computeTree : Settings.Settings node -> Tree.Tree node -> { flat : List ( List Int, Maybe node ), layout : TreeUtils.Layout }
+type alias ComputedTree node =
+    { flat : List ( List Int, Maybe node )
+    , layout : TreeUtils.Layout
+    }
+
+
+computeTree :
+    Settings.Settings node
+    -> Tree.Tree node
+    -> ComputedTree node
 computeTree settings tree =
     let
         treeModifiedForCompute =
@@ -163,6 +172,9 @@ activeNode config =
 
         settings =
             Settings.apply config.settings Settings.defaults
+
+        computedTree =
+            computeTree settings config.tree
     in
     model.active
         |> Maybe.map
@@ -196,7 +208,7 @@ activeNode config =
                             |> Offset.toPt offsetConfig
                         ]
                             |> List.foldl Pt.add ( 0, 0 )
-                  , context = viewContext settings (State model) tree active
+                  , context = viewContext settings computedTree (State model) tree active
                   }
                 )
             )
@@ -783,11 +795,17 @@ isSibling nodePath1 nodePath2 =
         == List.take (List.length nodePath1 - 1) nodePath1
 
 
-viewContext : Settings.Settings node -> State -> Tree.Tree node -> List Int -> Context node
-viewContext settings (State model) tree path =
+viewContext :
+    Settings.Settings node
+    -> ComputedTree node
+    -> State
+    -> Tree.Tree node
+    -> List Int
+    -> Context node
+viewContext settings computedTree (State model) tree path =
     let
         { flat } =
-            computeTree settings tree
+            computedTree
 
         isDropTarget =
             Drag.state model.drag
@@ -969,8 +987,11 @@ view attrs config =
         settings =
             Settings.apply config.settings Settings.defaults
 
-        { flat, layout } =
+        computedTree =
             computeTree settings config.tree
+
+        { flat, layout } =
+            computedTree
 
         nodeBaseStyle =
             Styles.nodeBase settings
@@ -1007,40 +1028,46 @@ view attrs config =
                 )
     in
     div
-        ([ on "mousemove"
-            (Decode.map2 CanvasMouseMove
-                (Decode.field "screenX" Decode.float)
-                (Decode.field "screenY" Decode.float)
-                |> Decode.map mapMsg_
-            )
-         , on "mousedown"
-            (Decode.map2 CanvasMouseDown
-                (Decode.field "screenX" Decode.float)
-                (Decode.field "screenY" Decode.float)
-                |> Decode.map mapMsg_
-            )
-         , on "mouseup"
-            (Decode.map2 CanvasMouseUp
-                (Decode.field "screenX" Decode.float)
-                (Decode.field "screenY" Decode.float)
-                |> Decode.map mapMsg_
-            )
-         , on "mouseleave"
-            (Decode.succeed CanvasMouseLeave
-                |> Decode.map mapMsg_
-            )
-         , style "width" <| Utils.floatToPxString settings.canvasWidth
-         , style "height" <| Utils.floatToPxString settings.canvasHeight
-         , style "cursor" <|
-            if isCanvasDragging then
-                "move"
+        ((if Drag.state model.drag /= Nothing then
+            [ on "mousemove"
+                (Decode.map2 CanvasMouseMove
+                    (Decode.field "screenX" Decode.float)
+                    (Decode.field "screenY" Decode.float)
+                    |> Decode.map mapMsg_
+                )
+            ]
 
-            else
-                "auto"
-         , style "overflow" "hidden"
-         , style "box-sizing" "border-box"
-         , style "position" "relative"
-         ]
+          else
+            []
+         )
+            ++ [ on "mousedown"
+                    (Decode.map2 CanvasMouseDown
+                        (Decode.field "screenX" Decode.float)
+                        (Decode.field "screenY" Decode.float)
+                        |> Decode.map mapMsg_
+                    )
+               , on "mouseup"
+                    (Decode.map2 CanvasMouseUp
+                        (Decode.field "screenX" Decode.float)
+                        (Decode.field "screenY" Decode.float)
+                        |> Decode.map mapMsg_
+                    )
+               , on "mouseleave"
+                    (Decode.succeed CanvasMouseLeave
+                        |> Decode.map mapMsg_
+                    )
+               , style "width" <| Utils.floatToPxString settings.canvasWidth
+               , style "height" <| Utils.floatToPxString settings.canvasHeight
+               , style "cursor" <|
+                    if isCanvasDragging then
+                        "move"
+
+                    else
+                        "auto"
+               , style "overflow" "hidden"
+               , style "box-sizing" "border-box"
+               , style "position" "relative"
+               ]
             ++ attrs
         )
         [ node "div"
@@ -1109,7 +1136,7 @@ view attrs config =
                                         y + yDrag
 
                                     nodeViewContext =
-                                        viewContext settings (State model) config.tree path
+                                        viewContext settings computedTree (State model) config.tree path
                                 in
                                 (if isOffScreen then
                                     []
