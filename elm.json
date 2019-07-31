@@ -3,7 +3,7 @@
     "name": "peterszerzo/elm-arborist",
     "summary": "Tree-editing interface for Elm",
     "license": "BSD-3-Clause",
-    "version": "8.1.1",
+    "version": "8.1.2",
     "exposed-modules": [
         "Arborist",
         "Arborist.Settings",
