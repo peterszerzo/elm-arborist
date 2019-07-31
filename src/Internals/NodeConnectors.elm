@@ -1,6 +1,6 @@
 module Internals.NodeConnectors exposing (pad, strokeWeight, toCoord, view)
 
-import Html exposing (Html)
+import Html exposing (Html, text)
 import Html.Attributes exposing (style)
 import Internals.Pt as Pt
 import Internals.Settings as Settings
@@ -57,20 +57,20 @@ view :
     , childCenters : List Pt.Pt
     }
     -> List (Html msg)
-view { settings, opacity, offset, center, childCenters } =
+view config =
     let
         strokeAttrs =
-            [ stroke settings.connectorStroke
-            , strokeWidth settings.connectorStrokeWidth
+            [ stroke config.settings.connectorStroke
+            , strokeWidth config.settings.connectorStrokeWidth
             , strokeLinecap "round"
             , strokeLinejoin "round"
             ]
 
         ( centerX, centerY ) =
-            center
+            config.center
 
         pts =
-            center :: childCenters
+            config.center :: config.childCenters
 
         minX =
             pts
@@ -103,17 +103,17 @@ view { settings, opacity, offset, center, childCenters } =
                 w_
 
         h_ =
-            maxY - minY - settings.nodeHeight
+            maxY - minY - config.settings.nodeHeight
 
         h =
             if h_ < 0 then
-                settings.level
+                config.settings.level
 
             else
                 h_
 
         relCenter =
-            ( Tuple.first center - minX, Tuple.second center - minY )
+            ( Tuple.first config.center - minX, Tuple.second config.center - minY )
 
         relChildren =
             List.map
@@ -122,28 +122,29 @@ view { settings, opacity, offset, center, childCenters } =
                     , y - minY
                     )
                 )
-                childCenters
+                config.childCenters
 
-        extender isTop =
+        extender : { isTop : Bool } -> Html.Html msg
+        extender extenderConfig =
             svg
                 ([ width "4"
-                 , height (String.fromFloat settings.extendConnectorsBy)
-                 , viewBox <| "-2 0 4 " ++ String.fromFloat settings.extendConnectorsBy
+                 , height (String.fromFloat config.settings.extendConnectorsBy)
+                 , viewBox <| "-2 0 4 " ++ String.fromFloat config.settings.extendConnectorsBy
                  , style "position" "absolute"
                  , style "z-index" "-1"
-                 , style "opacity" <| String.fromFloat opacity
+                 , style "opacity" <| String.fromFloat config.opacity
                  ]
-                    ++ (Styles.coordinate settings
-                            (( centerX + (settings.nodeWidth / 2)
+                    ++ (Styles.coordinate config.settings
+                            (( centerX + (config.settings.nodeWidth / 2)
                              , centerY
-                                + (if isTop then
-                                    -settings.extendConnectorsBy
+                                + (if extenderConfig.isTop then
+                                    -config.settings.extendConnectorsBy
 
                                    else
-                                    settings.nodeHeight
+                                    config.settings.nodeHeight
                                   )
                              )
-                                |> Pt.add offset
+                                |> Pt.add config.offset
                             )
                             |> List.map (\( property, value ) -> style property value)
                        )
@@ -152,39 +153,47 @@ view { settings, opacity, offset, center, childCenters } =
                     ([ x1 "0"
                      , y1 "0"
                      , x2 "0"
-                     , y2 (String.fromFloat settings.extendConnectorsBy)
+                     , y2 (String.fromFloat config.settings.extendConnectorsBy)
                      ]
                         ++ strokeAttrs
                     )
                     []
                 ]
     in
-    [ extender True
-    , extender False
+    [ if config.extendTop then
+        extender { isTop = True }
+
+      else
+        text ""
+    , if config.extendBottom then
+        extender { isTop = False }
+
+      else
+        text ""
     , svg
         ([ width (String.fromFloat (w + 4))
          , height (String.fromFloat h)
          , viewBox <|
-            if List.length childCenters == 0 then
+            if List.length config.childCenters == 0 then
                 "-4 0 4 " ++ String.fromFloat h
 
             else
                 "-2 0 " ++ String.fromFloat (w + 4) ++ " " ++ String.fromFloat h
          , style "position" "absolute"
          , style "z-index" "-1"
-         , style "opacity" <| String.fromFloat opacity
+         , style "opacity" <| String.fromFloat config.opacity
          ]
-            ++ (Styles.coordinate settings
-                    (( minX + (settings.nodeWidth / 2)
-                     , minY + settings.nodeHeight
+            ++ (Styles.coordinate config.settings
+                    (( minX + (config.settings.nodeWidth / 2)
+                     , minY + config.settings.nodeHeight
                      )
-                        |> Pt.add offset
+                        |> Pt.add config.offset
                     )
                     |> List.map (\( property, value ) -> style property value)
                )
         )
       <|
-        if List.length childCenters == 0 then
+        if List.length config.childCenters == 0 then
             []
 
         else
@@ -210,7 +219,7 @@ view { settings, opacity, offset, center, childCenters } =
                             []
                     )
                     relChildren
-                ++ (if List.length childCenters > 1 then
+                ++ (if List.length config.childCenters > 1 then
                         [ line
                             ([ x1 <| toCoord 1
                              , y1 <| toCoord (h / 2)

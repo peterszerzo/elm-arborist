@@ -981,6 +981,9 @@ view attrs config =
         dragState =
             Drag.state model.drag
 
+        mapMsg_ =
+            mapMsg config
+
         ( canvasDragOffset, isCanvasDragging ) =
             dragState
                 |> Maybe.map
@@ -1008,23 +1011,23 @@ view attrs config =
             (Decode.map2 CanvasMouseMove
                 (Decode.field "screenX" Decode.float)
                 (Decode.field "screenY" Decode.float)
-                |> Decode.map (mapMsg config)
+                |> Decode.map mapMsg_
             )
          , on "mousedown"
             (Decode.map2 CanvasMouseDown
                 (Decode.field "screenX" Decode.float)
                 (Decode.field "screenY" Decode.float)
-                |> Decode.map (mapMsg config)
+                |> Decode.map mapMsg_
             )
          , on "mouseup"
             (Decode.map2 CanvasMouseUp
                 (Decode.field "screenX" Decode.float)
                 (Decode.field "screenY" Decode.float)
-                |> Decode.map (mapMsg config)
+                |> Decode.map mapMsg_
             )
          , on "mouseleave"
             (Decode.succeed CanvasMouseLeave
-                |> Decode.map (mapMsg config)
+                |> Decode.map mapMsg_
             )
          , style "width" <| Utils.floatToPxString settings.canvasWidth
          , style "height" <| Utils.floatToPxString settings.canvasHeight
@@ -1075,9 +1078,26 @@ view attrs config =
                                     ( x, y ) =
                                         center
 
+                                    isOffScreenX =
+                                        not
+                                            (x
+                                                + canvasTotalDragOffsetX
+                                                |> isBetween
+                                                    (-settings.nodeWidth / 2 - settings.gutter)
+                                                    (settings.canvasWidth + settings.nodeWidth / 2 + settings.gutter)
+                                            )
+
+                                    isOffScreenY =
+                                        not
+                                            (y
+                                                + canvasTotalDragOffsetY
+                                                |> isBetween
+                                                    (-settings.nodeHeight / 2 - settings.level)
+                                                    (settings.canvasHeight + settings.nodeHeight / 2 + settings.level)
+                                            )
+
                                     isOffScreen =
-                                        not (x + canvasTotalDragOffsetX |> isBetween -settings.nodeWidth (settings.canvasWidth + settings.nodeWidth))
-                                            || not (y + canvasTotalDragOffsetY |> isBetween -settings.nodeHeight (settings.canvasHeight + settings.nodeHeight))
+                                        isOffScreenX || isOffScreenY
 
                                     ( isDragged, ( xDrag, yDrag ) ) =
                                         nodeDragInfo settings path (State model)
@@ -1109,8 +1129,18 @@ view attrs config =
                                                    )
                                                 |> List.map (\( property, value ) -> style property value)
                                              )
-                                                ++ [ on "mouseenter" (Decode.succeed (NodeMouseEnter path |> mapMsg config))
-                                                   , on "mouseleave" (Decode.succeed (NodeMouseLeave path |> mapMsg config))
+                                                ++ [ on "mouseenter"
+                                                        (Decode.succeed
+                                                            (NodeMouseEnter path
+                                                                |> mapMsg_
+                                                            )
+                                                        )
+                                                   , on "mouseleave"
+                                                        (Decode.succeed
+                                                            (NodeMouseLeave path
+                                                                |> mapMsg_
+                                                            )
+                                                        )
                                                    ]
                                             )
                                             [ nodeView nodeViewContext node
@@ -1118,25 +1148,29 @@ view attrs config =
                                       )
                                     ]
                                 )
-                                    ++ (NodeConnectors.view
-                                            { settings = settings
-                                            , opacity = 1.0
-                                            , offset = ( xDrag, yDrag )
-                                            , center = center
-                                            , childCenters = childCenters
-                                            , extendTop = nodeViewContext.parent == Nothing
-                                            , extendBottom = List.length nodeViewContext.children == 0
-                                            }
-                                            |> List.indexedMap
-                                                (\connectorIndex connectorElement ->
-                                                    ( pathIdBase ++ "-" ++ String.fromInt connectorIndex ++ "-connector"
-                                                    , if node == Nothing then
-                                                        text ""
+                                    ++ (if isOffScreenY then
+                                            []
 
-                                                      else
-                                                        connectorElement
+                                        else
+                                            NodeConnectors.view
+                                                { settings = settings
+                                                , opacity = 1.0
+                                                , offset = ( xDrag, yDrag )
+                                                , center = center
+                                                , childCenters = childCenters
+                                                , extendTop = nodeViewContext.parent == Nothing
+                                                , extendBottom = List.length nodeViewContext.children == 0
+                                                }
+                                                |> List.indexedMap
+                                                    (\connectorIndex connectorElement ->
+                                                        ( pathIdBase ++ "-" ++ String.fromInt connectorIndex ++ "-connector"
+                                                        , if node == Nothing then
+                                                            text ""
+
+                                                          else
+                                                            connectorElement
+                                                        )
                                                     )
-                                                )
                                        )
                                     ++ (if isDragged && (abs xDrag + abs yDrag > 60) then
                                             ( pathIdBase ++ "-shadow"
