@@ -1,12 +1,12 @@
 module Arborist exposing
     ( State, init, NodeView, view, subscriptions, Updater
     , Setting
-    , activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
+    , activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
     , reposition, deactivate
     , NodeState(..), Context
     )
 
-{-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes. Structured as a TEA component defining its own init, update and view, `elm-arborist` allows you to easily initialize a tree editor, keep its state in an opaque model, and access the [edited result at any time](#tree).
+{-| Drag-and-drop interface to edit, dissect and-rearrange tree structures with arbitrary data sitting in their nodes.
 
 
 # Module setup
@@ -21,7 +21,7 @@ module Arborist exposing
 
 # Arborist tree getters and modifiers
 
-@docs activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode
+@docs activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
 
 
 # Display modifiers
@@ -161,7 +161,13 @@ activeNode :
     , state : State
     , tree : Tree.Tree node
     }
-    -> Maybe ( Maybe node, { position : ( Float, Float ), context : Context node } )
+    ->
+        Maybe
+            ( Maybe node
+            , { position : ( Float, Float )
+              , context : Context node
+              }
+            )
 activeNode config =
     let
         (State model) =
@@ -218,49 +224,62 @@ activeNode config =
 -}
 setActiveNode : node -> State -> Tree.Tree node -> ( State, Tree.Tree node )
 setActiveNode newNode =
-    setActiveNodeWithChildren { node = newNode, childrenOverride = Nothing }
+    setActiveNodeWithChildren
+        { node = newNode
+        , childrenOverride = Nothing
+        }
 
 
-setActiveNodeWithChildrenHelper : List Int -> node -> Maybe (List node) -> Tree.Tree node -> Tree.Tree node
-setActiveNodeWithChildrenHelper active newNode newChildren tree =
-    let
-        { flat } =
-            computeTree Settings.defaults tree
-    in
-    -- Handle special case when the tree is completely empty
-    -- and a new node is added at the root.
-    if tree == Tree.Empty && active == [] then
-        Tree.Node newNode []
-
-    else
-        let
-            node =
-                flat
-                    |> List.filter (\( path, _ ) -> active == path)
-                    |> List.head
-                    |> Maybe.map Tuple.second
-        in
-        case node of
-            Just (Just _) ->
-                TreeUtils.updateAtWithChildren active newNode newChildren tree
-
-            Just Nothing ->
-                TreeUtils.insert (List.take (List.length active - 1) active) (Just newNode) tree
-
-            _ ->
-                -- Impossible state
-                tree
+{-| Similar to [setActiveNode](#setActiveNode), but instead of updating just the node with its subtrees intact, it updates the entire branch based on a `Tree -> Tree` function.
+-}
+updateActiveBranch : (Tree.Tree node -> Tree.Tree node) -> State -> Tree.Tree node -> ( State, Tree.Tree node )
+updateActiveBranch fn (State state) tree =
+    ( State state
+    , state.active
+        |> Maybe.map
+            (\active ->
+                TreeUtils.updateAt
+                    active
+                    fn
+                    tree
+            )
+        |> Maybe.withDefault tree
+    )
 
 
 {-| Sets the active node with the option to also set its children. The existing children will be discarded along with their children.
 -}
-setActiveNodeWithChildren : { node : node, childrenOverride : Maybe (List node) } -> State -> Tree.Tree node -> ( State, Tree.Tree node )
+setActiveNodeWithChildren :
+    { node : node
+    , childrenOverride : Maybe (List node)
+    }
+    -> State
+    -> Tree.Tree node
+    -> ( State, Tree.Tree node )
 setActiveNodeWithChildren newStuff (State model) tree =
     ( State model
     , model.active
         |> Maybe.map
             (\active ->
-                setActiveNodeWithChildrenHelper active newStuff.node newStuff.childrenOverride tree
+                TreeUtils.updateAt
+                    active
+                    (\branch ->
+                        case branch of
+                            Tree.Empty ->
+                                Tree.Node newStuff.node
+                                    (newStuff.childrenOverride
+                                        |> Maybe.withDefault []
+                                        |> List.map (\child -> Tree.Node child [])
+                                    )
+
+                            Tree.Node existingNode existingChildren ->
+                                Tree.Node newStuff.node
+                                    (newStuff.childrenOverride
+                                        |> Maybe.map (List.map (\child -> Tree.Node child []))
+                                        |> Maybe.withDefault existingChildren
+                                    )
+                    )
+                    tree
             )
         |> Maybe.withDefault tree
     )
@@ -344,7 +363,13 @@ resolveDrop settings (State model) tree =
                     |> Maybe.withDefault
                         -- If the drop target is a placeholder, first add an Empty node in the original tree
                         -- so the swap method actually finds a node.
-                        (TreeUtils.insert (List.take (List.length dropTargetPath - 1) dropTargetPath) Nothing tree
+                        (TreeUtils.insert
+                            (List.take
+                                (List.length dropTargetPath - 1)
+                                dropTargetPath
+                            )
+                            Tree.Empty
+                            tree
                             |> TreeUtils.swap path dropTargetPath
                             |> TreeUtils.removeEmpties
                         )
@@ -401,8 +426,7 @@ update settings msg (State state) tree =
 
                         else
                             Drag.start (Just path) x y
-                    , active =
-                        active_
+                    , active = active_
                 }
             , tree
             )
@@ -446,16 +470,18 @@ update settings msg (State state) tree =
                                     tree
 
                                 -- A placeholder has been clicked. Add new node to the tree
-                                Just Nothing ->
+                                _ ->
                                     case settings.defaultNode of
                                         Just defaultNode ->
-                                            setActiveNodeWithChildrenHelper path defaultNode Nothing tree
+                                            TreeUtils.insert
+                                                path
+                                                (Tree.Node defaultNode
+                                                    []
+                                                )
+                                                tree
 
                                         Nothing ->
                                             tree
-
-                                Nothing ->
-                                    tree
 
                         Nothing ->
                             resolveDrop settings (State state) tree

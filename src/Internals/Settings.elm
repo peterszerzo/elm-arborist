@@ -17,6 +17,15 @@ type alias ShowPlaceholderLeavesAdvanced node =
     -> Bool
 
 
+type alias ExtendConnectorsByAdvanced node =
+    { node : node
+    , parent : Maybe node
+    , children : List node
+    , siblings : List node
+    }
+    -> Maybe Int
+
+
 type alias IsNodeClustered node =
     node -> Bool
 
@@ -73,6 +82,7 @@ type Setting node
     | ConnectorStroke String
     | ConnectorStrokeWidth String
     | ExtendConnectorsBy Int
+    | ExtendConnectorsByAdvanced (ExtendConnectorsByAdvanced node)
     | DragAndDrop Bool
     | KeyboardNavigation Bool
     | ShowPlaceholderLeaves Bool
@@ -110,6 +120,9 @@ apply newSettings settings =
 
                     ExtendConnectorsBy offset ->
                         { settings | extendConnectorsBy = toFloat offset }
+
+                    ExtendConnectorsByAdvanced extendConnectorsByAdvanced ->
+                        settings
 
                     Level l ->
                         { settings | level = toFloat l }

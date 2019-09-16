@@ -76,6 +76,21 @@ extendConnectorsBy =
     ExtendConnectorsBy
 
 
+{-| A fine-grained control version of `showPlaceholderLeaves`, allowing control on the display of placeholder leaves based on the contents of the node, as well as its parent and children.
+-}
+extendConnectorsByAdvanced :
+    ({ node : node
+     , parent : Maybe node
+     , children : List node
+     , siblings : List node
+     }
+     -> Maybe Int
+    )
+    -> Setting node
+extendConnectorsByAdvanced =
+    ExtendConnectorsByAdvanced
+
+
 {-| Stroke color of the lines connecting siblings.
 -}
 connectorStroke : String -> Setting node

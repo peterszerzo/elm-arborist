@@ -19,7 +19,6 @@ module Internals.TreeUtils exposing
     , removeEmpties
     , swap
     , updateAt
-    , updateAtWithChildren
     , updateSubtree
     )
 
@@ -325,43 +324,37 @@ updateSubtree path subtree tree =
             currentTree
 
 
-updateAtWithChildren : Path -> a -> Maybe (List a) -> Tree a -> Tree a
-updateAtWithChildren path replaceItem replaceChildren tree =
+updateAt : Path -> (Tree a -> Tree a) -> Tree a -> Tree a
+updateAt path updateBranchModifier tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             Node item <|
                 List.indexedMap
                     (\index child ->
                         if index == head then
-                            updateAtWithChildren tail replaceItem replaceChildren child
+                            updateAt tail updateBranchModifier child
 
                         else
                             child
                     )
                     children
 
-        ( [], Node _ children ) ->
-            Node replaceItem
-                (replaceChildren
-                    |> Maybe.map (List.map (\child -> Node child []))
-                    |> Maybe.withDefault children
-                )
+        ( [], branch ) ->
+            updateBranchModifier branch
 
         ( _, anyTree ) ->
             anyTree
 
 
-updateAt : Path -> a -> Tree a -> Tree a
-updateAt path replaceItem tree =
-    updateAtWithChildren path replaceItem Nothing tree
-
-
-insert : Path -> Maybe a -> Tree a -> Tree a
+insert : Path -> Tree a -> Tree a -> Tree a
 insert path insertItem tree =
     case ( path, tree ) of
+        ( head :: tail, Empty ) ->
+            insertItem
+
         ( head :: tail, Node item children ) ->
-            Node item <|
-                List.indexedMap
+            children
+                |> List.indexedMap
                     (\index child ->
                         if index == head then
                             insert tail insertItem child
@@ -369,19 +362,20 @@ insert path insertItem tree =
                         else
                             child
                     )
-                    children
+                |> (\currentChildren ->
+                        currentChildren
+                            ++ (if head == List.length currentChildren && tail == [] then
+                                    [ insertItem
+                                    ]
 
-        ( [], Node item children ) ->
-            Node item
-                (children
-                    ++ [ insertItem
-                            |> Maybe.map (\i -> Node i [])
-                            |> Maybe.withDefault Empty
-                       ]
-                )
+                                else
+                                    []
+                               )
+                   )
+                |> Node item
 
-        ( _, anyTree ) ->
-            anyTree
+        ( [], _ ) ->
+            insertItem
 
 
 delete : Path -> Tree a -> Tree a
