@@ -633,7 +633,7 @@ dirtyAnalysisToLayoutLevelPass level nodeInfo currentLayoutPass =
                     ( path
                     , List.map
                         (\child ->
-                            Dict.get child currentLayoutPass
+                            Utils.dictGetWithListKeys child currentLayoutPass
                                 |> Maybe.withDefault
                                     { center = ( 0, 0 )
                                     , childCenters = []

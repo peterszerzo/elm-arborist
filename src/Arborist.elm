@@ -461,7 +461,7 @@ update settings msg (State state) tree =
             else
                 let
                     newTree =
-                        case Dict.get path (Dict.fromList flat) of
+                        case Utils.dictGetWithListKeys path (Dict.fromList flat) of
                             Just (Just _) ->
                                 tree
 
