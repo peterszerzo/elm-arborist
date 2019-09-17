@@ -46,7 +46,7 @@ gutter =
 minimapOnlyArboristSettings : List (Arborist.Setting Node.Node)
 minimapOnlyArboristSettings =
     [ Settings.keyboardNavigation False
-    , Settings.connectorStroke <| Ui.rgbToCssString Ui.blueRgb
+    , Settings.connectorStroke <| Ui.rgbToCssString Ui.greenRgb
     , Settings.canvasWidth canvasWidth
     , Settings.canvasHeight canvasHeight
     , Settings.centerOffset 0 (-150 * 40 / 145 |> floor)
@@ -73,7 +73,7 @@ pinContainer attrs child =
 
 
 nodeView : Arborist.NodeView Node.Node msg
-nodeView _ maybeNode =
+nodeView nodeState maybeNode =
     (case maybeNode of
         Just node ->
             node.question
@@ -81,27 +81,47 @@ nodeView _ maybeNode =
                 |> String.toUpper
                 |> text
                 |> el
-                    [ centerX
-                    , centerY
-                    , Font.color Ui.white
-                    , Font.size 10
-                    ]
+                    (Ui.smallType
+                        ++ [ centerX
+                           , centerY
+                           , Font.color Ui.white
+                           ]
+                    )
                 |> pinContainer
-                    [ Background.color Ui.blue
-                    ]
+                    ([ Background.color Ui.green
+                     , mouseOver
+                        [ Background.color Ui.lighterGreen
+                        ]
+                     ]
+                        ++ (case nodeState.state of
+                                Arborist.Active ->
+                                    [ [ "0 0 0 1px white"
+                                      , "0 0 0 3px " ++ Ui.rgbToCssString Ui.greenRgb
+                                      ]
+                                        |> String.join ","
+                                        |> Ui.htmlStyle "box-shadow"
+                                    ]
+
+                                _ ->
+                                    []
+                           )
+                    )
 
         Nothing ->
             el
                 [ centerX
                 , centerY
-                , Font.color Ui.blue
+                , Font.color Ui.green
                 , Font.size 16
                 , Font.bold
                 ]
                 (text "+")
                 |> pinContainer
                     [ Border.width 2
-                    , Border.color Ui.blue
+                    , Border.color Ui.green
+                    , mouseOver
+                        [ Background.color Ui.faintGreen
+                        ]
                     ]
     )
         |> layoutWith

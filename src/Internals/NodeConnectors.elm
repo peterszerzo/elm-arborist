@@ -49,6 +49,7 @@ listMax =
 
 view :
     { settings : Settings.Settings node
+    , extendBy : Maybe Float
     , extendTop : Bool
     , extendBottom : Bool
     , opacity : Float
@@ -124,12 +125,16 @@ view config =
                 )
                 config.childCenters
 
+        extendBy =
+            config.extendBy
+                |> Maybe.withDefault 0
+
         extender : { isTop : Bool } -> Html.Html msg
         extender extenderConfig =
             svg
                 ([ width "4"
-                 , height (String.fromFloat config.settings.extendConnectorsBy)
-                 , viewBox <| "-2 0 4 " ++ String.fromFloat config.settings.extendConnectorsBy
+                 , height (String.fromFloat extendBy)
+                 , viewBox <| "-2 0 4 " ++ String.fromFloat extendBy
                  , style "position" "absolute"
                  , style "z-index" "-1"
                  , style "opacity" <| String.fromFloat config.opacity
@@ -138,7 +143,7 @@ view config =
                             (( centerX + (config.settings.nodeWidth / 2)
                              , centerY
                                 + (if extenderConfig.isTop then
-                                    -config.settings.extendConnectorsBy
+                                    -extendBy
 
                                    else
                                     config.settings.nodeHeight
@@ -153,7 +158,7 @@ view config =
                     ([ x1 "0"
                      , y1 "0"
                      , x2 "0"
-                     , y2 (String.fromFloat config.settings.extendConnectorsBy)
+                     , y2 (String.fromFloat extendBy)
                      ]
                         ++ strokeAttrs
                     )

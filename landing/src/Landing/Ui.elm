@@ -1,4 +1,25 @@
-module Landing.Ui exposing (black, blue, blueRgb, bodyType, button, faintBlue, input, largeShadow, lighterBlue, red, rgbToColor, rgbToCssString, smallShadow, smallType, switch, white)
+module Landing.Ui exposing
+    ( white, black, green, lighterGreen, faintGreen, greenRgb, red
+    , bodyType, smallType
+    , rgbToCssString, rgbToColor, htmlStyle
+    , button, switch
+    , largeShadow, smallShadow
+    , input
+    )
+
+{-|
+
+@docs white, black, green, lighterGreen, faintGreen, greenRgb, red
+
+@docs bodyType, smallType, labelType
+
+@docs rgbToCssString, rgbToColor, htmlStyle
+
+@docs button, switch
+
+@docs largeShadow, smallShadow
+
+-}
 
 import Element exposing (..)
 import Element.Background as Background
@@ -18,19 +39,24 @@ black =
     rgb255 0 0 0
 
 
-blueRgb : ( Int, Int, Int )
-blueRgb =
-    ( 50, 57, 91 )
+greenRgb : ( Int, Int, Int )
+greenRgb =
+    ( 15, 73, 62 )
 
 
-blue : Color
-blue =
-    rgbToColor blueRgb
+green : Color
+green =
+    rgbToColor greenRgb
 
 
-lighterBlue : Color
-lighterBlue =
-    rgb255 68 75 105
+lighterGreen : Color
+lighterGreen =
+    rgb255 56 96 88
+
+
+faintGreen : Color
+faintGreen =
+    rgb255 210 219 217
 
 
 red : Color
@@ -38,9 +64,13 @@ red =
     rgb255 220 40 30
 
 
-faintBlue : Color
-faintBlue =
-    rgb255 199 201 210
+faintRed : Color
+faintRed =
+    rgb255 248 215 214
+
+
+
+-- Helpers
 
 
 rgbToColor : ( Int, Int, Int ) -> Color
@@ -51,6 +81,12 @@ rgbToColor ( r, g, b ) =
 rgbToCssString : ( Int, Int, Int ) -> String
 rgbToCssString ( r, g, b ) =
     "rgb(" ++ String.fromInt r ++ "," ++ String.fromInt g ++ "," ++ String.fromInt b ++ ")"
+
+
+htmlStyle : String -> String -> Attribute msg
+htmlStyle attrName attrValue =
+    Html.Attributes.style attrName attrValue
+        |> htmlAttribute
 
 
 smallShadow : Attribute msg
@@ -68,26 +104,40 @@ largeShadow =
     Border.shadow
         { offset = ( 0, 2 )
         , size = 0
-        , blur = 20
-        , color = rgba255 0 0 0 0.25
+        , blur = 16
+        , color = rgba255 0 0 0 0.35
         }
+
+
+font : Attribute msg
+font =
+    Font.family
+        [ Font.typeface "Monoid"
+        , Font.typeface "monospace"
+        ]
 
 
 bodyType : List (Attribute msg)
 bodyType =
-    [ Font.size 14
-    , Font.family
-        [ Font.typeface "Source Sans Pro"
-        ]
+    [ Font.size 12
+    , font
     ]
 
 
 smallType : List (Attribute msg)
 smallType =
-    [ Font.size 11
-    , Font.family
-        [ Font.typeface "Source Sans Pro"
-        ]
+    [ Font.size 9
+    , font
+    ]
+
+
+labelType : List (Attribute msg)
+labelType =
+    [ Font.size 9
+    , htmlStyle "text-transform" "uppercase"
+    , alpha 0.75
+    , Font.letterSpacing 0.5
+    , font
     ]
 
 
@@ -107,6 +157,7 @@ switch attrs config =
             \checked ->
                 el
                     [ width (px 80)
+                    , centerX
                     , Font.center
                     ]
                 <|
@@ -116,15 +167,22 @@ switch attrs config =
                          , padding 3
                          , Border.width 1
                          , Border.rounded 18
-                         , Border.color blue
+                         , Border.color green
                          , centerX
+                         , moveRight 10
                          ]
                             ++ (if checked then
-                                    [ Background.color blue
+                                    [ Background.color green
+                                    , mouseOver
+                                        [ Background.color lighterGreen
+                                        ]
                                     ]
 
                                 else
-                                    []
+                                    [ mouseOver
+                                        [ Background.color faintGreen
+                                        ]
+                                    ]
                                )
                         )
                     <|
@@ -148,14 +206,14 @@ switch attrs config =
                                         ]
 
                                     else
-                                        [ Background.color blue
+                                        [ Background.color green
                                         ]
                                    )
                             )
                             none
         , label =
             el
-                (smallType
+                (labelType
                     ++ [ Font.color black
                        , Font.center
                        ]
@@ -183,13 +241,27 @@ button attrs config =
                , Border.rounded 4
                ]
             ++ (if config.isError then
-                    [ Background.color red
+                    [ Border.width 1
+                    , Border.color red
+                    , Font.color red
+                    , mouseOver
+                        [ Background.color faintRed
+                        ]
                     ]
 
                 else
-                    [ Background.color blue
+                    [ Background.color green
+                    , mouseOver
+                        [ Background.color lighterGreen
+                        ]
                     , focused
-                        []
+                        [ Border.shadow
+                            { offset = ( 0, 0 )
+                            , size = 3
+                            , blur = 0
+                            , color = faintGreen
+                            }
+                        ]
                     ]
                )
             ++ attrs
@@ -207,21 +279,20 @@ input :
     -> Element msg
 input config =
     Input.text
-        [ Font.size 16
-        , paddingXY 10 6
-        , Font.family
-            [ Font.typeface "Source Sans Pro"
-            ]
-        , focused
-            [ Border.shadow
-                { size = 3
-                , blur = 0
-                , offset = ( 0, 0 )
-                , color = faintBlue
-                }
-            , Border.color blue
-            ]
-        ]
+        (bodyType
+            ++ [ paddingXY 10 8
+               , Border.rounded 4
+               , focused
+                    [ Border.shadow
+                        { size = 3
+                        , blur = 0
+                        , offset = ( 0, 0 )
+                        , color = faintGreen
+                        }
+                    , Border.color green
+                    ]
+               ]
+        )
         { onChange = config.onChange
         , text = config.value
         , placeholder = Nothing
@@ -230,9 +301,7 @@ input config =
                 |> Maybe.map
                     (text
                         >> el
-                            [ htmlAttribute <| Html.Attributes.style "text-transform" "uppercase"
-                            , Font.size 12
-                            ]
+                            labelType
                         >> Input.labelAbove
                             [ paddingEach
                                 { top = 0

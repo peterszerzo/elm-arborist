@@ -15,7 +15,6 @@ import Element.Border as Border
 import Element.Font as Font
 import Html
 import Html.Attributes
-import Html.Events
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Landing.Minimap as Minimap
@@ -43,7 +42,12 @@ main =
 type alias Model =
     { arborist : Arborist.State
     , tree : Tree.Tree Node.Node
-    , windowSize : Maybe { width : Int, height : Int }
+    , windowSize :
+        Maybe
+            { width : Int
+            , height : Int
+            }
+    , version : String
 
     -- Keep track of a to-be-inserted node
     , newNode : Node.Node
@@ -93,22 +97,22 @@ tree =
 
 nodeHeight : Int
 nodeHeight =
-    45
+    54
 
 
 nodeWidth : Int
 nodeWidth =
-    160
+    180
 
 
 level : Int
 level =
-    100
+    140
 
 
 gutter : Int
 gutter =
-    40
+    60
 
 
 sharedArboristSettings : Model -> List (Arborist.Setting Node.Node)
@@ -127,7 +131,7 @@ sharedArboristSettings model =
 canvasWidth : Model -> Int
 canvasWidth model =
     model.windowSize
-        |> Maybe.map (.width >> (\w -> w - 100))
+        |> Maybe.map (.width >> (\w -> w - 120))
         |> Maybe.withDefault 1000
 
 
@@ -140,17 +144,28 @@ canvasHeight model =
 
 mainOnlyArboristSettings : Model -> List (Arborist.Setting Node.Node)
 mainOnlyArboristSettings model =
-    [ Settings.centerOffset 0 -150
+    [ Settings.centerOffset 0 -100
     , Settings.level level
     , Settings.gutter gutter
     , Settings.nodeWidth nodeWidth
-    , Settings.extendConnectorsBy 20
+    , Settings.extendConnectorsByAdvanced
+        (\context ->
+            context.node
+                |> Maybe.andThen
+                    (\node ->
+                        if node.isClustered then
+                            Nothing
+
+                        else
+                            Just 20
+                    )
+        )
     , Settings.nodeHeight nodeHeight
     , Settings.canvasWidth (canvasWidth model)
     , Settings.canvasHeight (canvasHeight model)
     , Settings.keyboardNavigation model.keyboardNavigation
     , Settings.connectorStrokeWidth "2"
-    , Settings.connectorStroke <| Ui.rgbToCssString Ui.blueRgb
+    , Settings.connectorStroke <| Ui.rgbToCssString Ui.greenRgb
     ]
 
 
@@ -166,9 +181,15 @@ minimapArboristSettings model =
 
 init : Encode.Value -> ( Model, Cmd Msg )
 init flags =
+    let
+        version =
+            Decode.decodeValue Decode.string flags
+                |> Result.withDefault "8.2.0"
+    in
     ( { arborist = Arborist.init
       , tree = tree
       , windowSize = Nothing
+      , version = version
       , newNode =
             { question = ""
             , answer = ""
@@ -304,22 +325,21 @@ update msg model =
 -- View
 
 
-elementHtmlStyle : String -> String -> Attribute msg
-elementHtmlStyle prop val =
-    htmlAttribute <| Html.Attributes.style prop val
-
-
 centerMark : Attribute msg
 centerMark =
     inFront <|
-        el
-            [ width (px 4)
-            , height (px 4)
-            , Background.color (rgb 1 0 0)
-            , centerX
-            , centerY
-            ]
+        if True then
             none
+
+        else
+            el
+                [ width (px 4)
+                , height (px 4)
+                , Background.color (rgb 1 0 0)
+                , centerX
+                , centerY
+                ]
+                none
 
 
 centerArea : Int -> Int -> Attribute msg
@@ -373,24 +393,18 @@ view model =
         [ column
             [ height fill
             , spacing 20
-            , width (px 100)
+            , width (px 120)
             , Background.color Ui.white
-            , Border.color (rgb255 200 200 200)
-            , Border.widthEach
-                { top = 0
-                , bottom = 0
-                , left = 0
-                , right = 1
-                }
+            , Ui.smallShadow
             ]
             [ column
                 [ width fill
                 , paddingXY 0 10
                 ]
                 [ el
-                    [ width (px 48)
-                    , height (px 48)
-                    , Font.color Ui.blue
+                    [ width (px 54)
+                    , height (px 54)
+                    , Font.color Ui.green
                     , centerX
                     , centerY
                     ]
@@ -406,7 +420,7 @@ view model =
                     (text "elm-arborist")
                 ]
             , column
-                [ width (px 80)
+                [ width (px 100)
                 , centerX
                 , spacing 6
                 , padding 8
@@ -419,9 +433,12 @@ view model =
                            , centerX
                            ]
                     )
-                    (text "v8.0.4")
+                    (text <| "v" ++ model.version)
                 , link
                     [ centerX
+                    , mouseOver
+                        [ Font.color Ui.green
+                        ]
                     ]
                     { url = "https://github.com/peterszerzo/elm-arborist/tree/master"
                     , label =
@@ -457,20 +474,17 @@ view model =
             ]
         , row
             [ centerMark
-            , onRight <|
+            , inFront <|
                 el
                     [ width (px Minimap.canvasWidth)
                     , height (px Minimap.canvasHeight)
                     , Border.rounded 4
-                    , moveLeft
-                        (Minimap.canvasWidth
-                            + 20
-                            |> toFloat
-                        )
+                    , alignRight
+                    , alignTop
+                    , moveLeft 20
                     , moveDown 20
                     , clip
-                    , Border.width 1
-                    , Border.color (rgb255 200 200 200)
+                    , Ui.smallShadow
                     , let
                         dims =
                             centerAreaDims
@@ -500,6 +514,18 @@ view model =
                         }
                         |> html
                     )
+            , inFront <|
+                if model.dragAndDrop then
+                    none
+
+                else
+                    Arborist.activeNode
+                        { settings = mainArboristSettings model
+                        , state = model.arborist
+                        , tree = model.tree
+                        }
+                        |> Maybe.map (activeNodePopup model.newNode)
+                        |> Maybe.withDefault none
             ]
           <|
             [ if model.windowSize == Nothing then
@@ -507,8 +533,7 @@ view model =
 
               else
                 Arborist.view
-                    [ Html.Attributes.style "background-color" "#FFFFFF"
-                    ]
+                    []
                     { state = model.arborist
                     , tree = model.tree
                     , nodeView = nodeView
@@ -517,19 +542,6 @@ view model =
                     }
                     |> html
             ]
-                ++ (if model.dragAndDrop then
-                        []
-
-                    else
-                        Arborist.activeNode
-                            { settings = mainArboristSettings model
-                            , state = model.arborist
-                            , tree = model.tree
-                            }
-                            |> Maybe.map (activeNodePopup model.newNode)
-                            |> Maybe.withDefault []
-                            |> List.map html
-                   )
         ]
         |> layout []
 
@@ -542,7 +554,7 @@ activeNodePopup :
           , position : ( Float, Float )
           }
         )
-    -> List (Html.Html Msg)
+    -> Element Msg
 activeNodePopup newNode ( item, { position } ) =
     let
         ( x, y ) =
@@ -552,14 +564,14 @@ activeNodePopup newNode ( item, { position } ) =
             case item of
                 Just justItem ->
                     ( [ Ui.input
-                            { onChange = \val -> SetActive { justItem | question = val }
-                            , value = justItem.question
-                            , label = Just "Question"
-                            }
-                      , Ui.input
                             { onChange = \val -> SetActive { justItem | answer = val }
                             , value = justItem.answer
-                            , label = Just "Answer"
+                            , label = Just "Reach this node if answer is:"
+                            }
+                      , Ui.input
+                            { onChange = \val -> SetActive { justItem | question = val }
+                            , value = justItem.question
+                            , label = Just "New question"
                             }
                       ]
                     , [ Ui.button
@@ -569,7 +581,7 @@ activeNodePopup newNode ( item, { position } ) =
                             , isError = True
                             }
                       , Ui.button
-                            [ Background.color Ui.blue
+                            [ Background.color Ui.green
                             ]
                             { onPress =
                                 Just
@@ -610,14 +622,20 @@ activeNodePopup newNode ( item, { position } ) =
                       ]
                     )
     in
-    [ column
+    column
         [ spacing 20
         , width fill
         , height (px 240)
         , Background.color (rgb255 255 255 255)
         , Ui.largeShadow
         , Border.rounded 4
+        , Border.color Ui.green
+        , Border.width 4
         , padding 20
+        , width (px 420)
+        , height (px 240)
+        , moveRight (x - 210)
+        , moveDown (y + 45)
         , row
             [ moveUp 60
             , height (px 60)
@@ -633,20 +651,19 @@ activeNodePopup newNode ( item, { position } ) =
                 controls
             ]
             |> below
+        , el
+            [ width (px 0)
+            , height (px 0)
+            , moveRight (210 - 14)
+            , moveUp 2
+            , Ui.htmlStyle "border-left" "12px solid transparent"
+            , Ui.htmlStyle "border-right" "12px solid transparent"
+            , Ui.htmlStyle "border-bottom" <| "12px solid " ++ Ui.rgbToCssString Ui.greenRgb
+            ]
+            none
+            |> above
         ]
         children
-        |> layoutWith
-            { options = [ noStaticStyleSheet ]
-            }
-            [ elementHtmlStyle "position" "absolute"
-            , elementHtmlStyle "top" "0px"
-            , elementHtmlStyle "left" "0px"
-            , elementHtmlStyle "transform" <| "translate3d(" ++ String.fromFloat (x - 210) ++ "px," ++ String.fromFloat (y + 35) ++ "px, 0px)"
-            , elementHtmlStyle "transition" "transform 0.3s ease-in-out"
-            , width (px 420)
-            , height (px 240)
-            ]
-    ]
 
 
 {-| Describe how a node should render inside the tree's layout.
@@ -658,16 +675,16 @@ nodeView context maybeNode =
             column
                 ([ width (px nodeWidth)
                  , height (px nodeHeight)
-                 , Background.color Ui.blue
+                 , Background.color Ui.green
                  , Border.rounded 4
                  , padding 10
                  , pointer
                  , mouseOver
-                    [ Background.color Ui.lighterBlue
+                    [ Background.color Ui.lighterGreen
                     ]
                  , el
                     (Ui.bodyType
-                        ++ [ Font.color Ui.blue
+                        ++ [ Font.color Ui.green
                            , centerX
                            , centerY
                            ]
@@ -675,21 +692,28 @@ nodeView context maybeNode =
                     (text node.answer)
                     |> el
                         [ width (px 80)
-                        , height (px 24)
+                        , height (px 28)
                         , moveUp 12
-                        , moveRight 42
+                        , moveRight (toFloat nodeWidth / 2 - 40)
                         , Border.width 2
                         , Border.rounded 4
-                        , Border.color Ui.blue
+                        , Border.color Ui.green
                         , Background.color Ui.white
                         ]
                     |> above
                  ]
+                    ++ (if context.state == Arborist.DropTarget then
+                            [ Background.color Ui.lighterGreen
+                            ]
+
+                        else
+                            []
+                       )
                     ++ (if node.isClustered then
                             [ el
                                 [ width (px nodeWidth)
                                 , height (px nodeHeight)
-                                , Background.color Ui.blue
+                                , Background.color Ui.green
                                 , alpha 0.4
                                 , Border.rounded 4
                                 , moveUp 4
@@ -704,14 +728,15 @@ nodeView context maybeNode =
                        )
                 )
                 [ paragraph
-                    [ centerX
-                    , centerY
-                    , width fill
-                    , Font.center
-                    , spacing 0
-                    , Font.size 12
-                    , Font.color Ui.white
-                    ]
+                    (Ui.bodyType
+                        ++ [ centerX
+                           , centerY
+                           , width fill
+                           , Font.center
+                           , spacing 5
+                           , Font.color Ui.white
+                           ]
+                    )
                     [ text <|
                         if node.isClustered then
                             "[ Cluster ]"
@@ -727,15 +752,15 @@ nodeView context maybeNode =
 
         Nothing ->
             column
-                [ width (px 160)
+                [ width (px nodeWidth)
                 , height (px nodeHeight)
                 , Border.rounded 4
                 , Border.width 2
-                , Border.color Ui.blue
-                , Font.color Ui.blue
+                , Border.color Ui.green
+                , Font.color Ui.green
                 , pointer
                 , mouseOver
-                    [ Background.color Ui.faintBlue
+                    [ Background.color Ui.faintGreen
                     ]
                 ]
                 [ el

@@ -18,7 +18,7 @@ type alias ShowPlaceholderLeavesAdvanced node =
 
 
 type alias ExtendConnectorsByAdvanced node =
-    { node : node
+    { node : Maybe node
     , parent : Maybe node
     , children : List node
     , siblings : List node
@@ -38,7 +38,8 @@ type alias Settings node =
     , level : Float
     , gutter : Float
     , centerOffset : ( Float, Float )
-    , extendConnectorsBy : Float
+    , extendConnectorsBy : Maybe Float
+    , extendConnectorsByAdvanced : Maybe (ExtendConnectorsByAdvanced node)
     , connectorStroke : String
     , connectorStrokeWidth : String
     , dragAndDrop : Bool
@@ -59,7 +60,8 @@ defaults =
     , level = 80
     , gutter = 20
     , centerOffset = ( 0, 0 )
-    , extendConnectorsBy = 0
+    , extendConnectorsBy = Nothing
+    , extendConnectorsByAdvanced = Nothing
     , connectorStroke = "#E2E2E2"
     , connectorStrokeWidth = "2"
     , dragAndDrop = True
@@ -119,10 +121,10 @@ apply newSettings settings =
                         { settings | canvasHeight = toFloat h }
 
                     ExtendConnectorsBy offset ->
-                        { settings | extendConnectorsBy = toFloat offset }
+                        { settings | extendConnectorsBy = Just <| toFloat offset }
 
                     ExtendConnectorsByAdvanced extendConnectorsByAdvanced ->
-                        settings
+                        { settings | extendConnectorsByAdvanced = Just extendConnectorsByAdvanced }
 
                     Level l ->
                         { settings | level = toFloat l }

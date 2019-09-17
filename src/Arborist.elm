@@ -111,7 +111,7 @@ deactivate (State model) =
 
 type alias ComputedTree node =
     { flat : List ( List Int, Maybe node )
-    , layout : TreeUtils.Layout
+    , layoutLazy : () -> TreeUtils.Layout
     }
 
 
@@ -125,26 +125,28 @@ computeTree settings tree =
             tree
                 |> TreeUtils.clusterBy settings.isNodeClustered
                 |> (\newTree ->
-                        case ( settings.showPlaceholderLeaves, settings.showPlaceholderLeavesAdvanced ) of
-                            ( _, Just addEmpties ) ->
+                        case ( settings.dragAndDrop, settings.showPlaceholderLeaves, settings.showPlaceholderLeavesAdvanced ) of
+                            ( True, _, _ ) ->
+                                newTree
+
+                            ( _, _, Just addEmpties ) ->
                                 TreeUtils.addTrailingEmptiesAdvanced (\context -> addEmpties context && not (settings.isNodeClustered context.node)) newTree
 
-                            ( True, _ ) ->
+                            ( _, True, _ ) ->
                                 TreeUtils.addTrailingEmptiesAdvanced (\context -> not (settings.isNodeClustered context.node)) newTree
 
-                            ( _, _ ) ->
+                            _ ->
                                 newTree
                    )
 
         flat =
             TreeUtils.flatten treeModifiedForCompute
-
-        layout =
+    in
+    { flat = flat
+    , layoutLazy =
+        \_ ->
             treeModifiedForCompute
                 |> TreeUtils.layout
-    in
-    { layout = layout
-    , flat = flat
     }
 
 
@@ -186,8 +188,11 @@ activeNode config =
         |> Maybe.map
             (\active ->
                 let
-                    { layout, flat } =
+                    { layoutLazy, flat } =
                         computeTree settings tree
+
+                    layout =
+                        layoutLazy ()
 
                     geo =
                         nodeGeometry settings active layout
@@ -272,7 +277,7 @@ setActiveNodeWithChildren newStuff (State model) tree =
                                         |> List.map (\child -> Tree.Node child [])
                                     )
 
-                            Tree.Node existingNode existingChildren ->
+                            Tree.Node _ existingChildren ->
                                 Tree.Node newStuff.node
                                     (newStuff.childrenOverride
                                         |> Maybe.map (List.map (\child -> Tree.Node child []))
@@ -307,7 +312,7 @@ deleteActiveNode (State state) tree =
 -}
 type Msg
     = NodeMouseDown Path Float Float
-    | NodeMouseUp Float Float
+    | NodeMouseUp (Maybe Path) Float Float
     | NodeMouseEnter Path
     | NodeMouseLeave Path
     | CanvasMouseMove Float Float
@@ -400,6 +405,40 @@ resolvePanOffset settings drag panOffset =
         |> Maybe.withDefault panOffset
 
 
+activePanOffset : Path -> Settings.Settings node -> Tree.Tree node -> Maybe Offset.Offset
+activePanOffset active settings tree =
+    let
+        { layoutLazy } =
+            computeTree settings tree
+
+        layout =
+            layoutLazy ()
+    in
+    nodeGeometry settings active layout
+        |> Maybe.map
+            (.center
+                >> (\( cx, cy ) ->
+                        [ settings.centerOffset
+                        , ( settings.canvasWidth / 2
+                          , settings.canvasHeight / 2
+                          )
+                        , ( -cx, -settings.nodeHeight / 2 - cy )
+                        ]
+                            |> List.foldl Pt.add ( 0, 0 )
+                   )
+                >> Offset.fromPt (Utils.offsetConfig settings)
+            )
+
+
+isDragOffsetSubstantial : Settings.Settings node -> Offset.Offset -> Bool
+isDragOffsetSubstantial settings offset =
+    let
+        ( offsetX, offsetY ) =
+            Offset.toPt (Utils.offsetConfig settings) offset
+    in
+    abs offsetX + abs offsetY > 20
+
+
 {-| Update function handling changes in the state.
 -}
 update : Settings.Settings node -> Msg -> State -> Tree.Tree node -> ( State, Tree.Tree node )
@@ -407,31 +446,51 @@ update settings msg (State state) tree =
     case msg of
         NodeMouseDown path x y ->
             let
-                active_ =
-                    if True then
-                        Just path
-                        -- Leaving this in for reference - this logic was once needed while dealing with drag and drop
-
-                    else if not settings.dragAndDrop then
-                        Just path
-
-                    else
-                        Nothing
+                { flat } =
+                    computeTree settings tree
             in
-            ( State
-                { state
-                    | drag =
-                        if not settings.dragAndDrop then
-                            Drag.init
+            if settings.dragAndDrop then
+                ( State
+                    { state
+                        | drag = Drag.start (Just path) x y
+                        , active = Just path
+                    }
+                , tree
+                )
 
-                        else
-                            Drag.start (Just path) x y
-                    , active = active_
-                }
-            , tree
-            )
+            else
+                let
+                    newTree =
+                        case Dict.get path (Dict.fromList flat) of
+                            Just (Just _) ->
+                                tree
 
-        NodeMouseUp _ _ ->
+                            -- A placeholder has been clicked. Add new node to the tree
+                            _ ->
+                                case settings.defaultNode of
+                                    Just defaultNode ->
+                                        TreeUtils.insert
+                                            path
+                                            (Tree.Node defaultNode
+                                                []
+                                            )
+                                            tree
+
+                                    Nothing ->
+                                        tree
+                in
+                ( State
+                    { state
+                        | drag = Drag.init
+                        , active = Just path
+                        , panOffset =
+                            activePanOffset path settings newTree
+                                |> Maybe.withDefault state.panOffset
+                    }
+                , newTree
+                )
+
+        NodeMouseUp _ _ _ ->
             let
                 newActive =
                     if not settings.dragAndDrop then
@@ -441,15 +500,11 @@ update settings msg (State state) tree =
                         Drag.state state.drag
                             |> Maybe.andThen
                                 (\( path, dragOffset ) ->
-                                    let
-                                        ( offsetX, offsetY ) =
-                                            Offset.toPt (Utils.offsetConfig settings) dragOffset
-                                    in
                                     case path of
                                         Just _ ->
                                             -- If the node was dragged far enough already, it is not activated
                                             -- This case also protects from reading a slightly sloppy click as a drag
-                                            if abs offsetX + abs offsetY > 20 then
+                                            if isDragOffsetSubstantial settings dragOffset then
                                                 Nothing
 
                                             else
@@ -459,65 +514,22 @@ update settings msg (State state) tree =
                                             Nothing
                                 )
 
-                { flat } =
-                    computeTree settings tree
-
                 newTree =
-                    case newActive of
-                        Just path ->
-                            case Dict.get path (Dict.fromList flat) of
-                                Just (Just _) ->
-                                    tree
-
-                                -- A placeholder has been clicked. Add new node to the tree
-                                _ ->
-                                    case settings.defaultNode of
-                                        Just defaultNode ->
-                                            TreeUtils.insert
-                                                path
-                                                (Tree.Node defaultNode
-                                                    []
-                                                )
-                                                tree
-
-                                        Nothing ->
-                                            tree
-
-                        Nothing ->
-                            resolveDrop settings (State state) tree
-
-                { layout } =
-                    computeTree settings newTree
+                    resolveDrop settings (State state) tree
 
                 newPanOffset =
                     newActive
                         |> Maybe.andThen
-                            (\justActive ->
-                                nodeGeometry settings justActive layout
-                                    |> Maybe.map
-                                        (.center
-                                            >> (\( cx, cy ) ->
-                                                    [ settings.centerOffset
-                                                    , ( settings.canvasWidth / 2
-                                                      , settings.canvasHeight / 2
-                                                      )
-                                                    , ( -cx, -settings.nodeHeight / 2 - cy )
-                                                    ]
-                                                        |> List.foldl Pt.add ( 0, 0 )
-                                               )
-                                            >> Offset.fromPt (Utils.offsetConfig settings)
-                                        )
+                            (\currentActive ->
+                                activePanOffset currentActive settings newTree
                             )
                         |> Maybe.withDefault state.panOffset
             in
             ( State
                 { state
-                    | drag =
-                        Drag.init
-                    , panOffset =
-                        newPanOffset
-                    , active =
-                        newActive
+                    | drag = Drag.init
+                    , panOffset = newPanOffset
+                    , active = newActive
                 }
             , newTree
             )
@@ -531,15 +543,10 @@ update settings msg (State state) tree =
             , tree
             )
 
-        NodeMouseLeave path ->
+        NodeMouseLeave _ ->
             ( State
                 { state
-                    | hovered =
-                        if state.hovered == Just path then
-                            Nothing
-
-                        else
-                            state.hovered
+                    | hovered = Nothing
                 }
             , tree
             )
@@ -547,8 +554,7 @@ update settings msg (State state) tree =
         CanvasMouseMove xm ym ->
             ( State
                 { state
-                    | drag =
-                        Drag.move (Utils.offsetConfig settings) xm ym state.drag
+                    | drag = Drag.move (Utils.offsetConfig settings) xm ym state.drag
                 }
             , tree
             )
@@ -567,34 +573,26 @@ update settings msg (State state) tree =
                     )
 
         CanvasMouseUp x y ->
-            case state.hovered of
-                Just _ ->
-                    update settings (NodeMouseUp x y) (State state) tree
+            case ( state.hovered, settings.dragAndDrop ) of
+                ( Just _, True ) ->
+                    update settings (NodeMouseUp Nothing x y) (State state) tree
 
-                Nothing ->
-                    let
-                        active_ =
-                            Drag.state state.drag
-                                |> Maybe.map
-                                    (\( _, dragOffset ) ->
-                                        let
-                                            ( dragOffsetX, dragOffsetY ) =
-                                                Offset.toPt (Utils.offsetConfig settings) dragOffset
-                                        in
-                                        if (abs dragOffsetX + abs dragOffsetY) < 21 then
-                                            Nothing
-
-                                        else
-                                            state.active
-                                    )
-                                |> Maybe.withDefault Nothing
-                    in
+                _ ->
                     ( State
                         { state
                             | drag = Drag.init
                             , panOffset = resolvePanOffset settings state.drag state.panOffset
                             , active =
-                                active_
+                                case Drag.state state.drag of
+                                    Just ( _, dragOffset ) ->
+                                        if isDragOffsetSubstantial settings dragOffset then
+                                            state.active
+
+                                        else
+                                            Nothing
+
+                                    Nothing ->
+                                        state.active
                         }
                     , tree
                     )
@@ -624,7 +622,7 @@ subscriptions settingsOverrides (State state) tree =
         settings =
             Settings.apply settingsOverrides Settings.defaults
 
-        { flat, layout } =
+        { flat, layoutLazy } =
             computeTree settings tree
     in
     if settings.keyboardNavigation then
@@ -672,6 +670,10 @@ subscriptions settingsOverrides (State state) tree =
                                 newActive
                                     |> Maybe.andThen
                                         (\justActive ->
+                                            let
+                                                layout =
+                                                    layoutLazy ()
+                                            in
                                             nodeGeometry settings justActive layout
                                                 |> Maybe.map
                                                     (.center
@@ -712,8 +714,11 @@ getDropTarget :
     -> Maybe Path
 getDropTarget settings path ( dragX, dragY ) tree =
     let
-        { flat, layout } =
+        computedTree =
             computeTree settings tree
+
+        layout =
+            computedTree.layoutLazy ()
 
         ( x0, y0 ) =
             nodeGeometry settings path layout
@@ -725,7 +730,7 @@ getDropTarget settings path ( dragX, dragY ) tree =
             , y0 + dragY
             )
     in
-    flat
+    computedTree.flat
         |> List.filterMap
             (\( path_, node ) ->
                 let
@@ -1016,8 +1021,11 @@ view attrs config =
         computedTree =
             computeTree settings config.tree
 
-        { flat, layout } =
+        { flat, layoutLazy } =
             computedTree
+
+        layout =
+            layoutLazy ()
 
         nodeBaseStyle =
             Styles.nodeBase settings
@@ -1131,13 +1139,16 @@ view attrs config =
                                     ( x, y ) =
                                         center
 
+                                    boundsTolerance =
+                                        10
+
                                     isOffScreenX =
                                         not
                                             (x
                                                 + canvasTotalDragOffsetX
                                                 |> isBetween
-                                                    (-settings.nodeWidth / 2 - settings.gutter)
-                                                    (settings.canvasWidth + settings.nodeWidth / 2 + settings.gutter)
+                                                    (-settings.nodeWidth / 2 * boundsTolerance - settings.gutter)
+                                                    (settings.canvasWidth + settings.nodeWidth / 2 * boundsTolerance + settings.gutter)
                                             )
 
                                     isOffScreenY =
@@ -1145,8 +1156,8 @@ view attrs config =
                                             (y
                                                 + canvasTotalDragOffsetY
                                                 |> isBetween
-                                                    (-settings.nodeHeight / 2 - settings.level)
-                                                    (settings.canvasHeight + settings.nodeHeight / 2 + settings.level)
+                                                    (-settings.nodeHeight / 2 * boundsTolerance - settings.level)
+                                                    (settings.canvasHeight + settings.nodeHeight / 2 * boundsTolerance + settings.level)
                                             )
 
                                     isOffScreen =
@@ -1162,7 +1173,12 @@ view attrs config =
                                         y + yDrag
 
                                     nodeViewContext =
-                                        viewContext settings computedTree (State model) config.tree path
+                                        viewContext
+                                            settings
+                                            computedTree
+                                            (State model)
+                                            config.tree
+                                            path
                                 in
                                 (if isOffScreen then
                                     []
@@ -1180,7 +1196,11 @@ view attrs config =
                                                     else
                                                         []
                                                    )
-                                                |> List.map (\( property, value ) -> style property value)
+                                                |> List.map
+                                                    (\( property, value ) ->
+                                                        style property
+                                                            value
+                                                    )
                                              )
                                                 ++ [ on "mouseenter"
                                                         (Decode.succeed
@@ -1205,12 +1225,31 @@ view attrs config =
                                             []
 
                                         else
+                                            let
+                                                extendBy =
+                                                    case ( settings.extendConnectorsBy, settings.extendConnectorsByAdvanced ) of
+                                                        ( Just distance, _ ) ->
+                                                            Just distance
+
+                                                        ( _, Just fn ) ->
+                                                            fn
+                                                                { node = node
+                                                                , parent = nodeViewContext.parent
+                                                                , siblings = nodeViewContext.siblings
+                                                                , children = nodeViewContext.children
+                                                                }
+                                                                |> Maybe.map toFloat
+
+                                                        _ ->
+                                                            Nothing
+                                            in
                                             NodeConnectors.view
                                                 { settings = settings
                                                 , opacity = 1.0
                                                 , offset = ( xDrag, yDrag )
                                                 , center = center
                                                 , childCenters = childCenters
+                                                , extendBy = extendBy
                                                 , extendTop = nodeViewContext.parent == Nothing
                                                 , extendBottom = List.length nodeViewContext.children == 0
                                                 }
@@ -1251,6 +1290,7 @@ view attrs config =
                                                             , offset = ( 0, 0 )
                                                             , center = center
                                                             , childCenters = childCenters
+                                                            , extendBy = Nothing
                                                             , extendTop = False
                                                             , extendBottom = False
                                                             }

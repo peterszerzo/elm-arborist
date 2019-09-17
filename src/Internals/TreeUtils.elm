@@ -349,7 +349,7 @@ updateAt path updateBranchModifier tree =
 insert : Path -> Tree a -> Tree a -> Tree a
 insert path insertItem tree =
     case ( path, tree ) of
-        ( head :: tail, Empty ) ->
+        ( _ :: _, Empty ) ->
             insertItem
 
         ( head :: tail, Node item children ) ->
