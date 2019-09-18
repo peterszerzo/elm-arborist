@@ -1,6 +1,6 @@
 module Simple exposing (main)
 
-{-| A simple Arborist app modeling a conversation flow.
+{-| This is a simple `Arborist` app showing a basic conversation flow
 -}
 
 import Arborist
@@ -24,7 +24,7 @@ main =
         }
 
 
-{-| The Node data type held in each of the tree's nodes.
+{-| The Node data type held in each of the tree's nodes
 -}
 type alias MyNode =
     { answer : String
@@ -32,79 +32,87 @@ type alias MyNode =
     }
 
 
+{-| The application model
+-}
 type alias Model =
-    { arborist : Arborist.State
+    { arboristState : Arborist.State
     , tree : Tree.Tree MyNode
     }
 
 
-{-| The starting tree
+{-| This is the starting tree, built up recursively using the `Arborist.Tree` module
 -}
 tree : Tree.Tree MyNode
 tree =
-    Tree.Node (MyNode "Q1" "A1")
-        [ Tree.Node (MyNode "Q2" "A2")
-            [ Tree.Node (MyNode "Q3" "A3") []
-            ]
-        , Tree.Node (MyNode "Q4" "A4")
-            [ Tree.Node (MyNode "Q5" "A5") []
-            ]
+    Tree.Node (MyNode "How are you?" "Fine, thanks")
+        [ Tree.Node (MyNode "Great. Would you like coffee?" "Absolutely") []
         ]
 
 
-arboristSettings : List (Arborist.Setting MyNode)
-arboristSettings =
-    [ Settings.keyboardNavigation True
-    , Settings.defaultNode (MyNode "A" "Q")
-    , Settings.nodeWidth 100
-    , Settings.level 80
-    , Settings.gutter 20
-    ]
-
-
+{-| We are ready to initialize the model
+-}
 init : Encode.Value -> ( Model, Cmd Msg )
 init _ =
-    ( { arborist = Arborist.init
+    ( { arboristState = Arborist.init
       , tree = tree
       }
     , Cmd.none
     )
 
 
+{-| Some basic settings for the tree
+-}
+arboristSettings : List (Arborist.Setting MyNode)
+arboristSettings =
+    [ Settings.keyboardNavigation True
+    , Settings.defaultNode (MyNode "What question?" "But what an answer")
+    , Settings.nodeWidth 100
+    , Settings.level 80
+    , Settings.gutter 20
+    ]
+
+
+{-| Arborist needs a single message, passing an `Updater`
+-}
 type Msg
     = Arborist (Arborist.Updater MyNode)
 
 
+{-| The `update` method will use the updater to figure out the new tree and the new internal state
+-}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Arborist updater ->
             let
                 ( newState, newTree ) =
-                    updater model.arborist model.tree
+                    updater model.arboristState model.tree
             in
             ( { model
-                | arborist = newState
+                | arboristState = newState
                 , tree = newTree
               }
             , Cmd.none
             )
 
 
+{-| Everything is prepared for the view (almost!)
+-}
 view : Model -> Html.Html Msg
 view model =
     Arborist.view
-        [ style "border" "1px solid black"
-        ]
-        { state = model.arborist
+        []
+        { state = model.arboristState
         , tree = model.tree
+
+        -- This method describes how a node should render based on its content
         , nodeView = nodeView
         , settings = arboristSettings
         , toMsg = Arborist
         }
 
 
-{-| Describe how a node should render inside the tree's layout.
+{-| As you see above, it is enough to specify how a single node looks to render a tree with a full layout
 -}
 nodeView : Arborist.NodeView MyNode Msg
 nodeView _ maybeNode =
@@ -116,9 +124,14 @@ nodeView _ maybeNode =
             text "+ add node"
 
 
+{-| Subscriptions are not mandatory, but they take care of important convenience features like keyboard navigation
+-}
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Arborist.subscriptions arboristSettings model.arborist model.tree
+    Arborist.subscriptions
+        arboristSettings
+        model.arboristState
+        model.tree
         |> Sub.map
             (\( newState, newTree ) ->
                 Arborist (\_ _ -> ( newState, newTree ))
