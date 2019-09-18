@@ -573,7 +573,12 @@ dirtyAnalysisToLayout analysis =
                 )
                 analysis.shortNodes
                 |> List.foldl (++) []
-                |> List.map (\{ path, siblings, children } -> ( path, { siblings = siblings, children = children } ))
+                |> List.map
+                    (\{ path, siblings, children } ->
+                        ( path
+                        , { siblings = siblings, children = children }
+                        )
+                    )
                 |> Dict.fromList
 
         placeholderAdjustedAnalysisNodeInfo =
@@ -663,4 +668,9 @@ dirtyAnalysisToLayoutLevelPass level nodeInfo currentLayoutPass =
                     )
                 )
             |> Dict.fromList
-            |> (\pass -> dirtyAnalysisToLayoutLevelPass (properLevel - 1) nodeInfo (Dict.union currentLayoutPass pass))
+            |> (\pass ->
+                    dirtyAnalysisToLayoutLevelPass
+                        (properLevel - 1)
+                        nodeInfo
+                        (Dict.union currentLayoutPass pass)
+               )

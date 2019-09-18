@@ -43,7 +43,12 @@ suite =
                     )
         , test "Updates" <|
             \_ ->
-                Expect.equal (TreeUtils.updateAt [ 1, 0 ] "Apricot2" tree)
+                Expect.equal
+                    (TreeUtils.updateAt
+                        [ 1, 0 ]
+                        (\_ -> Tree.Node "Apricot2" [])
+                        tree
+                    )
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -53,7 +58,17 @@ suite =
                     )
         , test "Updates with children" <|
             \_ ->
-                Expect.equal (TreeUtils.updateAtWithChildren [ 1, 0 ] "Apricot2" (Just [ "PeachChild1", "PeachChild2" ]) tree)
+                Expect.equal
+                    (TreeUtils.updateAt
+                        [ 1, 0 ]
+                        (\_ ->
+                            Tree.Node "Apricot2"
+                                [ Tree.Node "PeachChild1" []
+                                , Tree.Node "PeachChild2" []
+                                ]
+                        )
+                        tree
+                    )
                     (Tree.Node "Apple"
                         [ Tree.Node "Pear" []
                         , Tree.Node "Peach"
@@ -76,15 +91,13 @@ suite =
                     )
         , test "Inserts" <|
             \_ ->
-                Expect.equal (TreeUtils.insert [] (Just "Banana") tree)
-                    (Tree.Node "Apple"
-                        [ Tree.Node "Pear" []
-                        , Tree.Node "Peach"
-                            [ Tree.Node "Apricot" []
-                            ]
-                        , Tree.Node "Banana" []
-                        ]
+                Expect.equal
+                    (TreeUtils.insert
+                        []
+                        (Tree.Node "Banana" [])
+                        tree
                     )
+                    (Tree.Node "Banana" [])
         , test "Calculates depth" <|
             \_ ->
                 Expect.equal (Tree.depth tree) 3

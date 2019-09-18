@@ -603,15 +603,17 @@ activeNodePopup newNode ( item, { position } ) =
                     )
 
                 Nothing ->
-                    ( [ Ui.input
-                            { onChange = EditNewNodeQuestion
-                            , value = newNode.question
-                            , label = Just "Question"
-                            }
-                      , Ui.input
+                    ( [ 
+                       Ui.input
                             { onChange = EditNewNodeAnswer
                             , value = newNode.answer
-                            , label = Just "Answer"
+                            , label = Just "Reach this node if answer is:"
+                            }
+                      
+                      , Ui.input
+                            { onChange = EditNewNodeQuestion
+                            , value = newNode.question
+                            , label = Just "New question"
                             }
                       ]
                     , [ Ui.button []
