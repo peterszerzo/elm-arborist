@@ -1,4 +1,4 @@
-module Simple exposing (main)
+module LargeTree exposing (main)
 
 {-| This is a simple `Arborist` app showing a basic conversation flow
 -}
@@ -8,7 +8,9 @@ import Arborist.Settings as Settings
 import Arborist.Tree as Tree
 import Browser
 import Html exposing (text)
+import Html.Attributes
 import Json.Encode as Encode
+import List as List
 
 
 {-| Entry point
@@ -39,13 +41,32 @@ type alias Model =
     }
 
 
-{-| This is the starting tree, built up recursively using the `Arborist.Tree` module
--}
-startingTree : Tree.Tree MyNode
-startingTree =
-    Tree.Node (MyNode "How are you?" "Fine, thanks")
-        [ Tree.Node (MyNode "Great. Would you like coffee?" "Absolutely") []
-        ]
+fromMyNodeList : List MyNode -> Tree.Tree MyNode
+fromMyNodeList myNodeList =
+    case myNodeList of
+        [] ->
+            Tree.Node (MyNode "Q" "A") []
+
+        x :: [] ->
+            Tree.Node x []
+
+        x :: y :: xs ->
+            Tree.Node x
+                [ Tree.Node y []
+                , fromMyNodeList xs
+                ]
+
+
+largeTree : Tree.Tree MyNode
+largeTree =
+    List.range 1 60
+        |> List.map String.fromInt
+        |> List.map (\index -> MyNode ("Q" ++ index) ("A" ++ index))
+        |> fromMyNodeList
+
+
+
+{- #abeeshake This largeTree is being fed as tree to be displayed. -}
 
 
 {-| We are ready to initialize the model
@@ -53,7 +74,7 @@ startingTree =
 init : Encode.Value -> ( Model, Cmd Msg )
 init _ =
     ( { arboristState = Arborist.init
-      , tree = startingTree
+      , tree = largeTree
       }
     , Cmd.none
     )
@@ -67,7 +88,7 @@ arboristSettings =
     , Settings.defaultNode (MyNode "What question?" "But what an answer")
     , Settings.nodeWidth 100
     , Settings.level 80
-    , Settings.gutter 20
+    , Settings.gutter 60
     ]
 
 
@@ -100,7 +121,8 @@ update msg model =
 view : Model -> Html.Html Msg
 view model =
     Arborist.view
-        []
+        [ Html.Attributes.style "border" "1px solid #DEDEDE"
+        ]
         { state = model.arboristState
         , tree = model.tree
 
@@ -117,10 +139,17 @@ nodeView : Arborist.NodeView MyNode Msg
 nodeView _ maybeNode =
     case maybeNode of
         Just node ->
-            text node.question
+            Html.div
+                [ Html.Attributes.style "border" "1px solid #DEDEDE"
+                , Html.Attributes.style "width" "100%"
+                , Html.Attributes.style "height" "100%"
+                , Html.Attributes.style "background-color" "#FFFFFF"
+                , Html.Attributes.style "cursor" "pointer"
+                ]
+                [ text node.question ]
 
         Nothing ->
-            text "+ add node"
+            text "+ add Newnode"
 
 
 {-| Subscriptions are not mandatory, but they take care of important convenience features like keyboard navigation
