@@ -42,11 +42,7 @@ main =
 type alias Model =
     { arborist : Arborist.State
     , tree : Tree.Tree Node.Node
-    , windowSize :
-        Maybe
-            { width : Int
-            , height : Int
-            }
+    , windowSize : Maybe WindowSize
     , version : String
 
     -- Keep track of a to-be-inserted node
@@ -56,6 +52,12 @@ type alias Model =
     , dragAndDrop : Bool
     , canCreateNodes : Bool
     , keyboardNavigation : Bool
+    }
+
+
+type alias WindowSize =
+    { width : Int
+    , height : Int
     }
 
 
@@ -128,45 +130,46 @@ sharedArboristSettings model =
     ]
 
 
-canvasWidth : Model -> Int
-canvasWidth model =
-    model.windowSize
-        |> Maybe.map (.width >> (\w -> w - 120))
-        |> Maybe.withDefault 1000
+canvasWidth : WindowSize -> Int
+canvasWidth =
+    .width >> (\w -> w - 120)
 
 
-canvasHeight : Model -> Int
-canvasHeight model =
-    model.windowSize
-        |> Maybe.map .height
-        |> Maybe.withDefault 600
+canvasHeight : WindowSize -> Int
+canvasHeight =
+    .height
 
 
 mainOnlyArboristSettings : Model -> List (Arborist.Setting Node.Node)
 mainOnlyArboristSettings model =
-    [ Settings.centerOffset 0 -100
-    , Settings.level level
-    , Settings.gutter gutter
-    , Settings.nodeWidth nodeWidth
-    , Settings.extendConnectorsByAdvanced
-        (\context ->
-            context.node
-                |> Maybe.andThen
-                    (\node ->
-                        if node.isClustered then
-                            Nothing
+    model.windowSize
+        |> Maybe.map
+            (\windowSize ->
+                [ Settings.centerOffset 0 -100
+                , Settings.level level
+                , Settings.gutter gutter
+                , Settings.nodeWidth nodeWidth
+                , Settings.extendConnectorsByAdvanced
+                    (\context ->
+                        context.node
+                            |> Maybe.andThen
+                                (\node ->
+                                    if node.isClustered then
+                                        Nothing
 
-                        else
-                            Just 20
+                                    else
+                                        Just 20
+                                )
                     )
-        )
-    , Settings.nodeHeight nodeHeight
-    , Settings.canvasWidth (canvasWidth model)
-    , Settings.canvasHeight (canvasHeight model)
-    , Settings.keyboardNavigation model.keyboardNavigation
-    , Settings.connectorStrokeWidth "2"
-    , Settings.connectorStroke <| Ui.rgbToCssString Ui.greenRgb
-    ]
+                , Settings.nodeHeight nodeHeight
+                , Settings.canvasWidth (canvasWidth windowSize)
+                , Settings.canvasHeight (canvasHeight windowSize)
+                , Settings.keyboardNavigation model.keyboardNavigation
+                , Settings.connectorStrokeWidth "2"
+                , Settings.connectorStroke <| Ui.rgbToCssString Ui.greenRgb
+                ]
+            )
+        |> Maybe.withDefault []
 
 
 mainArboristSettings : Model -> List (Arborist.Setting Node.Node)
@@ -385,165 +388,223 @@ centerAreaDims config =
 
 view : Model -> Html.Html Msg
 view model =
-    row
-        [ width fill
-        , height fill
-        , clip
-        ]
-        [ column
-            [ height fill
-            , spacing 20
-            , width (px 120)
-            , Background.color Ui.white
-            , Ui.smallShadow
-            ]
-            [ column
+    case model.windowSize of
+        Nothing ->
+            column
                 [ width fill
-                , paddingXY 0 10
+                , height fill
                 ]
                 [ el
-                    [ width (px 54)
-                    , height (px 54)
-                    , Font.color Ui.green
-                    , centerX
-                    , centerY
-                    ]
-                    (html logo)
-                , el
                     (Ui.bodyType
-                        ++ [ Font.color Ui.black
+                        ++ [ Font.color Ui.green
                            , centerX
                            , centerY
-                           , moveUp 6
                            ]
                     )
-                    (text "elm-arborist")
+                    (text "...")
                 ]
-            , column
-                [ width (px 100)
-                , centerX
-                , spacing 6
-                , padding 8
-                , Background.color (rgb255 245 245 245)
-                , Border.rounded 4
-                ]
-                [ el
-                    (Ui.bodyType
-                        ++ [ Font.color Ui.black
-                           , centerX
-                           ]
-                    )
-                    (text <| "v" ++ model.version)
-                , link
-                    [ centerX
-                    , mouseOver
-                        [ Font.color Ui.green
-                        ]
+                |> layout []
+
+        Just windowSize ->
+            if windowSize.width < 600 then
+                column
+                    [ width fill
+                    , height fill
+                    , Font.color Ui.green
+                    , padding 20
                     ]
-                    { url = "https://github.com/peterszerzo/elm-arborist/tree/master"
-                    , label =
-                        el
-                            (Ui.bodyType
-                                ++ [ Font.underline
-                                   ]
-                            )
-                            (text "GitHub")
-                    }
-                ]
-            , column
-                [ padding 10
-                , spacing 20
-                , width fill
-                ]
-                [ Ui.switch [ centerX ]
-                    { checked = model.dragAndDrop
-                    , onChange = SetDragAndDrop
-                    , label = "Drag and drop"
-                    }
-                , Ui.switch [ centerX ]
-                    { checked = model.canCreateNodes
-                    , onChange = SetCanCreateNodes
-                    , label = "Create"
-                    }
-                , Ui.switch [ centerX ]
-                    { checked = model.keyboardNavigation
-                    , onChange = SetKeyboardNavigation
-                    , label = "Keyboard"
-                    }
-                ]
-            ]
-        , row
-            [ centerMark
-            , inFront <|
-                el
-                    [ width (px Minimap.canvasWidth)
-                    , height (px Minimap.canvasHeight)
-                    , Border.rounded 4
-                    , alignRight
-                    , alignTop
-                    , moveLeft 20
-                    , moveDown 20
-                    , clip
-                    , Ui.smallShadow
-                    , let
-                        dims =
-                            centerAreaDims
-                                { canvasWidth = canvasWidth model
-                                , canvasHeight = canvasHeight model
-                                , nodeWidth = nodeWidth
-                                , nodeHeight = nodeHeight
-                                , level = level
-                                , gutter = gutter
-                                , minimapNodeWidth = Minimap.nodeSize
-                                , minimapNodeHeight = Minimap.nodeSize
-                                , minimapLevel = Minimap.level
-                                , minimapGutter = Minimap.gutter
+                    [ column
+                        [ centerX
+                        , centerY
+                        , spacing 30
+                        , moveUp 20
+                        ]
+                        [ el
+                            [ width (px 64)
+                            , height (px 64)
+                            , moveDown 20
+                            , centerX
+                            ]
+                            (html logo)
+                        , paragraph (Ui.headingType ++ [ Font.center ]) [ text "elm-arborist" ]
+                        , paragraph (Ui.bodyType ++ [ Font.center ]) [ text "Parameterized Tree Editor for Elm" ]
+                        , row
+                            [ centerX
+                            , spacing 20
+                            ]
+                            [ link Ui.linkType
+                                { url = "https://github.com/peterszerzo/elm-arborist/tree/master"
+                                , label = text "GitHub"
                                 }
-                      in
-                      centerArea dims.width dims.height
-                    , centerMark
-                    ]
-                    (Arborist.view
-                        [ Html.Attributes.style "background-color" "#FFFFFF"
+                            , link Ui.linkType
+                                { url = "http://package.elm-lang.org/packages/peterszerzo/elm-arborist/latest"
+                                , label = text "v8.2.0"
+                                }
+                            ]
                         ]
-                        { state = model.arborist
-                        , tree = model.tree
-                        , nodeView = Minimap.nodeView
-                        , settings = minimapArboristSettings model
-                        , toMsg = ArboristMinimap
-                        }
-                        |> html
-                    )
-            , inFront <|
-                if model.dragAndDrop then
-                    none
+                    ]
+                    |> layout []
 
-                else
-                    Arborist.activeNode
-                        { settings = mainArboristSettings model
-                        , state = model.arborist
-                        , tree = model.tree
-                        }
-                        |> Maybe.map (activeNodePopup model.newNode)
-                        |> Maybe.withDefault none
-            ]
-          <|
-            [ if model.windowSize == Nothing then
-                none
+            else
+                row
+                    [ width fill
+                    , height fill
+                    , clip
+                    ]
+                    [ column
+                        [ height fill
+                        , spacing 20
+                        , width (px 120)
+                        , Background.color Ui.white
+                        , Ui.smallShadow
+                        ]
+                        [ column
+                            [ width fill
+                            , paddingXY 0 10
+                            ]
+                            [ el
+                                [ width (px 54)
+                                , height (px 54)
+                                , Font.color Ui.green
+                                , centerX
+                                , centerY
+                                ]
+                                (html logo)
+                            , el
+                                (Ui.bodyType
+                                    ++ [ Font.color Ui.black
+                                       , centerX
+                                       , centerY
+                                       , moveUp 6
+                                       ]
+                                )
+                                (text "elm-arborist")
+                            ]
+                        , column
+                            [ width (px 100)
+                            , centerX
+                            , spacing 6
+                            , padding 8
+                            , Background.color (rgb255 245 245 245)
+                            , Border.rounded 4
+                            ]
+                            [ el
+                                (Ui.bodyType
+                                    ++ [ Font.color Ui.black
+                                       , centerX
+                                       ]
+                                )
+                                (text <| "v" ++ model.version)
+                            , link
+                                [ centerX
+                                , mouseOver
+                                    [ Font.color Ui.green
+                                    ]
+                                ]
+                                { url = "https://github.com/peterszerzo/elm-arborist/tree/master"
+                                , label =
+                                    el
+                                        (Ui.bodyType
+                                            ++ [ Font.underline
+                                               ]
+                                        )
+                                        (text "GitHub")
+                                }
+                            ]
+                        , column
+                            [ padding 10
+                            , spacing 20
+                            , width fill
+                            ]
+                            [ Ui.switch [ centerX ]
+                                { checked = model.dragAndDrop
+                                , onChange = SetDragAndDrop
+                                , label = "Drag and drop"
+                                }
+                            , Ui.switch [ centerX ]
+                                { checked = model.canCreateNodes
+                                , onChange = SetCanCreateNodes
+                                , label = "Create"
+                                }
+                            , Ui.switch [ centerX ]
+                                { checked = model.keyboardNavigation
+                                , onChange = SetKeyboardNavigation
+                                , label = "Keyboard"
+                                }
+                            ]
+                        ]
+                    , row
+                        [ centerMark
+                        , inFront <|
+                            el
+                                [ width (px Minimap.canvasWidth)
+                                , height (px Minimap.canvasHeight)
+                                , Border.rounded 4
+                                , alignRight
+                                , alignTop
+                                , moveLeft 20
+                                , moveDown 20
+                                , clip
+                                , Ui.smallShadow
+                                , let
+                                    dims =
+                                        centerAreaDims
+                                            { canvasWidth = canvasWidth windowSize
+                                            , canvasHeight = canvasHeight windowSize
+                                            , nodeWidth = nodeWidth
+                                            , nodeHeight = nodeHeight
+                                            , level = level
+                                            , gutter = gutter
+                                            , minimapNodeWidth = Minimap.nodeSize
+                                            , minimapNodeHeight = Minimap.nodeSize
+                                            , minimapLevel = Minimap.level
+                                            , minimapGutter = Minimap.gutter
+                                            }
+                                  in
+                                  centerArea dims.width dims.height
+                                , centerMark
+                                ]
+                                (Arborist.view
+                                    [ Html.Attributes.style "background-color" "#FFFFFF"
+                                    ]
+                                    { state = model.arborist
+                                    , tree = model.tree
+                                    , nodeView = Minimap.nodeView
+                                    , settings = minimapArboristSettings model
+                                    , toMsg = ArboristMinimap
+                                    }
+                                    |> html
+                                )
+                        , inFront <|
+                            if model.dragAndDrop then
+                                none
 
-              else
-                Arborist.view
-                    []
-                    { state = model.arborist
-                    , tree = model.tree
-                    , nodeView = nodeView
-                    , settings = mainArboristSettings model
-                    , toMsg = Arborist
-                    }
-                    |> html
-            ]
-        ]
-        |> layout []
+                            else
+                                Arborist.activeNode
+                                    { settings = mainArboristSettings model
+                                    , state = model.arborist
+                                    , tree = model.tree
+                                    }
+                                    |> Maybe.map (activeNodePopup model.newNode)
+                                    |> Maybe.withDefault none
+                        ]
+                      <|
+                        [ if model.windowSize == Nothing then
+                            none
+
+                          else
+                            Arborist.view
+                                []
+                                { state = model.arborist
+                                , tree = model.tree
+                                , nodeView = nodeView
+                                , settings = mainArboristSettings model
+                                , toMsg = Arborist
+                                }
+                                |> html
+                        ]
+                    ]
+                    |> layout []
 
 
 activeNodePopup :
@@ -603,13 +664,11 @@ activeNodePopup newNode ( item, { position } ) =
                     )
 
                 Nothing ->
-                    ( [ 
-                       Ui.input
+                    ( [ Ui.input
                             { onChange = EditNewNodeAnswer
                             , value = newNode.answer
                             , label = Just "Reach this node if answer is:"
                             }
-                      
                       , Ui.input
                             { onChange = EditNewNodeQuestion
                             , value = newNode.question

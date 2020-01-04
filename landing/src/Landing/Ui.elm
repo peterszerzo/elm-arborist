@@ -1,6 +1,6 @@
 module Landing.Ui exposing
     ( white, black, green, lighterGreen, faintGreen, greenRgb, red
-    , bodyType, smallType
+    , bodyType, smallType, labelType, headingType, linkType
     , rgbToCssString, rgbToColor, htmlStyle
     , button, switch
     , largeShadow, smallShadow
@@ -11,7 +11,7 @@ module Landing.Ui exposing
 
 @docs white, black, green, lighterGreen, faintGreen, greenRgb, red
 
-@docs bodyType, smallType, labelType
+@docs bodyType, smallType, labelType, headingType, linkType
 
 @docs rgbToCssString, rgbToColor, htmlStyle
 
@@ -117,9 +117,24 @@ font =
         ]
 
 
+headingType : List (Attribute msg)
+headingType =
+    [ Font.size 18
+    , font
+    ]
+
+
 bodyType : List (Attribute msg)
 bodyType =
     [ Font.size 12
+    , font
+    ]
+
+
+linkType : List (Attribute msg)
+linkType =
+    [ Font.size 12
+    , Font.underline
     , font
     ]
 
