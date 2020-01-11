@@ -1,7 +1,7 @@
 module Arborist exposing
     ( State, init, NodeView, view, subscriptions, Updater
     , Setting
-    , activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
+    , hasActiveNode, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
     , reposition, deactivate
     , NodeState(..), Context
     )
@@ -21,7 +21,7 @@ module Arborist exposing
 
 # Arborist tree getters and modifiers
 
-@docs activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
+@docs hasActiveNode, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
 
 
 # Display modifiers
@@ -225,7 +225,14 @@ activeNode config =
             )
 
 
-{-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNodeWithContext](#activeNodeWithContext) method.
+{-| Determines whether there is an active node. This is a simple alternative to [activeNode](#activeNode), which provides a lot more information and requires more inputs in scope.
+-}
+hasActiveNode : State -> Bool
+hasActiveNode (State state) =
+    state.active /= Nothing
+
+
+{-| Sets a new node at the active position. This may be adding a completely new node from scratch (in case the current node is a placeholder), or modifying an existing one. Typically, the modification is based off an original value provided by the [activeNode](#activeNode) method.
 -}
 setActiveNode : node -> State -> Tree.Tree node -> ( State, Tree.Tree node )
 setActiveNode newNode =

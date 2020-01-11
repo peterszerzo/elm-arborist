@@ -17,6 +17,7 @@ import Html
 import Html.Attributes
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Landing.Constants as Constants
 import Landing.Minimap as Minimap
 import Landing.Node as Node
 import Landing.Ui as Ui
@@ -97,26 +98,6 @@ tree =
         ]
 
 
-nodeHeight : Int
-nodeHeight =
-    54
-
-
-nodeWidth : Int
-nodeWidth =
-    180
-
-
-level : Int
-level =
-    140
-
-
-gutter : Int
-gutter =
-    60
-
-
 sharedArboristSettings : Model -> List (Arborist.Setting Node.Node)
 sharedArboristSettings model =
     [ Settings.dragAndDrop model.dragAndDrop
@@ -145,10 +126,10 @@ mainOnlyArboristSettings model =
     model.windowSize
         |> Maybe.map
             (\windowSize ->
-                [ Settings.centerOffset 0 -100
-                , Settings.level level
-                , Settings.gutter gutter
-                , Settings.nodeWidth nodeWidth
+                [ Settings.centerOffset -100 -100
+                , Settings.level Constants.level
+                , Settings.gutter Constants.gutter
+                , Settings.nodeWidth Constants.nodeWidth
                 , Settings.extendConnectorsByAdvanced
                     (\context ->
                         context.node
@@ -161,7 +142,7 @@ mainOnlyArboristSettings model =
                                         Just 20
                                 )
                     )
-                , Settings.nodeHeight nodeHeight
+                , Settings.nodeHeight Constants.nodeHeight
                 , Settings.canvasWidth (canvasWidth windowSize)
                 , Settings.canvasHeight (canvasHeight windowSize)
                 , Settings.keyboardNavigation model.keyboardNavigation
@@ -540,9 +521,9 @@ view model =
                                 [ width (px Minimap.canvasWidth)
                                 , height (px Minimap.canvasHeight)
                                 , Border.rounded 4
-                                , alignRight
+                                , alignLeft
                                 , alignTop
-                                , moveLeft 20
+                                , moveRight 20
                                 , moveDown 20
                                 , clip
                                 , Ui.smallShadow
@@ -551,10 +532,10 @@ view model =
                                         centerAreaDims
                                             { canvasWidth = canvasWidth windowSize
                                             , canvasHeight = canvasHeight windowSize
-                                            , nodeWidth = nodeWidth
-                                            , nodeHeight = nodeHeight
-                                            , level = level
-                                            , gutter = gutter
+                                            , nodeWidth = Constants.nodeWidth
+                                            , nodeHeight = Constants.nodeHeight
+                                            , level = Constants.level
+                                            , gutter = Constants.gutter
                                             , minimapNodeWidth = Minimap.nodeSize
                                             , minimapNodeHeight = Minimap.nodeSize
                                             , minimapLevel = Minimap.level
@@ -616,11 +597,8 @@ activeNodePopup :
           }
         )
     -> Element Msg
-activeNodePopup newNode ( item, { position } ) =
+activeNodePopup newNode ( item, _ ) =
     let
-        ( x, y ) =
-            position
-
         ( children, controls ) =
             case item of
                 Just justItem ->
@@ -685,33 +663,12 @@ activeNodePopup newNode ( item, { position } ) =
     in
     column
         [ spacing 20
-        , width fill
-        , height (px 240)
         , Background.color (rgb255 255 255 255)
-        , Ui.largeShadow
-        , Border.rounded 4
-        , Border.color Ui.green
-        , Border.width 4
+        , Ui.smallShadow
+        , alignRight
         , padding 20
-        , width (px 420)
-        , height (px 240)
-        , moveRight (x - 210)
-        , moveDown (y + 45)
-        , row
-            [ moveUp 60
-            , height (px 60)
-            , alignRight
-            , Background.color (rgb255 245 245 245)
-            , width fill
-            ]
-            [ row
-                [ centerX
-                , centerY
-                , spacing 10
-                ]
-                controls
-            ]
-            |> below
+        , width (px 400)
+        , height fill
         , el
             [ width (px 0)
             , height (px 0)
@@ -724,7 +681,15 @@ activeNodePopup newNode ( item, { position } ) =
             none
             |> above
         ]
-        children
+        (children
+            ++ [ row
+                    [ centerX
+                    , centerY
+                    , spacing 10
+                    ]
+                    controls
+               ]
+        )
 
 
 {-| Describe how a node should render inside the tree's layout.
@@ -734,8 +699,8 @@ nodeView context maybeNode =
     case maybeNode of
         Just node ->
             column
-                ([ width (px nodeWidth)
-                 , height (px nodeHeight)
+                ([ width (px Constants.nodeWidth)
+                 , height (px Constants.nodeHeight)
                  , Background.color Ui.green
                  , Border.rounded 4
                  , padding 10
@@ -755,7 +720,7 @@ nodeView context maybeNode =
                         [ width (px 80)
                         , height (px 28)
                         , moveUp 12
-                        , moveRight (toFloat nodeWidth / 2 - 40)
+                        , moveRight (toFloat Constants.nodeWidth / 2 - 40)
                         , Border.width 2
                         , Border.rounded 4
                         , Border.color Ui.green
@@ -770,10 +735,24 @@ nodeView context maybeNode =
                         else
                             []
                        )
-                    ++ (if node.isClustered then
+                    ++ (if context.state == Arborist.Active then
                             [ el
-                                [ width (px nodeWidth)
-                                , height (px nodeHeight)
+                                [ width (px <| Constants.nodeWidth + 8)
+                                , height (px <| Constants.nodeHeight + 8)
+                                , Background.color Ui.green
+                                , alpha 0.4
+                                , Border.rounded 4
+                                , moveUp 4
+                                , moveLeft 4
+                                ]
+                                none
+                                |> behindContent
+                            ]
+
+                        else if node.isClustered then
+                            [ el
+                                [ width (px Constants.nodeWidth)
+                                , height (px Constants.nodeHeight)
                                 , Background.color Ui.green
                                 , alpha 0.4
                                 , Border.rounded 4
@@ -813,8 +792,8 @@ nodeView context maybeNode =
 
         Nothing ->
             column
-                [ width (px nodeWidth)
-                , height (px nodeHeight)
+                [ width (px Constants.nodeWidth)
+                , height (px Constants.nodeHeight)
                 , Border.rounded 4
                 , Border.width 2
                 , Border.color Ui.green
