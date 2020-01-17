@@ -43,7 +43,7 @@ type alias Settings node =
     , connectorStroke : String
     , connectorStrokeWidth : String
     , dragAndDrop : Bool
-    , keyboardNavigation : Bool
+    , keyboardNavigation : Maybe { outsideId : Maybe String }
     , showPlaceholderLeaves : Bool
     , showPlaceholderLeavesAdvanced : Maybe (ShowPlaceholderLeavesAdvanced node)
     , defaultNode : Maybe node
@@ -65,7 +65,7 @@ defaults =
     , connectorStroke = "#E2E2E2"
     , connectorStrokeWidth = "2"
     , dragAndDrop = True
-    , keyboardNavigation = False
+    , keyboardNavigation = Nothing
     , showPlaceholderLeaves = True
     , showPlaceholderLeavesAdvanced = Nothing
     , defaultNode = Nothing
@@ -87,6 +87,7 @@ type Setting node
     | ExtendConnectorsByAdvanced (ExtendConnectorsByAdvanced node)
     | DragAndDrop Bool
     | KeyboardNavigation Bool
+    | KeyboardNavigationOutside String Bool
     | ShowPlaceholderLeaves Bool
     | ShowPlaceholderLeavesAdvanced (ShowPlaceholderLeavesAdvanced node)
     | DefaultNode node
@@ -145,7 +146,28 @@ apply newSettings settings =
                         { settings | dragAndDrop = isEnabled }
 
                     KeyboardNavigation enabled ->
-                        { settings | keyboardNavigation = enabled }
+                        { settings
+                            | keyboardNavigation =
+                                if enabled then
+                                    Just
+                                        { outsideId = Nothing
+                                        }
+
+                                else
+                                    Nothing
+                        }
+
+                    KeyboardNavigationOutside domId enabled ->
+                        { settings
+                            | keyboardNavigation =
+                                if enabled then
+                                    Just
+                                        { outsideId = Just domId
+                                        }
+
+                                else
+                                    Nothing
+                        }
 
                     ShowPlaceholderLeaves show ->
                         { settings | showPlaceholderLeaves = show }

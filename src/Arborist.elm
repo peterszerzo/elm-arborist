@@ -621,6 +621,50 @@ type ArrowDirection
     | ArrowRight
 
 
+isOutsideDecoder : String -> Decode.Decoder Bool
+isOutsideDecoder containerId =
+    Decode.oneOf
+        [ Decode.field "id" Decode.string
+            |> Decode.andThen
+                (\id ->
+                    if containerId == id then
+                        -- found match by id
+                        Decode.succeed False
+
+                    else
+                        -- try next decoder
+                        Decode.fail "continue"
+                )
+        , Decode.lazy (\_ -> isOutsideDecoder containerId |> Decode.field "parentNode")
+
+        -- fallback if all previous decoders failed
+        , Decode.succeed True
+        ]
+
+
+keyDecoder : Decode.Decoder ArrowDirection
+keyDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                case key of
+                    "ArrowDown" ->
+                        Decode.succeed ArrowDown
+
+                    "ArrowUp" ->
+                        Decode.succeed ArrowUp
+
+                    "ArrowLeft" ->
+                        Decode.succeed ArrowLeft
+
+                    "ArrowRight" ->
+                        Decode.succeed ArrowRight
+
+                    _ ->
+                        Decode.fail "No arrow key detected. This is fine"
+            )
+
+
 {-| Subscriptions for interactive enhancements like keyboard events
 -}
 subscriptions : List (Setting node) -> State -> Tree.Tree node -> Sub ( State, Tree.Tree node )
@@ -632,85 +676,92 @@ subscriptions settingsOverrides (State state) tree =
         { flat, layoutLazy } =
             computeTree settings tree
     in
-    if settings.keyboardNavigation then
-        Browser.Events.onKeyDown
-            (Decode.field "key" Decode.string
-                |> Decode.andThen
-                    (\key ->
-                        case key of
-                            "ArrowDown" ->
-                                Decode.succeed ArrowDown
+    case settings.keyboardNavigation of
+        Nothing ->
+            Sub.none
 
-                            "ArrowUp" ->
-                                Decode.succeed ArrowUp
+        Just keyboardNavigationConfig ->
+            Browser.Events.onKeyDown
+                ((case keyboardNavigationConfig.outsideId of
+                    Just domId ->
+                        Decode.map2
+                            (\key isOutside ->
+                                if isOutside then
+                                    Just key
 
-                            "ArrowLeft" ->
-                                Decode.succeed ArrowLeft
-
-                            "ArrowRight" ->
-                                Decode.succeed ArrowRight
-
-                            _ ->
-                                Decode.fail "No arrow key detected. This is fine"
-                    )
-                |> Decode.andThen
-                    (\arrowDirection ->
-                        let
-                            all =
-                                List.map Tuple.first flat
-
-                            newActive =
-                                case arrowDirection of
-                                    ArrowDown ->
-                                        TreeUtils.moveDown all state.active
-
-                                    ArrowUp ->
-                                        TreeUtils.moveUp all state.active
-
-                                    ArrowLeft ->
-                                        TreeUtils.moveLeft all state.active
-
-                                    ArrowRight ->
-                                        TreeUtils.moveRight all state.active
-
-                            newPanOffset =
-                                newActive
-                                    |> Maybe.andThen
-                                        (\justActive ->
-                                            let
-                                                layout =
-                                                    layoutLazy ()
-                                            in
-                                            nodeGeometry settings justActive layout
-                                                |> Maybe.map
-                                                    (.center
-                                                        >> (\( cx, cy ) ->
-                                                                [ settings.centerOffset
-                                                                , ( settings.canvasWidth / 2
-                                                                  , settings.canvasHeight / 2
-                                                                  )
-                                                                , ( -cx, -settings.nodeHeight / 2 - cy )
-                                                                ]
-                                                                    |> List.foldl Pt.add ( 0, 0 )
-                                                           )
-                                                        >> Offset.fromPt (Utils.offsetConfig settings)
-                                                    )
-                                        )
-                                    |> Maybe.withDefault state.panOffset
-                        in
-                        Decode.succeed
-                            ( State
-                                { state
-                                    | active = newActive
-                                    , panOffset = newPanOffset
-                                }
-                            , tree
+                                else
+                                    Nothing
                             )
-                    )
-            )
+                            keyDecoder
+                            (Decode.field "target" (isOutsideDecoder domId))
+                            |> Decode.andThen
+                                (\maybeKey ->
+                                    case maybeKey of
+                                        Just key ->
+                                            Decode.succeed key
 
-    else
-        Sub.none
+                                        Nothing ->
+                                            Decode.fail "Not outside specified ID"
+                                )
+
+                    Nothing ->
+                        keyDecoder
+                 )
+                    |> Decode.andThen
+                        (\arrowDirection ->
+                            let
+                                all =
+                                    List.map Tuple.first flat
+
+                                newActive =
+                                    case arrowDirection of
+                                        ArrowDown ->
+                                            TreeUtils.moveDown all state.active
+
+                                        ArrowUp ->
+                                            TreeUtils.moveUp all state.active
+
+                                        ArrowLeft ->
+                                            TreeUtils.moveLeft all state.active
+
+                                        ArrowRight ->
+                                            TreeUtils.moveRight all state.active
+
+                                newPanOffset =
+                                    newActive
+                                        |> Maybe.andThen
+                                            (\justActive ->
+                                                let
+                                                    layout =
+                                                        layoutLazy ()
+                                                in
+                                                nodeGeometry settings justActive layout
+                                                    |> Maybe.map
+                                                        (.center
+                                                            >> (\( cx, cy ) ->
+                                                                    [ settings.centerOffset
+                                                                    , ( settings.canvasWidth / 2
+                                                                      , settings.canvasHeight / 2
+                                                                      )
+                                                                    , ( -cx, -settings.nodeHeight / 2 - cy )
+                                                                    ]
+                                                                        |> List.foldl Pt.add ( 0, 0 )
+                                                               )
+                                                            >> Offset.fromPt (Utils.offsetConfig settings)
+                                                        )
+                                            )
+                                        |> Maybe.withDefault state.panOffset
+                            in
+                            Decode.succeed
+                                ( State
+                                    { state
+                                        | active = newActive
+                                        , panOffset = newPanOffset
+                                    }
+                                , tree
+                                )
+                        )
+                )
 
 
 getDropTarget :

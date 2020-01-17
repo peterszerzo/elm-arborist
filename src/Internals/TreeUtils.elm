@@ -83,8 +83,26 @@ moveDown all maybeCurrent =
             Just []
 
         Just current ->
+            let
+                countChildren =
+                    all
+                        |> List.filter
+                            (\iteratedPath ->
+                                List.length iteratedPath
+                                    == List.length current
+                                    + 1
+                                    && List.take (List.length iteratedPath - 1) iteratedPath
+                                    == current
+                            )
+                        |> List.length
+            in
             current
-                ++ [ 0 ]
+                ++ [ if modBy 2 countChildren == 0 then
+                        countChildren // 2 - 1
+
+                     else
+                        countChildren // 2
+                   ]
                 |> confirm all
                 |> Maybe.withDefault current
                 |> Just

@@ -145,7 +145,7 @@ mainOnlyArboristSettings model =
                 , Settings.nodeHeight Constants.nodeHeight
                 , Settings.canvasWidth (canvasWidth windowSize)
                 , Settings.canvasHeight (canvasHeight windowSize)
-                , Settings.keyboardNavigation model.keyboardNavigation
+                , Settings.keyboardNavigationOutside "node-editor" model.keyboardNavigation
                 , Settings.connectorStrokeWidth "2"
                 , Settings.connectorStroke <| Ui.rgbToCssString Ui.greenRgb
                 ]
@@ -289,7 +289,9 @@ update msg model =
             )
 
         SetKeyboardNavigation keyboardNavigation ->
-            ( { model | keyboardNavigation = keyboardNavigation }
+            ( { model
+                | keyboardNavigation = keyboardNavigation
+              }
             , Cmd.none
             )
 
@@ -669,6 +671,7 @@ activeNodePopup newNode ( item, _ ) =
         , padding 20
         , width (px 400)
         , height fill
+        , htmlAttribute <| Html.Attributes.id "node-editor"
         , el
             [ width (px 0)
             , height (px 0)
@@ -684,7 +687,7 @@ activeNodePopup newNode ( item, _ ) =
         (children
             ++ [ row
                     [ centerX
-                    , centerY
+                    , alignTop
                     , spacing 10
                     ]
                     controls

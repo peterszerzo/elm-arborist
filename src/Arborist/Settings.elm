@@ -1,6 +1,6 @@
 module Arborist.Settings exposing
     ( nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth
-    , dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced
+    , dragAndDrop, keyboardNavigation, keyboardNavigationOutside, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced
     )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
@@ -13,7 +13,7 @@ module Arborist.Settings exposing
 
 ## Features
 
-@docs dragAndDrop, keyboardNavigation, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced
+@docs dragAndDrop, keyboardNavigation, keyboardNavigationOutside, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced
 
 -}
 
@@ -117,6 +117,13 @@ dragAndDrop =
 keyboardNavigation : Bool -> Setting node
 keyboardNavigation =
     KeyboardNavigation
+
+
+{-| Similar to `keyboardNavigation`, but only works if the event is recorded outside a DOM element with the specified ID. Use this to disable keyboard navigation if the user types inside an input.
+-}
+keyboardNavigationOutside : String -> Bool -> Setting node
+keyboardNavigationOutside =
+    KeyboardNavigationOutside
 
 
 {-| Set whether placeholder leaves should be displayed.
