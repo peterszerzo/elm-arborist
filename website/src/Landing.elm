@@ -702,16 +702,15 @@ activeNodePopup newNode ( item, _ ) =
             [ width fill
             , spacing 20
             ]
-            (el Ui.headingType (text "Controls")
-                :: [ row
-                        [ centerX
-                        , alignTop
-                        , width fill
-                        , spacing 10
-                        ]
-                        controls
-                   ]
-            )
+            [ el Ui.headingType (text "Controls")
+            , row
+                [ centerX
+                , alignTop
+                , width fill
+                , spacing 10
+                ]
+                controls
+            ]
         ]
 
 

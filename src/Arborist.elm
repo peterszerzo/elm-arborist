@@ -150,6 +150,33 @@ computeTree settings tree =
     }
 
 
+computeTreeFlatOnly :
+    Settings.Settings node
+    -> Tree.Tree node
+    -> List ( List Int, Maybe node )
+computeTreeFlatOnly settings tree =
+    let
+        treeModifiedForCompute =
+            tree
+                |> TreeUtils.clusterBy settings.isNodeClustered
+                |> (\newTree ->
+                        case ( settings.dragAndDrop, settings.showPlaceholderLeaves, settings.showPlaceholderLeavesAdvanced ) of
+                            ( True, _, _ ) ->
+                                newTree
+
+                            ( _, _, Just addEmpties ) ->
+                                TreeUtils.addTrailingEmptiesAdvanced (\context -> addEmpties context && not (settings.isNodeClustered context.node)) newTree
+
+                            ( _, True, _ ) ->
+                                TreeUtils.addTrailingEmptiesAdvanced (\context -> not (settings.isNodeClustered context.node)) newTree
+
+                            _ ->
+                                newTree
+                   )
+    in
+    TreeUtils.flatten treeModifiedForCompute
+
+
 {-| Returns the current active node as a tuple of `Maybe node` (as the node maybe a placeholder for a new node), as well as some contextual information as a two-field record:
 
   - `position : ( Float, Float )`: the node's position on the canvas (useful for rendering an edit pop-up).
@@ -180,19 +207,16 @@ activeNode config =
 
         settings =
             Settings.apply config.settings Settings.defaults
-
-        computedTree =
-            computeTree settings config.tree
     in
     model.active
         |> Maybe.map
             (\active ->
                 let
-                    { layoutLazy, flat } =
+                    computedTree =
                         computeTree settings tree
 
                     layout =
-                        layoutLazy ()
+                        computedTree.layoutLazy ()
 
                     geo =
                         nodeGeometry settings active layout
@@ -207,7 +231,7 @@ activeNode config =
                     offsetConfig =
                         Utils.offsetConfig settings
                 in
-                ( flat
+                ( computedTree.flat
                     |> List.filter (\( path_, _ ) -> active == path_)
                     |> List.head
                     |> Maybe.andThen Tuple.second
@@ -331,8 +355,8 @@ type Msg
 resolveDrop : Settings.Settings node -> State -> Tree.Tree node -> Tree.Tree node
 resolveDrop settings (State model) tree =
     let
-        { flat } =
-            computeTree settings tree
+        flat =
+            computeTreeFlatOnly settings tree
 
         stuff =
             Drag.state model.drag
@@ -453,8 +477,8 @@ update settings msg (State state) tree =
     case msg of
         NodeMouseDown path x y ->
             let
-                { flat } =
-                    computeTree settings tree
+                flat =
+                    computeTreeFlatOnly settings tree
             in
             if settings.dragAndDrop then
                 ( State

@@ -48,6 +48,7 @@ type alias Settings node =
     , showPlaceholderLeavesAdvanced : Maybe (ShowPlaceholderLeavesAdvanced node)
     , defaultNode : Maybe node
     , isNodeClustered : IsNodeClustered node
+    , checksum : Maybe String
     }
 
 
@@ -70,6 +71,7 @@ defaults =
     , showPlaceholderLeavesAdvanced = Nothing
     , defaultNode = Nothing
     , isNodeClustered = \_ -> False
+    , checksum = Nothing
     }
 
 
@@ -91,6 +93,7 @@ type Setting node
     | ShowPlaceholderLeaves Bool
     | ShowPlaceholderLeavesAdvanced (ShowPlaceholderLeavesAdvanced node)
     | DefaultNode node
+    | Checksum String
     | IsNodeClustered (node -> Bool)
 
 
@@ -180,4 +183,7 @@ apply newSettings settings =
 
                     IsNodeClustered isNodeClustered ->
                         { settings | isNodeClustered = isNodeClustered }
+
+                    Checksum checksum ->
+                        { settings | checksum = Just checksum }
                 )

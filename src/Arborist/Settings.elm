@@ -1,6 +1,6 @@
 module Arborist.Settings exposing
     ( nodeWidth, nodeHeight, canvasWidth, canvasHeight, level, gutter, centerOffset, connectorStroke, connectorStrokeWidth
-    , dragAndDrop, keyboardNavigation, keyboardNavigationOutside, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced
+    , dragAndDrop, keyboardNavigation, keyboardNavigationOutside, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced, checksum
     )
 
 {-| Various settings for the editor, defined at the time of [initialization](Arborist#initWith), or [added](Arborist#applySettings) at any time later in the program. Includes various geometric settings such as canvas dimensions and the gutter between nodes, and, in a later version of this package, more functional settings such as hiding placeholder nodes.
@@ -13,7 +13,7 @@ module Arborist.Settings exposing
 
 ## Features
 
-@docs dragAndDrop, keyboardNavigation, keyboardNavigationOutside, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced
+@docs dragAndDrop, keyboardNavigation, keyboardNavigationOutside, defaultNode, showPlaceholderLeaves, showPlaceholderLeavesAdvanced, isNodeClustered, extendConnectorsBy, extendConnectorsByAdvanced, checksum
 
 -}
 
@@ -160,3 +160,13 @@ isNodeClustered =
 defaultNode : node -> Setting node
 defaultNode =
     DefaultNode
+
+
+{-| A checksum value for settings, allowing the layout algorithm to know when the settings have not meaningfully changed and that a previous computed tree layout can be re-used.
+
+    This is necessary because some settings are functions which cannot be compared directly.
+
+-}
+checksum : String -> Setting node
+checksum =
+    Checksum
