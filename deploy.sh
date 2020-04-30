@@ -1,8 +1,8 @@
 # Build
-cd landing
+cd website
 PUBLIC_URL=./ elm-app build
 cd ..
 pwd
 
 # Deploy
-gh-pages -d landing/build
+gh-pages -d website/build

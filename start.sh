@@ -1,2 +1,2 @@
-cd landing
+cd website
 elm-app start

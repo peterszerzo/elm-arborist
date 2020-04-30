@@ -393,24 +393,32 @@ view model =
                 column
                     [ width fill
                     , height fill
-                    , Font.color Ui.green
                     , padding 20
                     ]
                     [ column
                         [ centerX
                         , centerY
-                        , spacing 30
-                        , moveUp 20
+                        , spacing 40
                         ]
-                        [ el
-                            [ width (px 64)
-                            , height (px 64)
-                            , moveDown 20
-                            , centerX
+                        [ column [ spacing 20, centerX ]
+                            [ el
+                                [ width (px 64)
+                                , height (px 64)
+                                , centerX
+                                , Font.color Ui.green
+                                ]
+                                (html logo)
+                            , paragraph
+                                (Ui.titleType
+                                    ++ [ Font.center
+                                       , Font.color Ui.green
+                                       ]
+                                )
+                                [ text "elm-arborist" ]
                             ]
-                            (html logo)
-                        , paragraph (Ui.headingType ++ [ Font.center ]) [ text "elm-arborist" ]
-                        , paragraph (Ui.bodyType ++ [ Font.center ]) [ text "Parameterized Tree Editor for Elm" ]
+                        , paragraph
+                            (Ui.bodyType ++ [ Font.center ])
+                            [ text "Parameterized Tree Editor for Elm" ]
                         , row
                             [ centerX
                             , spacing 20
@@ -443,11 +451,12 @@ view model =
                         ]
                         [ column
                             [ width fill
-                            , paddingXY 0 10
+                            , paddingXY 0 20
+                            , spacing 10
                             ]
                             [ el
-                                [ width (px 54)
-                                , height (px 54)
+                                [ width (px 45)
+                                , height (px 45)
                                 , Font.color Ui.green
                                 , centerX
                                 , centerY
@@ -458,7 +467,6 @@ view model =
                                     ++ [ Font.color Ui.black
                                        , centerX
                                        , centerY
-                                       , moveUp 6
                                        ]
                                 )
                                 (text "elm-arborist")
@@ -616,13 +624,7 @@ activeNodePopup newNode ( item, _ ) =
                             }
                       ]
                     , [ Ui.button
-                            []
-                            { onPress = Just DeleteActive
-                            , label = "Delete node"
-                            , isError = True
-                            }
-                      , Ui.button
-                            [ Background.color Ui.green
+                            [ width fill
                             ]
                             { onPress =
                                 Just
@@ -639,6 +641,12 @@ activeNodePopup newNode ( item, _ ) =
                                 else
                                     "Cluster"
                             , isError = False
+                            }
+                      , Ui.button
+                            [ width fill ]
+                            { onPress = Just DeleteActive
+                            , label = "Delete node"
+                            , isError = True
                             }
                       ]
                     )
@@ -668,9 +676,10 @@ activeNodePopup newNode ( item, _ ) =
         , Background.color (rgb255 255 255 255)
         , Ui.smallShadow
         , alignRight
-        , padding 20
+        , paddingXY 20 30
         , width (px 400)
         , height fill
+        , spacing 40
         , htmlAttribute <| Html.Attributes.id "node-editor"
         , el
             [ width (px 0)
@@ -684,15 +693,26 @@ activeNodePopup newNode ( item, _ ) =
             none
             |> above
         ]
-        (children
-            ++ [ row
-                    [ centerX
-                    , alignTop
-                    , spacing 10
-                    ]
-                    controls
-               ]
-        )
+        [ column
+            [ width fill
+            , spacing 20
+            ]
+            (el Ui.headingType (text "Node") :: children)
+        , column
+            [ width fill
+            , spacing 20
+            ]
+            (el Ui.headingType (text "Controls")
+                :: [ row
+                        [ centerX
+                        , alignTop
+                        , width fill
+                        , spacing 10
+                        ]
+                        controls
+                   ]
+            )
+        ]
 
 
 {-| Describe how a node should render inside the tree's layout.
@@ -740,27 +760,41 @@ nodeView context maybeNode =
                        )
                     ++ (if context.state == Arborist.Active then
                             [ el
-                                [ width (px <| Constants.nodeWidth + 8)
-                                , height (px <| Constants.nodeHeight + 8)
-                                , Background.color Ui.green
-                                , alpha 0.4
+                                [ width (px <| Constants.nodeWidth - 6)
+                                , height (px <| Constants.nodeHeight - 6)
+                                , Border.color Ui.white
                                 , Border.rounded 4
-                                , moveUp 4
-                                , moveLeft 4
+                                , Border.width 2
+                                , moveDown 3
+                                , moveRight 3
                                 ]
                                 none
-                                |> behindContent
+                                |> inFront
                             ]
 
-                        else if node.isClustered then
+                        else
+                            []
+                       )
+                    ++ (if node.isClustered then
                             [ el
                                 [ width (px Constants.nodeWidth)
                                 , height (px Constants.nodeHeight)
                                 , Background.color Ui.green
-                                , alpha 0.4
+                                , alpha 0.3
                                 , Border.rounded 4
-                                , moveUp 4
-                                , moveRight 4
+                                , moveUp 3
+                                , moveRight 3
+                                ]
+                                none
+                                |> behindContent
+                            , el
+                                [ width (px Constants.nodeWidth)
+                                , height (px Constants.nodeHeight)
+                                , Background.color Ui.green
+                                , alpha 0.3
+                                , Border.rounded 4
+                                , moveUp 6
+                                , moveRight 6
                                 ]
                                 none
                                 |> behindContent
@@ -795,17 +829,35 @@ nodeView context maybeNode =
 
         Nothing ->
             column
-                [ width (px Constants.nodeWidth)
-                , height (px Constants.nodeHeight)
-                , Border.rounded 4
-                , Border.width 2
-                , Border.color Ui.green
-                , Font.color Ui.green
-                , pointer
-                , mouseOver
+                ([ width (px Constants.nodeWidth)
+                 , height (px Constants.nodeHeight)
+                 , Border.rounded 4
+                 , Border.width 2
+                 , Border.color Ui.green
+                 , Font.color Ui.green
+                 , pointer
+                 , mouseOver
                     [ Background.color Ui.faintGreen
                     ]
-                ]
+                 ]
+                    ++ (if context.state == Arborist.Active then
+                            [ el
+                                [ width (px <| Constants.nodeWidth - 8)
+                                , height (px <| Constants.nodeHeight - 8)
+                                , Border.color Ui.green
+                                , Border.rounded 4
+                                , Border.width 2
+                                , moveDown 2
+                                , moveRight 2
+                                ]
+                                none
+                                |> inFront
+                            ]
+
+                        else
+                            []
+                       )
+                )
                 [ el
                     [ centerX
                     , centerY
@@ -826,9 +878,9 @@ logo =
         [ Svg.Attributes.viewBox "0 0 1000 1000"
         , Svg.Attributes.fill "currentColor"
         ]
-        [ Svg.path [ Svg.Attributes.d "M520,720l220,-220l220,220l-440,0Z" ] []
-        , Svg.path [ Svg.Attributes.d "M40,720l220,-220l220,220l-440,0Z" ] []
-        , Svg.path [ Svg.Attributes.d "M280,480l220,-220l220,220l-440,0Z" ] []
+        [ Svg.path [ Svg.Attributes.d "M440,600c0,-10.609 -4.214,-20.783 -11.716,-28.284c-7.501,-7.502 -17.675,-11.716 -28.284,-11.716l-280,0c-10.609,0 -20.783,4.214 -28.284,11.716c-7.502,7.501 -11.716,17.675 -11.716,28.284l0,280c0,10.609 4.214,20.783 11.716,28.284c7.501,7.502 17.675,11.716 28.284,11.716l280,0c10.609,0 20.783,-4.214 28.284,-11.716c7.502,-7.501 11.716,-17.675 11.716,-28.284l0,-280Z" ] []
+        , Svg.path [ Svg.Attributes.d "M920,600c0,-10.609 -4.214,-20.783 -11.716,-28.284c-7.501,-7.502 -17.675,-11.716 -28.284,-11.716l-280,0c-10.609,0 -20.783,4.214 -28.284,11.716c-7.502,7.501 -11.716,17.675 -11.716,28.284l0,280c0,10.609 4.214,20.783 11.716,28.284c7.501,7.502 17.675,11.716 28.284,11.716l280,0c10.609,0 20.783,-4.214 28.284,-11.716c7.502,-7.501 11.716,-17.675 11.716,-28.284l0,-280Z" ] []
+        , Svg.path [ Svg.Attributes.d "M680,120c0,-10.609 -4.214,-20.783 -11.716,-28.284c-7.501,-7.502 -17.675,-11.716 -28.284,-11.716l-280,0c-10.609,0 -20.783,4.214 -28.284,11.716c-7.502,7.501 -11.716,17.675 -11.716,28.284l0,280c0,10.609 4.214,20.783 11.716,28.284c7.501,7.502 17.675,11.716 28.284,11.716l280,0c10.609,0 20.783,-4.214 28.284,-11.716c7.502,-7.501 11.716,-17.675 11.716,-28.284l0,-280Z" ] []
         ]
 
 

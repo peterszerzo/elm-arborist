@@ -1,6 +1,6 @@
 module Landing.Ui exposing
     ( white, black, green, lighterGreen, faintGreen, greenRgb, red
-    , bodyType, smallType, labelType, headingType, linkType
+    , bodyType, smallType, labelType, titleType, headingType, linkType
     , rgbToCssString, rgbToColor, htmlStyle
     , button, switch
     , largeShadow, smallShadow
@@ -11,7 +11,7 @@ module Landing.Ui exposing
 
 @docs white, black, green, lighterGreen, faintGreen, greenRgb, red
 
-@docs bodyType, smallType, labelType, headingType, linkType
+@docs bodyType, smallType, labelType, titleType, headingType, linkType
 
 @docs rgbToCssString, rgbToColor, htmlStyle
 
@@ -66,7 +66,7 @@ red =
 
 faintRed : Color
 faintRed =
-    rgb255 248 215 214
+    rgb255 255 222 221
 
 
 
@@ -115,6 +115,13 @@ font =
         [ Font.typeface "Monoid"
         , Font.typeface "monospace"
         ]
+
+
+titleType : List (Attribute msg)
+titleType =
+    [ Font.size 24
+    , font
+    ]
 
 
 headingType : List (Attribute msg)
@@ -252,7 +259,8 @@ button attrs config =
     Input.button
         (bodyType
             ++ [ Font.color white
-               , paddingXY 10 8
+               , Font.center
+               , paddingXY 10 11
                , Border.rounded 4
                ]
             ++ (if config.isError then
@@ -282,7 +290,7 @@ button attrs config =
             ++ attrs
         )
         { onPress = config.onPress
-        , label = el bodyType (text config.label)
+        , label = text config.label
         }
 
 
