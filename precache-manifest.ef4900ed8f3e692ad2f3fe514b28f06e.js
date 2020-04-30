@@ -24,12 +24,12 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "./Monoid/Readme+License.html"
   },
   {
-    "revision": "7c481651f091156dc66df92a2c8142c2",
+    "revision": "18815388cfbb1a36ef510b4e261bbb25",
     "url": "./index.html"
   },
   {
-    "revision": "781c1b3f939bbc9f567c",
-    "url": "./static/js/main.781c1b3f.chunk.js"
+    "revision": "c5f85ead2bbbea8e3fd8",
+    "url": "./static/js/main.c5f85ead.chunk.js"
   },
   {
     "revision": "d5752d2fdce3c7e150f5",

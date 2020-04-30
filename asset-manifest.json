@@ -1,6 +1,6 @@
 {
-  "main.js": "./static/js/main.781c1b3f.chunk.js",
-  "main.js.map": "./static/js/main.781c1b3f.chunk.js.map",
+  "main.js": "./static/js/main.c5f85ead.chunk.js",
+  "main.js.map": "./static/js/main.c5f85ead.chunk.js.map",
   "runtime~main.js": "./static/js/runtime~main.d5752d2f.js",
   "runtime~main.js.map": "./static/js/runtime~main.d5752d2f.js.map",
   "vendors~main.js": "./static/js/vendors~main.4178d110.chunk.js",
@@ -13,5 +13,5 @@
   "Monoid/Monoid-Retina.ttf": "./Monoid/Monoid-Retina.ttf",
   "Monoid/Readme+License.html": "./Monoid/Readme+License.html",
   "index.html": "./index.html",
-  "precache-manifest.4988e568b7ec38e171395d199c8c3db1.js": "./precache-manifest.4988e568b7ec38e171395d199c8c3db1.js"
+  "precache-manifest.ef4900ed8f3e692ad2f3fe514b28f06e.js": "./precache-manifest.ef4900ed8f3e692ad2f3fe514b28f06e.js"
 }
