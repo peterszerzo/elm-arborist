@@ -24,19 +24,19 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "./Monoid/Readme+License.html"
   },
   {
-    "revision": "18815388cfbb1a36ef510b4e261bbb25",
+    "revision": "11f1d0ab7e6f7f6a2984a1a83ea2f767",
     "url": "./index.html"
   },
   {
-    "revision": "c5f85ead2bbbea8e3fd8",
-    "url": "./static/js/main.c5f85ead.chunk.js"
+    "revision": "ac2b125ca389ac8d546a",
+    "url": "./static/js/main.ac2b125c.chunk.js"
   },
   {
     "revision": "d5752d2fdce3c7e150f5",
     "url": "./static/js/runtime~main.d5752d2f.js"
   },
   {
-    "revision": "4178d110a819b6d0b2d4",
-    "url": "./static/js/vendors~main.4178d110.chunk.js"
+    "revision": "b9a46db0a12ed6fddb21",
+    "url": "./static/js/vendors~main.b9a46db0.chunk.js"
   }
 ]);
