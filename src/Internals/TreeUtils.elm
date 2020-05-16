@@ -6,6 +6,7 @@ module Internals.TreeUtils exposing
     , addTrailingEmpties
     , addTrailingEmptiesAdvanced
     , analyze
+    , branchAt
     , clusterBy
     , delete
     , find
@@ -18,8 +19,8 @@ module Internals.TreeUtils exposing
     , moveUp
     , removeEmpties
     , swap
-    , updateAt
-    , updateSubtree
+    , swapBranchAt
+    , updateBranchAt
     )
 
 import Arborist.Tree exposing (..)
@@ -312,23 +313,23 @@ swap path1 path2 tree =
     Maybe.map2
         (\st1 st2 ->
             tree
-                |> updateSubtree path1 st2
-                |> updateSubtree path2 st1
+                |> swapBranchAt path1 st2
+                |> swapBranchAt path2 st1
         )
         subtree1
         subtree2
         |> Maybe.withDefault tree
 
 
-updateSubtree : Path -> Tree a -> Tree a -> Tree a
-updateSubtree path subtree tree =
+swapBranchAt : Path -> Tree a -> Tree a -> Tree a
+swapBranchAt path subtree tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             Node item <|
                 List.indexedMap
                     (\index child ->
                         if index == head then
-                            updateSubtree tail subtree child
+                            swapBranchAt tail subtree child
 
                         else
                             child
@@ -342,15 +343,39 @@ updateSubtree path subtree tree =
             currentTree
 
 
-updateAt : Path -> (Tree a -> Tree a) -> Tree a -> Tree a
-updateAt path updateBranchModifier tree =
+branchAt : Path -> Tree a -> Maybe (Tree a)
+branchAt path tree =
+    case ( path, tree ) of
+        ( head :: tail, Node _ children ) ->
+            children
+                |> List.indexedMap
+                    (\index child ->
+                        if index == head then
+                            Just child
+
+                        else
+                            Nothing
+                    )
+                |> List.filterMap identity
+                |> List.head
+                |> Maybe.andThen (branchAt tail)
+
+        ( [], branch ) ->
+            Just branch
+
+        ( _, anyTree ) ->
+            Just anyTree
+
+
+updateBranchAt : Path -> (Tree a -> Tree a) -> Tree a -> Tree a
+updateBranchAt path updateBranchModifier tree =
     case ( path, tree ) of
         ( head :: tail, Node item children ) ->
             Node item <|
                 List.indexedMap
                     (\index child ->
                         if index == head then
-                            updateAt tail updateBranchModifier child
+                            updateBranchAt tail updateBranchModifier child
 
                         else
                             child

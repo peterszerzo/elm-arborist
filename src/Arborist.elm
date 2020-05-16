@@ -1,7 +1,7 @@
 module Arborist exposing
     ( State, init, NodeView, view, subscriptions, Updater
     , Setting
-    , hasActiveNode, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
+    , hasActiveNode, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, activeBranch, updateActiveBranch
     , reposition, deactivate
     , NodeState(..), Context
     )
@@ -21,7 +21,7 @@ module Arborist exposing
 
 # Arborist tree getters and modifiers
 
-@docs hasActiveNode, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, updateActiveBranch
+@docs hasActiveNode, activeNode, setActiveNode, setActiveNodeWithChildren, deleteActiveNode, activeBranch, updateActiveBranch
 
 
 # Display modifiers
@@ -266,6 +266,19 @@ setActiveNode newNode =
         }
 
 
+{-| Returns the entire active branch
+-}
+activeBranch : State -> Tree.Tree node -> Maybe (Tree.Tree node)
+activeBranch (State state) tree =
+    state.active
+        |> Maybe.andThen
+            (\active ->
+                TreeUtils.branchAt
+                    active
+                    tree
+            )
+
+
 {-| Similar to [setActiveNode](#setActiveNode), but instead of updating just the node with its subtrees intact, it updates the entire branch based on a `Tree -> Tree` function.
 -}
 updateActiveBranch : (Tree.Tree node -> Tree.Tree node) -> State -> Tree.Tree node -> ( State, Tree.Tree node )
@@ -274,7 +287,7 @@ updateActiveBranch fn (State state) tree =
     , state.active
         |> Maybe.map
             (\active ->
-                TreeUtils.updateAt
+                TreeUtils.updateBranchAt
                     active
                     fn
                     tree
@@ -297,7 +310,7 @@ setActiveNodeWithChildren newStuff (State model) tree =
     , model.active
         |> Maybe.map
             (\active ->
-                TreeUtils.updateAt
+                TreeUtils.updateBranchAt
                     active
                     (\branch ->
                         case branch of
